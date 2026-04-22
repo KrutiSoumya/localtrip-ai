@@ -1,0 +1,54 @@
+[
+  {
+    "name": "Goa",
+    "attractions": ["Baga Beach", "Calangute Beach", "Fort Aguada"],
+    "avg_cost_per_day": 2500,
+    "activities": [
+      { "name": "Beach visit", "cost": 0 },
+      { "name": "Water sports", "cost": 1500 },
+      { "name": "Fort visit", "cost": 50 }
+    ],
+    "travel_time_between": 2
+  },
+  {
+    "name": "Manali",
+    "attractions": ["Solang Valley", "Rohtang Pass", "Hadimba Temple"],
+    "avg_cost_per_day": 2000,
+    "activities": [
+      { "name": "Snow activities", "cost": 1200 },
+      { "name": "Temple visit", "cost": 50 },
+      { "name": "Local sightseeing", "cost": 500 }
+    ],
+    "travel_time_between": 3
+  },
+  {
+    "name": "Kerala",
+    "attractions": ["Alleppey Backwaters", "Munnar Hills"],
+    "avg_cost_per_day": 3000,
+    "activities": [
+      { "name": "Houseboat ride", "cost": 2000 },
+      { "name": "Tea plantation visit", "cost": 300 }
+    ],
+    "travel_time_between": 4
+  },
+  {
+    "name": "Rajasthan",
+    "attractions": ["Jaipur Palace", "Jaisalmer Desert"],
+    "avg_cost_per_day": 2200,
+    "activities": [
+      { "name": "Desert safari", "cost": 1500 },
+      { "name": "Palace tour", "cost": 200 }
+    ],
+    "travel_time_between": 5
+  },
+  {
+    "name": "Ooty",
+    "attractions": ["Botanical Garden", "Ooty Lake"],
+    "avg_cost_per_day": 1800,
+    "activities": [
+      { "name": "Boat ride", "cost": 300 },
+      { "name": "Garden visit", "cost": 50 }
+    ],
+    "travel_time_between": 2
+  }
+]

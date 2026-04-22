@@ -7,75 +7,100 @@ const {
     checkMissingFields
 } = require('../services/utils');
 
-// 🔥 Extract clean JSON from messy AI response
-function extractJSON(text) {
-    if (!text) return null;
+const { generateVariations } = require('../services/itineraryService');
+const { rankItineraries, generateExplanation } = require('../services/rankingService');
 
-    // remove markdown
-    text = text.replace(/```json/g, '').replace(/```/g, '');
 
-    // extract JSON block
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-
-    let jsonText = match[0];
-
-    // 🔥 remove comments (// ...)
-    jsonText = jsonText.replace(/\/\/.*$/gm, '');
-
-    // 🔥 remove trailing commas
-    jsonText = jsonText.replace(/,\s*}/g, '}');
-    jsonText = jsonText.replace(/,\s*]/g, ']');
-
-    // 🔥 remove weird text after values
-    jsonText = jsonText.replace(/:\s*null\s*,?\s*[^\n,}]*/g, ': null');
-
+// ==============================
+// 🔥 SAFE JSON PARSER (CRITICAL FIX)
+// ==============================
+function safeJSONParse(text) {
     try {
-        return JSON.parse(jsonText);
+        if (!text) return null;
+
+        // 🔥 Remove markdown
+        text = text.replace(/```json|```/g, '').trim();
+
+        // 🔥 Extract fields manually (ULTRA ROBUST)
+        const destination = text.match(/"destination"\s*:\s*"([^"]+)"/i)?.[1] || null;
+
+        const duration = text.match(/"duration_days"\s*:\s*(\d+)/i)?.[1];
+        const budget = text.match(/"budget_total"\s*:\s*(\d+)/i)?.[1];
+        const groupSize = text.match(/"group_size"\s*:\s*(\d+)/i)?.[1];
+
+        const groupType = text.match(/"group_type"\s*:\s*"([^"]+)"/i)?.[1] || null;
+
+        // 🔥 interests array (safe extraction)
+        let interests = null;
+        const interestsMatch = text.match(/"interests"\s*:\s*\[(.*?)\]/i);
+
+        if (interestsMatch) {
+            interests = interestsMatch[1]
+                .split(',')
+                .map(i => i.replace(/"/g, '').trim())
+                .filter(Boolean);
+        }
+
+        return {
+            destination: destination,
+            duration_days: duration ? Number(duration) : null,
+            budget_total: budget ? Number(budget) : null,
+            group_size: groupSize ? Number(groupSize) : null,
+            group_type: groupType,
+            interests: interests
+        };
+
     } catch (err) {
-        console.log("Cleaned JSON failed:", jsonText);
+        console.error("REGEX PARSE FAILED:", text);
         return null;
     }
 }
 
+
+// ==============================
+// 🔹 PARSE QUERY
+// ==============================
 exports.handleParseQuery = async (req, res) => {
     try {
         let { message } = req.body;
 
-        // ✅ validation
         if (!message) {
             return res.status(400).json({ error: "Message required" });
         }
 
-        // ✅ Step 1: Hinglish preprocessing
+        // 🔹 Hinglish → English
         message = replaceHinglish(message);
 
-        // ✅ Step 2: Strict AI prompt
+        // 🔹 Clean prompt (shorter = better)
         const prompt = `
-You are a strict JSON extractor.
+Return ONLY this JSON:
 
-Extract ONLY these fields:
-- destination
-- duration_days
-- budget_total
-- group_size
-- group_type
-- interests
+{
+  "destination": string,
+  "duration_days": number,
+  "budget_total": number,
+  "group_size": number,
+  "group_type": string | null,
+  "interests": string[] | null
+}
 
-Rules:
-- Return ONLY valid JSON
+STRICT:
 - No explanation
+- No extra text
 - No markdown
-- No comments
-- No trailing commas
+- If missing → null
 
 Message: "${message}"
 `;
 
         const raw = await generateTrip(prompt);
 
-        // ✅ Step 3: Safe JSON parsing
-        const parsed = extractJSON(raw);
+        if (!raw) {
+            return res.status(500).json({ error: "AI failed" });
+        }
+
+        // 🔥 SAFE PARSE (NOT direct JSON.parse)
+        const parsed = safeJSONParse(raw);
 
         if (!parsed) {
             return res.status(500).json({
@@ -84,29 +109,72 @@ Message: "${message}"
             });
         }
 
-        // ✅ Step 4: Normalize budget
+        // 🔹 Normalize budget
         if (parsed.budget_total) {
-            const normalized = normalise(parsed.budget_total.toString());
-            parsed.budget_total = Number(normalized) || parsed.budget_total;
+            parsed.budget_total = Number(
+                normalise(parsed.budget_total.toString())
+            );
         }
 
-        // ✅ Step 5: Resolve relative dates
+        // 🔹 Resolve date
         const date = resolveDate(message);
-        if (date) {
-            parsed.start_date = date;
-        }
+        if (date) parsed.start_date = date;
 
-        // ✅ Step 6: Check missing fields
+        // 🔹 Missing fields check
         const clarification = checkMissingFields(parsed);
-        if (clarification) {
-            return res.json(clarification);
-        }
+        if (clarification) return res.json(clarification);
 
-        // ✅ Final response
         res.json(parsed);
 
     } catch (err) {
         console.error("Parse Query Error:", err);
         res.status(500).json({ error: "Parsing failed" });
+    }
+};
+
+
+// ==============================
+// 🔹 GENERATE ITINERARY
+// ==============================
+exports.handleGenerateItinerary = async (req, res) => {
+    try {
+        const query = req.body;
+
+        if (!query.destination || !query.duration_days || !query.budget_total) {
+            return res.status(400).json({
+                error: "destination, duration_days, budget_total required"
+            });
+        }
+
+        // 🔹 Generate variations
+        const result = await generateVariations(query);
+        const variations = result.variations;
+
+        if (!variations || variations.length === 0) {
+            return res.status(500).json({
+                error: "Failed to generate itineraries"
+            });
+        }
+
+        // 🔹 Rank itineraries
+        const ranked = rankItineraries(variations, query);
+
+        // 🔹 Pick best
+        const best = ranked[0];
+
+        // 🔹 Explanation
+        const explanation = generateExplanation(best, query);
+
+        res.json({
+            variations,
+            ranked,
+            explanation
+        });
+
+    } catch (err) {
+        console.error("Generate Itinerary Error:", err);
+        res.status(500).json({
+            error: "Failed to generate itinerary"
+        });
     }
 };
