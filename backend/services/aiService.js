@@ -2,6 +2,7 @@ const axios = require('axios');
 
 const OLLAMA_URL = 'http://localhost:11434/api/chat';
 
+
 // ==============================
 // 🔹 STRICT JSON GENERATOR
 // ==============================
@@ -12,8 +13,8 @@ async function generateTrip(prompt) {
             stream: false,
             options: {
                 temperature: 0,
-                num_predict: 120,
-                stop: ["\n\n", "incorrectly", "Explanation", "Note"]
+                num_predict: 150,
+                stop: ["\n\n", "Explanation", "Note", "incorrectly"]
             },
             messages: [
                 {
@@ -37,7 +38,9 @@ Rules:
             ]
         });
 
-        let text = response.data.message.content.trim();
+        let text = response.data.message.content?.trim();
+
+        if (!text) return null;
 
         // 🔥 Clean markdown if any
         text = text.replace(/```json|```/g, '').trim();
@@ -54,36 +57,85 @@ Rules:
 // ==============================
 // 🔹 ITINERARY GENERATOR
 // ==============================
-async function generateItinerary(query, mode = "balanced") {
+async function generateItinerary(query, mode = "balanced", destinations = []) {
+
     const style =
         mode === "budget"
             ? "Focus on low-cost and free activities."
-            : "Focus on unique and premium experiences.";
+            : "Focus on premium and unique experiences.";
+
+    // 🔥 DIFFERENTIATION
+    let extraInstruction = "";
+
+    if (mode === "budget") {
+        extraInstruction = `
+Use:
+- free attractions
+- street markets
+- local food
+Avoid:
+- luxury experiences
+- private tours
+- expensive dining
+`;
+    } else {
+        extraInstruction = `
+Use:
+- premium experiences
+- guided tours
+- unique activities
+Avoid:
+- free-only activities
+- street markets
+`;
+    }
+
+    // 🔥 DATASET GROUNDING
+    const attractionList = destinations
+        .map(d => d.attractions)
+        .flat()
+        .join(", ");
 
     const prompt = `
-Create a ${query.duration_days}-day travel itinerary.
+You are a STRICT itinerary generator.
 
-STRICT FORMAT:
+CRITICAL RULES:
+- Output ONLY itinerary text
+- NO markdown (**, *, etc.)
+- NO explanations
+- NO introductions
+- NO notes
+- NO "Destination" headings
+- NO cost explanations
+- ONLY use places from this list:
+${attractionList} from that destination, and nothing else.
+- DO NOT invent places
+- DO NOT MIX DESTINATIONS AND THEIR ATTRACTIONS, STICK TO THE GIVEN DESTINATION ONLY!!
+
+FORMAT MUST BE EXACT:
 
 Day 1:
-- ...
-- ...
-- ...
+- Activity
+- Activity
+- Activity
 
 Day 2:
-- ...
-- ...
-- ...
+- Activity
+- Activity
+- Activity
 
-Rules:
+TASK:
+Create a ${query.duration_days}-day itinerary.
+
+CONSTRAINTS:
 - EXACTLY ${query.duration_days} days
-- 3-4 activities per day
-- Short sentences
-- NO markdown
-- NO explanation
-- NO extra text
+- EACH day must have 3–4 activities
+- EACH activity must start with "-"
+- Use SHORT, simple sentences
+- Use ONLY real place names from list
 
 ${style}
+${extraInstruction}
 
 Trip:
 Destination: ${query.destination}
@@ -91,26 +143,60 @@ Budget: ${query.budget_total}
 People: ${query.group_size}
 `;
 
-    // 🔥 Retry logic
+    // 🔁 Retry logic
     for (let attempt = 1; attempt <= 2; attempt++) {
         try {
             const response = await axios.post(OLLAMA_URL, {
                 model: 'phi3:mini',
                 stream: false,
                 options: {
-                    temperature: 0.3,
-                    num_predict: 800
+                    temperature: 0.2,
+                    num_predict: 700
                 },
                 messages: [
-                    { role: "system", content: "Return ONLY clean itinerary text." },
-                    { role: "user", content: prompt }
+                    {
+                        role: "system",
+                        content: `
+You must STRICTLY follow formatting rules.
+If you add explanations or markdown → output is INVALID.
+`
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
                 ]
             });
 
-            const text = response.data.message.content?.trim();
+            let text = response.data.message.content?.trim();
 
-            // 🔥 basic validation
-            if (text && text.includes("Day 1") && text.includes("Day")) {
+            if (!text) continue;
+
+            // 🔥 HARD CLEANING
+            text = text
+                .replace(/```/g, "")
+                .replace(/\*\*/g, "")
+                .replace(/\*/g, "")
+                .replace(/Destination:.*/gi, "")
+                .replace(/Please note:.*/gi, "")
+                .replace(/Note:.*/gi, "")
+                .replace(/approx[^.\n]*/gi, "")
+                .replace(/per person[^.\n]*/gi, "")
+                .replace(/not included[^.\n]*/gi, "")
+                .trim();
+
+            // 🔥 STRICT VALIDATION
+            const dayMatches = text.match(/Day\s\d+:/g) || [];
+            const hasBullets = text.includes("-");
+
+            if (
+                text &&
+                dayMatches.length === query.duration_days &&
+                hasBullets &&
+                !text.includes("**") &&
+                !text.toLowerCase().includes("please note") &&
+                !text.toLowerCase().includes("destination")
+            ) {
                 return text;
             }
 

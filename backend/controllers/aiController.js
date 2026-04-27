@@ -10,53 +10,6 @@ const {
 const { generateVariations } = require('../services/itineraryService');
 const { rankItineraries, generateExplanation } = require('../services/rankingService');
 
-
-// ==============================
-// 🔥 SAFE JSON PARSER (CRITICAL FIX)
-// ==============================
-function safeJSONParse(text) {
-    try {
-        if (!text) return null;
-
-        // 🔥 Remove markdown
-        text = text.replace(/```json|```/g, '').trim();
-
-        // 🔥 Extract fields manually (ULTRA ROBUST)
-        const destination = text.match(/"destination"\s*:\s*"([^"]+)"/i)?.[1] || null;
-
-        const duration = text.match(/"duration_days"\s*:\s*(\d+)/i)?.[1];
-        const budget = text.match(/"budget_total"\s*:\s*(\d+)/i)?.[1];
-        const groupSize = text.match(/"group_size"\s*:\s*(\d+)/i)?.[1];
-
-        const groupType = text.match(/"group_type"\s*:\s*"([^"]+)"/i)?.[1] || null;
-
-        // 🔥 interests array (safe extraction)
-        let interests = null;
-        const interestsMatch = text.match(/"interests"\s*:\s*\[(.*?)\]/i);
-
-        if (interestsMatch) {
-            interests = interestsMatch[1]
-                .split(',')
-                .map(i => i.replace(/"/g, '').trim())
-                .filter(Boolean);
-        }
-
-        return {
-            destination: destination,
-            duration_days: duration ? Number(duration) : null,
-            budget_total: budget ? Number(budget) : null,
-            group_size: groupSize ? Number(groupSize) : null,
-            group_type: groupType,
-            interests: interests
-        };
-
-    } catch (err) {
-        console.error("REGEX PARSE FAILED:", text);
-        return null;
-    }
-}
-
-
 // ==============================
 // 🔹 PARSE QUERY
 // ==============================
@@ -68,12 +21,11 @@ exports.handleParseQuery = async (req, res) => {
             return res.status(400).json({ error: "Message required" });
         }
 
-        // 🔹 Hinglish → English
-        message = replaceHinglish(message);
+        // 🔹 Normalize Hinglish → English
+        message = replaceHinglish(message.toLowerCase());
 
-        // 🔹 Clean prompt (shorter = better)
         const prompt = `
-Return ONLY this JSON:
+Return ONLY valid JSON:
 
 {
   "destination": string,
@@ -84,11 +36,15 @@ Return ONLY this JSON:
   "interests": string[] | null
 }
 
-STRICT:
-- No explanation
-- No extra text
-- No markdown
-- If missing → null
+Rules:
+- Extract meaningful travel intent ONLY
+- Ignore filler words like "log", "people", "guys"
+- Interests must be from: beach, food, adventure, culture
+- If none found → null
+- Convert informal text into structured fields
+- NO explanation
+- NO markdown
+- VALID JSON ONLY
 
 Message: "${message}"
 `;
@@ -99,35 +55,92 @@ Message: "${message}"
             return res.status(500).json({ error: "AI failed" });
         }
 
-        // 🔥 SAFE PARSE (NOT direct JSON.parse)
-        const parsed = safeJSONParse(raw);
+        let parsed;
 
-        if (!parsed) {
+        try {
+            parsed = JSON.parse(raw);
+        } catch (err) {
+            console.error("Invalid JSON:", raw);
             return res.status(500).json({
                 error: "AI returned invalid JSON",
                 raw
             });
         }
 
-        // 🔹 Normalize budget
+        // =========================
+        // 🔹 POST-PROCESS FIXES
+        // =========================
+
+// =========================
+// 🔹 RULE-BASED FALLBACKS
+// =========================
+
+// 🔹 Duration (3 din / 3 days)
+if (!parsed.duration_days) {
+    const dayMatch = message.match(/(\d+)\s*(day|days|din)/);
+    if (dayMatch) {
+        parsed.duration_days = Number(dayMatch[1]);
+    }
+}
+
+// 🔹 Budget (20k → 20000)
+if (!parsed.budget_total) {
+    const budgetMatch = message.match(/(\d+)\s*k/);
+    if (budgetMatch) {
+        parsed.budget_total = Number(budgetMatch[1]) * 1000;
+    }
+}
+
+// 🔹 Group size (3 log)
+if (!parsed.group_size) {
+    const groupMatch = message.match(/(\d+)\s*(people|persons|log|guys)/);
+    if (groupMatch) {
+        parsed.group_size = Number(groupMatch[1]);
+    }
+}
+        // 🔹 Budget normalize
         if (parsed.budget_total) {
             parsed.budget_total = Number(
                 normalise(parsed.budget_total.toString())
             );
         }
 
-        // 🔹 Resolve date
+        // 🔹 Fix group size (detect "3 log", "2 people")
+        const groupMatch = message.match(/(\d+)\s*(people|persons|log|guys)/);
+        if (groupMatch) {
+            parsed.group_size = Number(groupMatch[1]);
+        }
+
+        // 🔹 Clean interests (REMOVE junk like "log")
+        const validInterests = ["beach", "food", "adventure", "culture"];
+
+        if (parsed.interests && Array.isArray(parsed.interests)) {
+            parsed.interests = parsed.interests.filter(i =>
+                validInterests.includes(i.toLowerCase())
+            );
+        }
+
+        if (!parsed.interests || parsed.interests.length === 0) {
+            parsed.interests = ["beach"]; // 🔥 default fallback
+        }
+
+        // 🔹 Date extraction
         const date = resolveDate(message);
         if (date) parsed.start_date = date;
 
-        // 🔹 Missing fields check
+        // 🔹 Final validation / clarification
         const clarification = checkMissingFields(parsed);
-        if (clarification) return res.json(clarification);
+        if (clarification) {
+    // only ask if REALLY missing critical fields
+    if (!parsed.destination || !parsed.duration_days) {
+        return res.json(clarification);
+    }
+}
 
         res.json(parsed);
 
     } catch (err) {
-        console.error("Parse Query Error:", err);
+        console.error(err);
         res.status(500).json({ error: "Parsing failed" });
     }
 };
@@ -146,23 +159,20 @@ exports.handleGenerateItinerary = async (req, res) => {
             });
         }
 
-        // 🔹 Generate variations
         const result = await generateVariations(query);
         const variations = result.variations;
 
+        // 🚨 CRITICAL FIX
         if (!variations || variations.length === 0) {
             return res.status(500).json({
-                error: "Failed to generate itineraries"
+                error: "Failed to generate valid itineraries"
             });
         }
 
-        // 🔹 Rank itineraries
         const ranked = rankItineraries(variations, query);
 
-        // 🔹 Pick best
         const best = ranked[0];
 
-        // 🔹 Explanation
         const explanation = generateExplanation(best, query);
 
         res.json({
@@ -172,7 +182,7 @@ exports.handleGenerateItinerary = async (req, res) => {
         });
 
     } catch (err) {
-        console.error("Generate Itinerary Error:", err);
+        console.error(err);
         res.status(500).json({
             error: "Failed to generate itinerary"
         });

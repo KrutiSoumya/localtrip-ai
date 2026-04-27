@@ -1,53 +1,227 @@
 [
   {
     "name": "Goa",
-    "attractions": ["Baga Beach", "Calangute Beach", "Fort Aguada"],
+    "attractions": [
+      "Baga Beach",
+      "Calangute Beach",
+      "Anjuna Beach",
+      "Vagator Beach",
+      "Colva Beach",
+      "Dudhsagar Falls",
+      "Fort Aguada",
+      "Chapora Fort",
+      "Basilica of Bom Jesus",
+      "Se Cathedral",
+      "Dona Paula",
+      "Anjuna Flea Market",
+      "Mapusa Market",
+      "Casino Cruise",
+      "Mandovi River"
+    ],
     "avg_cost_per_day": 2500,
     "activities": [
       { "name": "Beach visit", "cost": 0 },
       { "name": "Water sports", "cost": 1500 },
-      { "name": "Fort visit", "cost": 50 }
+      { "name": "Fort visit", "cost": 50 },
+      { "name": "Church visit", "cost": 0 },
+      { "name": "Night market visit", "cost": 200 },
+      { "name": "Dolphin cruise", "cost": 800 },
+      { "name": "Casino visit", "cost": 2000 }
     ],
     "travel_time_between": 2
   },
   {
     "name": "Manali",
-    "attractions": ["Solang Valley", "Rohtang Pass", "Hadimba Temple"],
+    "attractions": [
+      "Solang Valley",
+      "Rohtang Pass",
+      "Hadimba Temple",
+      "Mall Road",
+      "Old Manali",
+      "Manu Temple",
+      "Jogini Waterfall",
+      "Vashisht Hot Springs",
+      "Naggar Castle",
+      "Beas River"
+    ],
     "avg_cost_per_day": 2000,
     "activities": [
       { "name": "Snow activities", "cost": 1200 },
       { "name": "Temple visit", "cost": 50 },
-      { "name": "Local sightseeing", "cost": 500 }
+      { "name": "Local sightseeing", "cost": 500 },
+      { "name": "River rafting", "cost": 1000 },
+      { "name": "Cafe hopping", "cost": 300 },
+      { "name": "Hot spring bath", "cost": 100 }
     ],
     "travel_time_between": 3
   },
   {
     "name": "Kerala",
-    "attractions": ["Alleppey Backwaters", "Munnar Hills"],
+    "attractions": [
+      "Alleppey Backwaters",
+      "Munnar Hills",
+      "Kochi Fort",
+      "Varkala Beach",
+      "Wayanad",
+      "Thekkady",
+      "Periyar Wildlife Sanctuary",
+      "Athirappilly Waterfalls",
+      "Kumarakom",
+      "Marari Beach"
+    ],
     "avg_cost_per_day": 3000,
     "activities": [
       { "name": "Houseboat ride", "cost": 2000 },
-      { "name": "Tea plantation visit", "cost": 300 }
+      { "name": "Tea plantation visit", "cost": 300 },
+      { "name": "Kathakali show", "cost": 500 },
+      { "name": "Ayurvedic spa", "cost": 1500 },
+      { "name": "Wildlife safari", "cost": 800 }
     ],
     "travel_time_between": 4
   },
   {
     "name": "Rajasthan",
-    "attractions": ["Jaipur Palace", "Jaisalmer Desert"],
+    "attractions": [
+      "Jaipur Palace",
+      "Amber Fort",
+      "Hawa Mahal",
+      "Jaisalmer Desert",
+      "Udaipur Lake",
+      "City Palace Udaipur",
+      "Mehrangarh Fort",
+      "Pushkar Lake",
+      "Ajmer Sharif",
+      "Chittorgarh Fort"
+    ],
     "avg_cost_per_day": 2200,
     "activities": [
       { "name": "Desert safari", "cost": 1500 },
-      { "name": "Palace tour", "cost": 200 }
+      { "name": "Palace tour", "cost": 200 },
+      { "name": "Cultural show", "cost": 400 },
+      { "name": "Camel ride", "cost": 300 },
+      { "name": "Boat ride", "cost": 200 }
     ],
     "travel_time_between": 5
   },
   {
     "name": "Ooty",
-    "attractions": ["Botanical Garden", "Ooty Lake"],
+    "attractions": [
+      "Botanical Garden",
+      "Ooty Lake",
+      "Doddabetta Peak",
+      "Tea Factory",
+      "Rose Garden",
+      "Avalanche Lake",
+      "Emerald Lake",
+      "Nilgiri Mountain Railway",
+      "Pykara Falls"
+    ],
     "avg_cost_per_day": 1800,
     "activities": [
       { "name": "Boat ride", "cost": 300 },
-      { "name": "Garden visit", "cost": 50 }
+      { "name": "Garden visit", "cost": 50 },
+      { "name": "Tea tasting", "cost": 200 },
+      { "name": "Hill trekking", "cost": 400 },
+      { "name": "Train ride", "cost": 500 }
+    ],
+    "travel_time_between": 2
+  },
+  {
+    "name": "Shimla",
+    "attractions": [
+      "Mall Road",
+      "Kufri",
+      "Jakhoo Temple",
+      "Christ Church",
+      "Green Valley",
+      "Viceregal Lodge",
+      "Annandale",
+      "Chadwick Falls"
+    ],
+    "avg_cost_per_day": 2000,
+    "activities": [
+      { "name": "Toy train ride", "cost": 500 },
+      { "name": "Temple visit", "cost": 50 },
+      { "name": "Snow activities", "cost": 1000 },
+      { "name": "Horse riding", "cost": 300 }
+    ],
+    "travel_time_between": 3
+  },
+  {
+    "name": "Darjeeling",
+    "attractions": [
+      "Tiger Hill",
+      "Batasia Loop",
+      "Tea Gardens",
+      "Peace Pagoda",
+      "Padmaja Naidu Zoo",
+      "Rock Garden",
+      "Himalayan Mountaineering Institute"
+    ],
+    "avg_cost_per_day": 2200,
+    "activities": [
+      { "name": "Sunrise view", "cost": 100 },
+      { "name": "Toy train ride", "cost": 600 },
+      { "name": "Tea estate visit", "cost": 300 },
+      { "name": "Zoo visit", "cost": 150 }
+    ],
+    "travel_time_between": 4
+  },
+  {
+    "name": "Andaman",
+    "attractions": [
+      "Radhanagar Beach",
+      "Cellular Jail",
+      "Havelock Island",
+      "Neil Island",
+      "Ross Island",
+      "North Bay Island"
+    ],
+    "avg_cost_per_day": 4000,
+    "activities": [
+      { "name": "Scuba diving", "cost": 3000 },
+      { "name": "Snorkeling", "cost": 1500 },
+      { "name": "Glass boat ride", "cost": 800 },
+      { "name": "Light and sound show", "cost": 300 }
+    ],
+    "travel_time_between": 5
+  },
+  {
+    "name": "Ladakh",
+    "attractions": [
+      "Pangong Lake",
+      "Nubra Valley",
+      "Magnetic Hill",
+      "Khardung La Pass",
+      "Tso Moriri Lake",
+      "Leh Palace",
+      "Hemis Monastery"
+    ],
+    "avg_cost_per_day": 3500,
+    "activities": [
+      { "name": "Bike trip", "cost": 2000 },
+      { "name": "Camping", "cost": 1500 },
+      { "name": "Monastery visit", "cost": 100 },
+      { "name": "ATV rides", "cost": 1000 }
+    ],
+    "travel_time_between": 6
+  },
+  {
+    "name": "Coorg",
+    "attractions": [
+      "Abbey Falls",
+      "Coffee Estates",
+      "Dubare Elephant Camp",
+      "Talakaveri",
+      "Raja’s Seat",
+      "Iruppu Falls"
+    ],
+    "avg_cost_per_day": 2000,
+    "activities": [
+      { "name": "Coffee plantation tour", "cost": 300 },
+      { "name": "Waterfall visit", "cost": 50 },
+      { "name": "Elephant interaction", "cost": 500 },
+      { "name": "Nature walk", "cost": 200 }
     ],
     "travel_time_between": 2
   }
