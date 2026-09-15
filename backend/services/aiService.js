@@ -90,7 +90,6 @@ Avoid:
 `;
     }
 
-    // 🔥 DATASET GROUNDING
     const attractionList = destinations
         .map(d => d.attractions)
         .flat()
@@ -143,7 +142,7 @@ Budget: ${query.budget_total}
 People: ${query.group_size}
 `;
 
-    // 🔁 Retry logic
+
     for (let attempt = 1; attempt <= 2; attempt++) {
         try {
             const response = await axios.post(OLLAMA_URL, {
@@ -172,7 +171,6 @@ If you add explanations or markdown → output is INVALID.
 
             if (!text) continue;
 
-            // 🔥 HARD CLEANING
             text = text
                 .replace(/```/g, "")
                 .replace(/\*\*/g, "")
@@ -185,7 +183,6 @@ If you add explanations or markdown → output is INVALID.
                 .replace(/not included[^.\n]*/gi, "")
                 .trim();
 
-            // 🔥 STRICT VALIDATION
             const dayMatches = text.match(/Day\s\d+:/g) || [];
             const hasBullets = text.includes("-");
 

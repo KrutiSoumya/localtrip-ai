@@ -75,7 +75,6 @@ Message: "${message}"
 // 🔹 RULE-BASED FALLBACKS
 // =========================
 
-// 🔹 Duration (3 din / 3 days)
 if (!parsed.duration_days) {
     const dayMatch = message.match(/(\d+)\s*(day|days|din)/);
     if (dayMatch) {
@@ -83,7 +82,6 @@ if (!parsed.duration_days) {
     }
 }
 
-// 🔹 Budget (20k → 20000)
 if (!parsed.budget_total) {
     const budgetMatch = message.match(/(\d+)\s*k/);
     if (budgetMatch) {
@@ -91,27 +89,23 @@ if (!parsed.budget_total) {
     }
 }
 
-// 🔹 Group size (3 log)
 if (!parsed.group_size) {
     const groupMatch = message.match(/(\d+)\s*(people|persons|log|guys)/);
     if (groupMatch) {
         parsed.group_size = Number(groupMatch[1]);
     }
 }
-        // 🔹 Budget normalize
         if (parsed.budget_total) {
             parsed.budget_total = Number(
                 normalise(parsed.budget_total.toString())
             );
         }
 
-        // 🔹 Fix group size (detect "3 log", "2 people")
         const groupMatch = message.match(/(\d+)\s*(people|persons|log|guys)/);
         if (groupMatch) {
             parsed.group_size = Number(groupMatch[1]);
         }
 
-        // 🔹 Clean interests (REMOVE junk like "log")
         const validInterests = ["beach", "food", "adventure", "culture"];
 
         if (parsed.interests && Array.isArray(parsed.interests)) {
@@ -121,17 +115,14 @@ if (!parsed.group_size) {
         }
 
         if (!parsed.interests || parsed.interests.length === 0) {
-            parsed.interests = ["beach"]; // 🔥 default fallback
+            parsed.interests = ["beach"]; 
         }
 
-        // 🔹 Date extraction
         const date = resolveDate(message);
         if (date) parsed.start_date = date;
 
-        // 🔹 Final validation / clarification
         const clarification = checkMissingFields(parsed);
         if (clarification) {
-    // only ask if REALLY missing critical fields
     if (!parsed.destination || !parsed.duration_days) {
         return res.json(clarification);
     }
