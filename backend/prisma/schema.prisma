@@ -1,0 +1,128 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  password     String
+  name         String
+  agency_name  String
+  phone        String?
+  createdAt    DateTime @default(now())
+
+  leads Lead[]
+}
+
+model Lead {
+  id                 Int       @id @default(autoincrement())
+  customer_name      String
+  phone              String
+  email              String?
+  inquiry_text       String
+  destination        String?
+  duration           Int?
+  budget             Int?
+  group_size         Int?
+  preferences        String?
+  status             String    @default("New")
+  score              Int       @default(0)
+  score_label        String    @default("Cold")
+  last_contact       DateTime?
+  interaction_count  Int       @default(0)
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  itineraries Itinerary[]
+  bookings    Booking[]
+}
+
+model Itinerary {
+  id        Int      @id @default(autoincrement())
+  leadId    Int
+  lead      Lead     @relation(fields: [leadId], references: [id])
+
+  title     String
+  summary   String?
+  createdAt DateTime @default(now())
+
+  days       ItineraryDay[]
+  quotations Quotation[]
+  bookings   Booking[]
+}
+
+model ItineraryDay {
+  id          Int       @id @default(autoincrement())
+  itineraryId Int
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id])
+
+  day_number Int
+  title      String?
+  activities String
+  meals      String?
+  hotel      String?
+  transport  String?
+}
+
+model Quotation {
+  id          Int       @id @default(autoincrement())
+  itineraryId Int
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id])
+
+  total_price Int
+  currency    String   @default("GBP")
+  notes       String?
+  breakdown   Json?
+  createdAt   DateTime @default(now())
+
+  bookings Booking[]
+}
+
+model Booking {
+  id Int @id @default(autoincrement())
+
+  leadId Int
+  lead   Lead @relation(fields: [leadId], references: [id])
+
+  itineraryId Int
+  itinerary   Itinerary @relation(fields: [itineraryId], references: [id])
+
+  quotationId Int
+  quotation   Quotation @relation(fields: [quotationId], references: [id])
+
+  status        String    @default("Pending")
+  paymentStatus String    @default("Pending")
+  travelDate    DateTime?
+
+  bookedAt DateTime @default(now())
+}
+
+model AILog {
+  id        Int      @id @default(autoincrement())
+  input     String
+  output    String
+  feedback  String?
+  action    String?
+  createdAt DateTime @default(now())
+}
+
+model AgentConfig {
+  id                   Int      @id @default(autoincrement())
+  name                 String
+  preferences          String?
+  destinations_dataset String?
+  createdAt            DateTime @default(now())
+}
