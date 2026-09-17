@@ -1,32 +1,44 @@
-const bcrypt = require('bcrypt');
-const jwt = require('jsonwebtoken');
+const prisma = require("../services/db");
+const jwt = require("jsonwebtoken");
 
-const users = []; // temporary (we’ll use DB later)
-
-exports.register = async (req, res) => {
-    const { email, password } = req.body;
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    users.push({ email, password: hashedPassword });
-
-    res.json({ message: "User registered successfully" });
-};
-
+// ===== LOGIN =====
 exports.login = async (req, res) => {
+  try {
     const { email, password } = req.body;
 
-    const user = users.find(u => u.email === email);
-    if (!user) return res.status(400).json({ error: "User not found" });
+    // check if body exists
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password required" });
+    }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(400).json({ error: "Invalid credentials" });
+    const user = await prisma.user.findFirst({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: "User not found" });
+    }
+
+    // plain text check (since DB uses plain password)
+    if (user.password !== password) {
+      return res.status(400).json({ error: "Invalid password" });
+    }
 
     const token = jwt.sign(
-        { email },
-        process.env.JWT_SECRET,
-        { expiresIn: '1d' }
+      { id: user.id },
+      process.env.JWT_SECRET || "secret",
+      { expiresIn: "7d" }
     );
 
-    res.json({ token });
+    res.json({
+      message: "Login successful",
+      token,
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      error: "Login failed",
+      details: error.message,
+    });
+  }
 };
