@@ -1,0 +1,51 @@
+@import "tailwindcss";
+@import "tailwindcss";
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+}
+@import "tailwindcss";
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; width: 100%; overflow-x: hidden; }
+
+/* ── Responsive grid overrides ──────────────────────────────────── */
+@media (max-width: 768px) {
+  .kpi-grid {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .two-col {
+    grid-template-columns: 1fr !important;
+  }
+  .four-col {
+    grid-template-columns: 1fr 1fr !important;
+  }
+  .pipeline-grid {
+    grid-template-columns: 1fr !important;
+    overflow-x: auto;
+  }
+  .timeline-grid {
+    grid-template-columns: repeat(7, minmax(100px, 1fr)) !important;
+    overflow-x: auto;
+  }
+  .main-with-panel {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .four-col {
+    grid-template-columns: 1fr !important;
+  }
+}
