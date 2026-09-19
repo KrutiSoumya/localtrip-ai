@@ -1,4 +1,5 @@
 const { generateTrip } = require('../services/aiService');
+const prisma = require('../services/db');
 
 const {
     replaceHinglish,
@@ -146,27 +147,41 @@ exports.handleGenerateItinerary = async (req, res) => {
 
         if (!query.destination || !query.duration_days || !query.budget_total) {
             return res.status(400).json({
-                error: "destination, duration_days, budget_total required"
+                error: "destination, duration_days and budget_total are required"
             });
         }
 
         const result = await generateVariations(query);
         const variations = result.variations;
 
-        // 🚨 CRITICAL FIX
         if (!variations || variations.length === 0) {
             return res.status(500).json({
-                error: "Failed to generate valid itineraries"
+                error: "Failed to generate itinerary variations"
             });
         }
 
         const ranked = rankItineraries(variations, query);
-
         const best = ranked[0];
 
         const explanation = generateExplanation(best, query);
 
+        // Prepare the complete AI output
+        const aiOutput = {
+            variations,
+            ranked,
+            explanation
+        };
+
+        // Log AI input and output in the database
+        const aiLog = await prisma.aILog.create({
+            data: {
+                input: JSON.stringify(query),
+                output: JSON.stringify(aiOutput)
+            }
+        });
+
         res.json({
+            output_id: aiLog.id,
             variations,
             ranked,
             explanation
@@ -174,8 +189,120 @@ exports.handleGenerateItinerary = async (req, res) => {
 
     } catch (err) {
         console.error(err);
+
         res.status(500).json({
             error: "Failed to generate itinerary"
+        });
+    }
+};
+// ==============================
+// 🔹 AI FEEDBACK
+// ==============================
+exports.handleAIFeedback = async (req, res) => {
+    try {
+        const {
+            output_id,
+            action,
+            reason
+        } = req.body;
+
+        const validActions = ["accept", "edit", "reject"];
+
+        if (!output_id) {
+            return res.status(400).json({
+                error: "output_id is required"
+            });
+        }
+
+        if (!validActions.includes(action)) {
+            return res.status(400).json({
+                error: "action must be accept, edit, or reject"
+            });
+        }
+
+        const aiLog = await prisma.aILog.findUnique({
+            where: {
+                id: Number(output_id)
+            }
+        });
+
+        if (!aiLog) {
+            return res.status(404).json({
+                error: "AI output not found"
+            });
+        }
+
+        const updatedLog = await prisma.aILog.update({
+            where: {
+                id: Number(output_id)
+            },
+            data: {
+                action,
+                feedback: reason || null
+            }
+        });
+
+        res.json({
+            message: "AI feedback recorded successfully",
+            output_id: updatedLog.id,
+            action: updatedLog.action,
+            feedback: updatedLog.feedback
+        });
+
+    } catch (err) {
+        console.error(err);
+
+        res.status(500).json({
+            error: "Failed to record AI feedback"
+        });
+    }
+};
+
+exports.getAIFeedbackStats = async (req, res) => {
+    try {
+        const total = await prisma.aILog.count({
+            where: {
+                action: {
+                    not: null
+                }
+            }
+        });
+
+        const accepted = await prisma.aILog.count({
+            where: {
+                action: "accept"
+            }
+        });
+
+        const edited = await prisma.aILog.count({
+            where: {
+                action: "edit"
+            }
+        });
+
+        const rejected = await prisma.aILog.count({
+            where: {
+                action: "reject"
+            }
+        });
+
+        const acceptanceRate = total > 0
+            ? Number(((accepted / total) * 100).toFixed(2))
+            : 0;
+
+        res.json({
+            total_feedback: total,
+            accepted,
+            edited,
+            rejected,
+            acceptance_rate: acceptanceRate
+        });
+
+    } catch (err) {
+        console.error(err);
+
+        res.status(500).json({
+            error: "Failed to fetch AI feedback statistics"
         });
     }
 };

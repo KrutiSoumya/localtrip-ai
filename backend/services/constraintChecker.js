@@ -1,87 +1,132 @@
-// ==============================
-// 🔹 Count days
-// ==============================
-function getDayCount(itinerary) {
-    return (itinerary.match(/Day\s\d+:/g) || []).length;
+/**
+ * Get activities for each day from a structured itinerary.
+ */
+function getActivitiesPerDay(itinerary) {
+
+    if (
+        !itinerary ||
+        !Array.isArray(itinerary.days)
+    ) {
+        return [];
+    }
+
+    return itinerary.days.map(day =>
+        Array.isArray(day.activities)
+            ? day.activities
+            : []
+    );
 }
 
 
-// ==============================
-// 🔹 Count activities per day
-// ==============================
-function getActivitiesPerDay(itinerary) {
-    const days = itinerary.split(/Day\s\d+:/).slice(1);
+/**
+ * ============================================================
+ * BUDGET CHECK
+ * ============================================================
+ */
+function checkBudget(itinerary, budget) {
 
-    return days.map(day => {
-        return (day.match(/-\s/g) || []).length;
+    if (
+        !itinerary ||
+        !Array.isArray(itinerary.days) ||
+        !budget ||
+        budget <= 0
+    ) {
+        return false;
+    }
+
+    const totalCost = itinerary.days.reduce(
+        (sum, day) => {
+            const accommodation =
+                Number(day.estimated_cost || 0);
+
+            const activities =
+                Array.isArray(day.activities)
+                    ? day.activities.reduce(
+                        (activitySum, activity) =>
+                            activitySum +
+                            Number(activity.cost || 0),
+                        0
+                    )
+                    : 0;
+
+            return sum + accommodation + activities;
+        },
+        0
+    );
+
+    return totalCost <= budget;
+}
+
+
+/**
+ * ============================================================
+ * DAILY ACTIVITY CHECK
+ * Maximum 4 activities per day.
+ * ============================================================
+ */
+function checkDailyActivities(itinerary) {
+
+    const days =
+        getActivitiesPerDay(itinerary);
+
+    if (days.length === 0) {
+        return false;
+    }
+
+    return days.every(
+        activities =>
+            activities.length >= 1 &&
+            activities.length <= 4
+    );
+}
+
+
+/**
+ * ============================================================
+ * TRAVEL TIME CHECK
+ * Maximum 8 hours of travel per day.
+ * ============================================================
+ */
+function checkTravelTime(itinerary) {
+
+    if (
+        !itinerary ||
+        !Array.isArray(itinerary.days)
+    ) {
+        return false;
+    }
+
+    return itinerary.days.every(day => {
+
+        const travelHours =
+            Number(day.travel_time_hours || 0);
+
+        return travelHours <= 8;
     });
 }
 
 
-// ==============================
-// 🔹 Budget check (improved heuristic)
-// ==============================
-function checkBudget(itinerary, budget) {
-    const text = itinerary.toLowerCase();
-
-    const luxuryWords = ["cruise", "resort", "private", "spa", "fine dining"];
-    const cheapWords = ["free", "market", "local", "street"];
-
-    const luxuryHits = luxuryWords.filter(w => text.includes(w)).length;
-    const cheapHits = cheapWords.filter(w => text.includes(w)).length;
-
-    // 🔹 Low budget → penalize luxury heavily
-    if (budget <= 20000) {
-        if (luxuryHits > 1) return false;
-        return true;
-    }
-
-    // 🔹 High budget → must have some premium feel
-    if (budget > 20000) {
-        return luxuryHits > 0 || cheapHits >= 1;
-    }
-
-    return true;
-}
-
-
-// ==============================
-// 🔹 Activity limit check
-// ==============================
-function checkDailyActivities(itinerary) {
-    const activities = getActivitiesPerDay(itinerary);
-
-    return activities.every(count => count >= 3 && count <= 4);
-}
-
-
-// ==============================
-// 🔹 Travel time check (strict)
-// ==============================
-function checkTravelTime(itinerary, duration_days) {
-    const days = getDayCount(itinerary);
-
-    return days === duration_days;
-}
-
-
-// ==============================
-// 🔹 MASTER VALIDATOR
-// ==============================
-function validateItinerary(itinerary, query) {
-    if (!itinerary) return false;
+/**
+ * ============================================================
+ * ALL CONSTRAINTS
+ * ============================================================
+ */
+function checkAllConstraints(
+    itinerary,
+    budget
+) {
 
     return (
-        checkTravelTime(itinerary, query.duration_days) &&
+        checkBudget(itinerary, budget) &&
         checkDailyActivities(itinerary) &&
-        checkBudget(itinerary, query.budget_total)
+        checkTravelTime(itinerary)
     );
 }
 
 
 module.exports = {
-    validateItinerary,
     checkBudget,
     checkDailyActivities,
-    checkTravelTime
+    checkTravelTime,
+    checkAllConstraints
 };

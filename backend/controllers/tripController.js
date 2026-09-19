@@ -1,31 +1,50 @@
-const { generateTrip } = require('../services/aiService');
+const { generateItinerary } = require("../services/aiService");
+const destinations = require("../data/destinations.json");
 
 exports.createTrip = async (req, res) => {
     try {
-        const { destination, days, budget, people } = req.body;
+        const {
+            destination,
+            duration_days,
+            budget_total,
+            group_size = 1,
+            group_type,
+            interests = [],
+            avoid = []
+        } = req.body;
 
-        if (!destination || !days || !budget || !people) {
-            return res.status(400).json({ error: "All fields required" });
+        const query = {
+            destination,
+            duration_days: Number(duration_days),
+            budget_total: Number(budget_total),
+            group_size: Number(group_size),
+            group_type,
+            interests,
+            avoid
+        };
+
+        const itinerary = await generateItinerary(
+            query,
+            "balanced",
+            destinations
+        );
+
+        if (!itinerary) {
+            return res.status(500).json({
+                error: "Failed to generate itinerary"
+            });
         }
 
-        const prompt = `
-Plan a ${days}-day trip to ${destination} for ${people} people with a budget of ₹${budget}.
-
-Give a detailed day-wise itinerary including:
-- places to visit
-- food suggestions
-- approximate costs
-- travel tips
-
-Keep it practical and budget-friendly.
-`;
-
-        const itinerary = await generateTrip(prompt);
-
-        res.json({ itinerary });
+        res.json({
+            itinerary
+        });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Failed to generate trip" });
+        console.error("Trip generation error:", error);
+
+        res.status(500).json({
+            error: "Failed to generate trip",
+            details: error.message
+        });
     }
 };

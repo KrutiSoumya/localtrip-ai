@@ -1,90 +1,201 @@
-const { generateItinerary } = require('./aiService');
-const destinations = require('../data/destinations.json');
+const {
+    checkAllConstraints
+} = require('./constraintChecker');
+
+const {
+    generateItinerary
+} = require("./aiService");
+
+const destinations =
+    require("../data/destinations.json");
 
 
-// ==============================
-// 🔹 Validate itinerary format
-// ==============================
-function isValidItinerary(text, days) {
-    if (!text) return false;
+/**
+ * ============================================================
+ * VALIDATE ITINERARY
+ * ============================================================
+ */
+function isValidItinerary(
+    itinerary,
+    days
+) {
 
-    const dayMatches = text.match(/Day\s\d+:/g) || [];
-    const hasBullets = text.includes("-");
+    if (
+        !itinerary ||
+        !Array.isArray(itinerary.days)
+    ) {
+        return false;
+    }
 
-    return (
-        text.includes("Day 1") &&
-        dayMatches.length === days &&
-        hasBullets &&
-        text.length > 80 &&
-        !text.toLowerCase().includes("please note") &&
-        !text.includes("**")
+    if (
+        itinerary.days.length !==
+        Number(days)
+    ) {
+        return false;
+    }
+
+    return itinerary.days.every(
+        day => {
+
+            if (
+                !day ||
+                typeof day.day !== "number"
+            ) {
+                return false;
+            }
+
+            if (
+                !Array.isArray(
+                    day.activities
+                )
+            ) {
+                return false;
+            }
+
+            if (
+                day.activities.length < 1 ||
+                day.activities.length > 4
+            ) {
+                return false;
+            }
+
+            return day.activities.every(
+                activity => {
+
+                    return (
+                        activity &&
+                        typeof activity.name ===
+                            "string" &&
+                        typeof activity.location ===
+                            "string" &&
+                        typeof activity.cost ===
+                            "number" &&
+                        !Number.isNaN(
+                            activity.cost
+                        )
+                    );
+                }
+            );
+        }
     );
 }
 
 
-// ==============================
-// 🔹 GENERATE VARIATIONS
-// ==============================
-async function generateVariations(query) {
+/**
+ * ============================================================
+ * GENERATE TWO VARIATIONS
+ * ============================================================
+ */
+async function generateVariations(
+    query
+) {
+
     try {
-        let [budgetTrip, experienceTrip] = await Promise.all([
-            generateItinerary(query, "budget", destinations),
-            generateItinerary(query, "experience", destinations)
+
+        const [
+            budgetTrip,
+            experienceTrip
+        ] = await Promise.all([
+
+            generateItinerary(
+                query,
+                "budget",
+                destinations
+            ),
+
+            generateItinerary(
+                query,
+                "experience",
+                destinations
+            )
         ]);
+
 
         const variations = [];
 
-        // =============================
-        // 🔹 Budget Validation + Retry
-        // =============================
-        if (!isValidItinerary(budgetTrip, query.duration_days)) {
-            console.warn("⚠️ Budget itinerary failed — retrying...");
-            budgetTrip = await generateItinerary(query, "budget", destinations);
-        }
 
-        if (isValidItinerary(budgetTrip, query.duration_days)) {
+if (
+    isValidItinerary(
+        budgetTrip,
+        query.duration_days
+    ) &&
+    checkAllConstraints(
+        budgetTrip,
+        query.budget_total
+    )
+) {
+
             variations.push({
                 type: "budget",
                 itinerary: budgetTrip
             });
+
+        } else {
+
+            console.warn(
+                "⚠️ Budget itinerary failed validation"
+            );
         }
 
 
-        // =============================
-        // 🔹 Experience Validation + Retry
-        // =============================
-        if (!isValidItinerary(experienceTrip, query.duration_days)) {
-            console.warn("⚠️ Experience itinerary failed — retrying...");
-            experienceTrip = await generateItinerary(query, "experience", destinations);
-        }
+if (
+    isValidItinerary(
+        experienceTrip,
+        query.duration_days
+    ) &&
+    checkAllConstraints(
+        experienceTrip,
+        query.budget_total
+    )
+) {
 
-        if (isValidItinerary(experienceTrip, query.duration_days)) {
             variations.push({
                 type: "experience",
                 itinerary: experienceTrip
             });
+
+        } else {
+
+            console.warn(
+                "⚠️ Experience itinerary failed validation"
+            );
         }
 
 
-        // =============================
-        // 🔹 FINAL FALLBACK
-        // =============================
-        if (variations.length === 0) {
-            throw new Error("AI failed to generate any valid itineraries");
+        if (
+            variations.length === 0
+        ) {
+
+            throw new Error(
+                "No valid itineraries generated"
+            );
         }
 
-        // If only one variation exists, still return it (don't crash system)
-        if (variations.length === 1) {
-            console.warn("⚠️ Only one valid itinerary generated");
-        }
 
-        return { variations };
+        console.log(
+            `✓ Generated ${variations.length} itinerary variation(s)`
+        );
 
-    } catch (err) {
-        console.error("Variation Error:", err.message);
-        return { variations: [] };
+
+        return {
+            variations
+        };
+
+    } catch (error) {
+
+        console.error(
+            "Variation Error:",
+            error.message
+        );
+
+        return {
+            variations: []
+        };
     }
 }
 
 
-module.exports = { generateVariations };
+module.exports = {
+    generateVariations,
+    isValidItinerary
+};
