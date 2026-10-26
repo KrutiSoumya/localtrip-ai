@@ -10,31 +10,31 @@ const api = axios.create({
 })
 
 // ─── Request Interceptor ───────────────────────────────────────────────────────
-// Automatically attaches JWT token to every request if one exists in localStorage
-// Note: localStorage is used here for capstone simplicity.
-// In production, use httpOnly cookies to prevent XSS vulnerabilities.
 
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+
     return config
   },
   (error) => Promise.reject(error)
 )
 
 // ─── Response Interceptor ─────────────────────────────────────────────────────
-// Automatically logs out user if backend returns 401 (token expired/invalid)
 
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
       localStorage.removeItem('token')
+      localStorage.removeItem('user')
       window.location.href = '/login'
     }
+
     return Promise.reject(error)
   }
 )
@@ -47,7 +47,7 @@ export const loginUser = (credentials) =>
 export const registerUser = (userData) =>
   api.post('/auth/register', userData)
 
-// ─── Leads ────────────────────────────────────────────────────────────────────
+// ─── Leads ─────────────────────────────────────────────────────────────────────
 
 export const getLeads = () =>
   api.get('/leads')
@@ -59,44 +59,48 @@ export const createLead = (leadData) =>
   api.post('/leads', leadData)
 
 export const updateLead = (id, leadData) =>
-  api.put(`/leads/${id}`, leadData)
+  api.patch(`/leads/${id}/status`, leadData)
 
 export const deleteLead = (id) =>
   api.delete(`/leads/${id}`)
 
 // ─── Itinerary ────────────────────────────────────────────────────────────────
 
+// Generate itinerary through the actual backend AI route
 export const generateItinerary = (requirementsData) =>
-  api.post('/itinerary/generate', requirementsData)
+  api.post('/trip/generate', requirementsData)
 
-export const getItineraries = () =>
-  api.get('/itinerary')
+// Create/save a new itinerary
+export const saveItinerary = (data) =>
+  api.post('/itinerary', data)
 
-export const getItineraryById = (id) =>
-  api.get(`/itinerary/${id}`)
+// Get all itineraries for a lead
+export const getItinerariesByLead = (leadId) =>
+  api.get(`/itinerary/lead/${leadId}`)
 
+// Update an existing itinerary
 export const updateItinerary = (id, data) =>
-  api.put(`/itinerary/${id}`, data)
+  api.patch(`/itinerary/${id}`, data)
 
-export const deleteItinerary = (id) =>
-  api.delete(`/itinerary/${id}`)
+// Update a single itinerary day
+export const updateItineraryDay = (dayId, data) =>
+  api.patch(`/itinerary/day/${dayId}`, data)
 
 // ─── Bookings ─────────────────────────────────────────────────────────────────
 
+// Get upcoming bookings
 export const getBookings = () =>
-  api.get('/bookings')
+  api.get('/bookings/upcoming')
 
-export const getBookingById = (id) =>
-  api.get(`/bookings/${id}`)
-
+// Create booking
 export const createBooking = (bookingData) =>
   api.post('/bookings', bookingData)
 
-export const updateBooking = (id, bookingData) =>
-  api.put(`/bookings/${id}`, bookingData)
-
-export const deleteBooking = (id) =>
-  api.delete(`/bookings/${id}`)
+// Update booking payment status
+export const updateBookingPayment = (id, paymentStatus) =>
+  api.patch(`/bookings/${id}/payment`, {
+    paymentStatus,
+  })
 
 // ─── Analytics ────────────────────────────────────────────────────────────────
 
@@ -108,20 +112,20 @@ export const getAnalyticsSummary = () =>
 
 // ─── Quotations ───────────────────────────────────────────────────────────────
 
-export const generateQuotation = (leadId, data) =>
-  api.post(`/quotations/${leadId}/generate`, data)
+// Create quotation
+export const generateQuotation = (data) =>
+  api.post('/quotations', data)
 
+// Get all quotations belonging to a lead
 export const getQuotationByLead = (leadId) =>
-  api.get(`/quotations/${leadId}`)
+  api.get(`/quotations/lead/${leadId}`)
 
 // ─── Follow-ups ───────────────────────────────────────────────────────────────
 
+// Send/fetch follow-up through the existing lead follow-up route
 export const sendFollowUp = (leadId) =>
-  api.post(`/followups/${leadId}/send`)
+  api.get(`/leads/follow-up/${leadId}`)
 
-export const getFollowUps = (leadId) =>
-  api.get(`/followups/${leadId}`)
-
-// ─── Default export (raw instance for custom calls if needed) ─────────────────
+// ─── Default Export ────────────────────────────────────────────────────────────
 
 export default api

@@ -1,4 +1,4 @@
-const { generateItinerary } = require("../services/aiService");
+const { generateItineraryOptions } = require("../services/aiService");
 const destinations = require("../data/destinations.json");
 
 exports.createTrip = async (req, res) => {
@@ -23,21 +23,18 @@ exports.createTrip = async (req, res) => {
             avoid
         };
 
-        const itinerary = await generateItinerary(
+        const result = await generateItineraryOptions(
             query,
-            "balanced",
             destinations
         );
 
-        if (!itinerary) {
+        if (!result) {
             return res.status(500).json({
-                error: "Failed to generate itinerary"
+                error: "Failed to generate itinerary options"
             });
         }
 
-        res.json({
-            itinerary
-        });
+        res.json(result);
 
     } catch (error) {
         console.error("Trip generation error:", error);
