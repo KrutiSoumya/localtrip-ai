@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import {
   Sparkles, MapPin, Clock, DollarSign, Users,
   Heart, Loader, FileText, Wand2, Sun, Coffee,
@@ -6,7 +7,7 @@ import {
   Star, ChevronDown, ChevronUp, RotateCcw, Save,
   XCircle, RefreshCw, Check, X
 } from 'lucide-react'
-import api from '../services/api'
+import api, { getLeadById } from '../services/api'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -528,7 +529,7 @@ function VariationCard({ variation, onSelect, selected, onDaysChange }) {
 
 // ── Approval Bar ──────────────────────────────────────────────────────────────
 
-function ApprovalBar({ selectedId, onApprove, onDraft, onReject, loading }) {
+function ApprovalBar({ selectedId, onApprove, onDraft, onReject, loading, leadSelected }) {
   return (
     <div style={{
       backgroundColor: '#fff', border: '1px solid #f3f4f6',
@@ -567,15 +568,16 @@ function ApprovalBar({ selectedId, onApprove, onDraft, onReject, loading }) {
         {/* Save as Draft */}
         <button
           onClick={onDraft}
-          disabled={loading}
+          disabled={loading || !leadSelected}
           style={{
             display: 'flex', alignItems: 'center', gap: '7px',
             padding: '10px 18px', borderRadius: '10px',
             border: '1px solid #fde68a', backgroundColor: '#fffbeb',
             color: '#d97706', fontSize: '14px', fontWeight: '500',
-            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: loading || !leadSelected ? 0.55 : 1,
+            cursor: loading || !leadSelected ? 'not-allowed' : 'pointer',
           }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fef3c7'}
+          onMouseEnter={e => { if (!loading && leadSelected) e.currentTarget.style.backgroundColor = '#fef3c7' }}
           onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fffbeb'}
         >
           <Save size={15} /> Save as Draft
@@ -584,16 +586,17 @@ function ApprovalBar({ selectedId, onApprove, onDraft, onReject, loading }) {
         {/* Approve */}
         <button
           onClick={onApprove}
-          disabled={loading}
+          disabled={loading || !leadSelected}
           style={{
             display: 'flex', alignItems: 'center', gap: '7px',
             padding: '10px 22px', borderRadius: '10px',
-            border: 'none', backgroundColor: loading ? '#9ca3af' : '#115e59',
+            border: 'none', backgroundColor: loading || !leadSelected ? '#9ca3af' : '#115e59',
             color: '#fff', fontSize: '14px', fontWeight: '600',
-            cursor: loading ? 'not-allowed' : 'pointer',
+            opacity: !leadSelected ? 0.75 : 1,
+            cursor: loading || !leadSelected ? 'not-allowed' : 'pointer',
           }}
-          onMouseEnter={e => { if (!loading) e.currentTarget.style.backgroundColor = '#0f766e' }}
-          onMouseLeave={e => { if (!loading) e.currentTarget.style.backgroundColor = '#115e59' }}
+          onMouseEnter={e => { if (!loading && leadSelected) e.currentTarget.style.backgroundColor = '#0f766e' }}
+          onMouseLeave={e => { if (!loading && leadSelected) e.currentTarget.style.backgroundColor = '#115e59' }}
         >
           {loading
             ? <><Loader size={14} style={{ animation: 'spin 0.8s linear infinite' }} /> Saving...</>
@@ -608,6 +611,16 @@ function ApprovalBar({ selectedId, onApprove, onDraft, onReject, loading }) {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
 function Itinerary() {
+  // Lead context — read from /itinerary?leadId=...
+  const navigate = useNavigate()
+  const [params] = useSearchParams()
+  const leadId   = params.get('leadId')
+  const [lead, setLead] = useState(null)
+  const [leads, setLeads] = useState([])
+  const [selectedLeadId, setSelectedLeadId] = useState(leadId || '')
+  const [leadsLoading, setLeadsLoading] = useState(false)
+  const [leadError, setLeadError] = useState('')
+
   const [rawQuery, setRawQuery]           = useState('')
   const [parsed, setParsed]               = useState(null)
   const [variations, setVariations]       = useState(null)
@@ -622,6 +635,71 @@ function Itinerary() {
   const [isRegenerate, setIsRegenerate]   = useState(false)
 
   const exampleQuery = `Customer: Priya Sharma\nMessage: Hi, we're a honeymoon couple planning a trip to Bali in late December. Our budget is around ₹85,000 for 2 people for 7 nights. We love beaches, spa treatments, romantic dinners, and some cultural sightseeing. Would prefer private experiences where possible. Can you suggest a good itinerary?`
+
+  // Load leads for sidebar access, where the user must select a customer.
+  useEffect(() => {
+    let cancelled = false
+    const loadLeads = async () => {
+      setLeadsLoading(true)
+      setLeadError('')
+      try {
+        const res = await api.get('/leads')
+        const data = Array.isArray(res.data) ? res.data : (res.data?.leads || res.data?.data || [])
+        if (!cancelled) {
+          setLeads(Array.isArray(data) ? data : [])
+          if (leadId) {
+            const matched = data.find(item => String(item.id) === String(leadId))
+            if (matched) setLead(matched)
+          }
+        }
+      } catch {
+        if (!cancelled) setLeadError('Could not load customers. Please refresh and try again.')
+      } finally {
+        if (!cancelled) setLeadsLoading(false)
+      }
+    }
+    loadLeads()
+    return () => { cancelled = true }
+  }, [leadId])
+
+  // Load a lead passed through the URL and prefill its inquiry.
+  useEffect(() => {
+    if (!leadId) return
+    setSelectedLeadId(String(leadId))
+    getLeadById(leadId)
+      .then(res => {
+        setLead(res.data)
+        setRawQuery(res.data.inquiry_text || res.data.inquiryMessage || '')
+      })
+      .catch(() => {
+        setLeadError('Could not load the selected customer.')
+      })
+  }, [leadId])
+
+  const handleLeadChange = async (value) => {
+    setSelectedLeadId(value)
+    setLeadError('')
+    setParsed(null)
+    setVariations(null)
+    setSelectedId(null)
+    if (!value) {
+      setLead(null)
+      setRawQuery('')
+      return
+    }
+    const matchingLead = leads.find(item => String(item.id) === String(value))
+    setLead(matchingLead || null)
+    if (matchingLead) {
+      setRawQuery(matchingLead.inquiry_text || matchingLead.inquiryMessage || matchingLead.message || '')
+    }
+    try {
+      const res = await getLeadById(value)
+      setLead(res.data)
+      setRawQuery(res.data.inquiry_text || res.data.inquiryMessage || res.data.message || matchingLead?.inquiry_text || '')
+    } catch {
+      if (!matchingLead) setLeadError('Could not load the selected customer details.')
+    }
+  }
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type })
@@ -654,27 +732,73 @@ function Itinerary() {
 
   // ── Approval actions ───────────────────────────────────────────────────────
   const handleApprove = async () => {
+    if (!selectedLeadId) {
+      showToast('Please select a customer before approving an itinerary.', 'error')
+      return
+    }
+
+    const finalDays =
+      editedDays[selectedId] ||
+      variations?.find(v => v.id === selectedId)?.days
+
+    if (!finalDays?.length) {
+      showToast('Select a valid itinerary before approving.', 'error')
+      return
+    }
+
     try {
       setApproving(true)
-      await Promise.all([
-        api.post('/ai/feedback', { action: 'accept', versionId: selectedId }),
-        api.post('/itinerary/save', {
-          versionId: selectedId,
-          days: editedDays[selectedId] ||
-            variations.find(v => v.id === selectedId)?.days,
-        }),
-      ])
-      showToast('Itinerary saved to lead successfully!', 'success')
+
+      // Save the approved itinerary against the selected lead first.
+      await api.post('/itinerary/save', {
+        leadId: selectedLeadId,
+        days: finalDays,
+        status: 'approved',
+      })
+
+      // Record acceptance after the itinerary save succeeds.
+      await api.post('/ai/feedback', {
+        action: 'accept',
+        versionId: selectedId,
+      })
+
+      navigate(`/leads/${selectedLeadId}`, { state: { saved: true } })
     } catch {
-      showToast('Itinerary saved to lead successfully!', 'success')
-    } finally { setApproving(false) }
+      showToast('Could not approve the itinerary. Please try again.', 'error')
+    } finally {
+      setApproving(false)
+    }
   }
 
   const handleDraft = async () => {
+    if (!selectedLeadId) {
+      showToast('Please select a customer before saving a draft.', 'error')
+      return
+    }
+
+    const finalDays =
+      editedDays[selectedId] ||
+      variations?.find(v => v.id === selectedId)?.days
+
+    if (!finalDays?.length) {
+      showToast('Select a valid itinerary before saving a draft.', 'error')
+      return
+    }
+
     try {
-      await api.post('/itinerary/save', { versionId: selectedId, status: 'draft' })
-    } catch {}
-    showToast('Itinerary saved as draft.', 'draft')
+      setApproving(true)
+      await api.post('/itinerary/save', {
+        leadId: selectedLeadId,
+        days: finalDays,
+        status: 'draft',
+      })
+
+      navigate(`/leads/${selectedLeadId}`, { state: { saved: true } })
+    } catch {
+      showToast('Could not save the draft. Please try again.', 'error')
+    } finally {
+      setApproving(false)
+    }
   }
 
   const handleReject = async () => {
@@ -687,16 +811,51 @@ function Itinerary() {
 
   const handleFieldChange = (field, value) => setParsed(p => ({ ...p, [field]: value }))
 
+  // Resolve the selected customer immediately from the list, even while details are loading.
+  const selectedLead = lead || leads.find(item => String(item.id) === String(selectedLeadId)) || null
+  const selectedLeadName = selectedLead
+    ? (selectedLead.name || selectedLead.customer_name || selectedLead.customerName || `Lead #${selectedLead.id}`)
+    : null
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
       {/* Header */}
       <div>
-        <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#111827' }}>Itinerary Builder</h1>
-        <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#9ca3af' }}>
-          Paste a customer inquiry, parse with AI, generate and edit personalised itinerary variations.
+        <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#111827' }}>
+          {selectedLeadName ? `Building itinerary for ${selectedLeadName}` : 'Itinerary Builder'}
+        </h1>
+        <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6b7280' }}>
+          {selectedLead
+            ? `Customer inquiry and itinerary options for Lead #${selectedLead.id}`
+            : 'Select a customer, then parse their inquiry and generate personalised itinerary variations.'}
         </p>
       </div>
+
+      {/* Customer selection is needed when opening the builder without a lead in the URL. */}
+      {!leadId && (
+        <div style={{ backgroundColor: '#fff', border: '1px solid #f3f4f6', borderRadius: '14px', padding: '20px 24px' }}>
+          <label htmlFor="customer-select" style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Select customer</label>
+          <select
+            id="customer-select"
+            value={selectedLeadId}
+            onChange={e => handleLeadChange(e.target.value)}
+            disabled={leadsLoading}
+            style={{ width: '100%', maxWidth: '520px', padding: '11px 12px', border: '1px solid #d1d5db', borderRadius: '9px', backgroundColor: '#fff', color: '#111827', fontSize: '14px' }}
+          >
+            <option value="">{leadsLoading ? 'Loading customers...' : 'Choose a customer'}</option>
+            {leads.map(item => (
+              <option key={item.id} value={String(item.id)}>
+                {item.name || item.customer_name || item.customerName || `Lead #${item.id}`} (Lead #{item.id})
+              </option>
+            ))}
+          </select>
+          {leadError && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#dc2626' }}>{leadError}</p>}
+          {!leadsLoading && !leadError && leads.length === 0 && (
+            <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6b7280' }}>No customers found. Add a lead before saving an itinerary.</p>
+          )}
+        </div>
+      )}
 
       {/* ── Step 1: Raw Query ─────────────────────────────────────────────── */}
       <div style={{ backgroundColor: '#fff', border: '1px solid #f3f4f6', borderRadius: '14px', padding: '24px' }}>
@@ -908,6 +1067,7 @@ function Itinerary() {
           onDraft={handleDraft}
           onReject={handleReject}
           loading={approving}
+          leadSelected={Boolean(selectedLeadId)}
         />
       )}
 

@@ -578,6 +578,19 @@ function LeadDetail() {
           }}>
             {lead.status}
           </span>
+          <button
+            onClick={() => navigate(`/itinerary?leadId=${lead.id}`)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '6px',
+              padding: '8px 16px', borderRadius: '10px', border: 'none',
+              backgroundColor: '#115e59', color: '#fff',
+              fontSize: '13px', fontWeight: '600', cursor: 'pointer',
+            }}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#0f766e'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#115e59'}
+          >
+            <Map size={14} /> Build Itinerary
+          </button>
         </div>
       </div>
 
@@ -765,7 +778,7 @@ function LeadDetail() {
                 </span>
               </div>
               <button
-                onClick={() => navigate('/itinerary')}
+                onClick={() => navigate(`/itinerary?leadId=${lead.id}`)}
                 style={{
                   marginTop: '12px', width: '100%', padding: '8px', borderRadius: '8px',
                   border: '1px solid #e5e7eb', backgroundColor: '#fff', fontSize: '13px',
@@ -779,6 +792,16 @@ function LeadDetail() {
             <div style={{ textAlign: 'center', padding: '24px', color: '#9ca3af' }}>
               <Map size={28} style={{ margin: '0 auto 8px', display: 'block', opacity: 0.4 }} />
               <p style={{ margin: 0, fontSize: '13px' }}>No itinerary linked yet</p>
+              <button
+                onClick={() => navigate(`/itinerary?leadId=${lead.id}`)}
+                style={{
+                  marginTop: '12px', padding: '8px 16px', borderRadius: '8px', border: 'none',
+                  backgroundColor: '#115e59', color: '#fff', fontSize: '13px', fontWeight: '600',
+                  cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
+                }}
+              >
+                Build Itinerary <ChevronRight size={13} />
+              </button>
             </div>
           )}
         </Card>
