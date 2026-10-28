@@ -102,12 +102,6 @@ function normalizeActivity(activity, destinationData) {
         return null;
     }
 
-    /*
-     * Phi-3 sometimes produces variations such as:
-     * namein
-     * activity
-     * activity_name
-     */
     let name =
         activity.name ||
         activity.namein ||
@@ -127,49 +121,54 @@ function normalizeActivity(activity, destinationData) {
 
     name = name.trim();
 
-    /*
-     * --------------------------------------------------------
-     * Match the AI activity against our real destination data.
-     * --------------------------------------------------------
-     */
-    const activities = destinationData.activities || [];
-
-    const matchedActivity = activities.find(item =>
-        item.name.toLowerCase() === name.toLowerCase()
-    );
+    const activities =
+        destinationData.activities || [];
 
     /*
-     * If the AI gave a known activity, use the authoritative
-     * cost from destinations.json.
+     * First try exact activity-name matching.
      */
+    let matchedActivity =
+        activities.find(
+            item =>
+                item.name.toLowerCase() ===
+                name.toLowerCase()
+        );
+
+    /*
+     * Then try partial matching.
+     */
+    if (!matchedActivity) {
+        matchedActivity =
+            activities.find(
+                item =>
+                    name
+                        .toLowerCase()
+                        .includes(item.name.toLowerCase()) ||
+                    item.name
+                        .toLowerCase()
+                        .includes(name.toLowerCase())
+            );
+    }
+
     if (matchedActivity) {
         cost = matchedActivity.cost;
         name = matchedActivity.name;
-    } else {
-        /*
-         * Try partial matching.
-         */
-        const partialMatch = activities.find(item =>
-            name.toLowerCase().includes(item.name.toLowerCase()) ||
-            item.name.toLowerCase().includes(name.toLowerCase())
-        );
-
-        if (partialMatch) {
-            cost = partialMatch.cost;
-            name = partialMatch.name;
-        }
     }
 
-    /*
-     * Cost fallback.
-     */
     if (typeof cost === "string") {
         cost = Number(
             cost.replace(/[₹,\s]/g, "")
         );
     }
 
-    if (typeof cost !== "number" || Number.isNaN(cost)) {
+    /*
+     * If the AI did not provide a valid cost,
+     * use the destination activity cost.
+     */
+    if (
+        typeof cost !== "number" ||
+        Number.isNaN(cost)
+    ) {
         if (matchedActivity) {
             cost = matchedActivity.cost;
         } else {
@@ -178,46 +177,56 @@ function normalizeActivity(activity, destinationData) {
     }
 
     /*
-     * Location fallback.
+     * Normalize location.
      */
-    if (typeof location !== "string" || !location.trim()) {
+    if (
+        typeof location !== "string" ||
+        !location.trim()
+    ) {
         location =
             destinationData.attractions?.[0] ||
             destinationData.name;
     }
 
-    /*
-     * Only allow real attractions from our dataset.
-     */
+    const attractions =
+        destinationData.attractions || [];
+
     const attractionMatch =
-        destinationData.attractions?.find(
+        attractions.find(
             attraction =>
                 attraction.toLowerCase() ===
                 location.trim().toLowerCase()
         );
 
     if (attractionMatch) {
+
         location = attractionMatch;
+
     } else {
+
         const partialAttraction =
-            destinationData.attractions?.find(
+            attractions.find(
                 attraction =>
                     location
                         .toLowerCase()
-                        .includes(attraction.toLowerCase()) ||
+                        .includes(
+                            attraction.toLowerCase()
+                        ) ||
                     attraction
                         .toLowerCase()
-                        .includes(location.toLowerCase())
+                        .includes(
+                            location.toLowerCase()
+                        )
             );
 
         if (partialAttraction) {
+
             location = partialAttraction;
+
         } else {
-            /*
-             * If AI invented a location, use a real attraction.
-             */
+
             location =
-                destinationData.attractions?.[0] ||
+                attractions[0] ||
                 destinationData.name;
         }
     }
@@ -225,138 +234,418 @@ function normalizeActivity(activity, destinationData) {
     return {
         name,
         location,
-        cost
+        cost: Number(cost) || 0
     };
 }
 
 
 /**
  * ============================================================
- * NORMALIZE COMPLETE ITINERARY
+ * ENSURE ACTIVITY DIVERSITY
+ *
+ * Guarantees that repeated activities are replaced with
+ * unused destination activities.
+ *
+ * Budget:
+ *   cheaper activities first
+ *
+ * Experience:
+ *   more expensive activities first
  * ============================================================
  */
-function normalizeItinerary(itinerary, query, destinationData) {
+function ensureActivityDiversity(
+    days,
+    destinationData,
+    mode
+) {
 
-    if (!itinerary || !Array.isArray(itinerary.days)) {
-        return null;
+    const availableActivities =
+        [...(destinationData.activities || [])];
+
+    if (availableActivities.length === 0) {
+        return days;
     }
 
-    const days = itinerary.days;
+    const sortedActivities =
+        availableActivities.sort(
+            (a, b) =>
+                mode === "budget"
+                    ? Number(a.cost || 0) -
+                      Number(b.cost || 0)
+                    : Number(b.cost || 0) -
+                      Number(a.cost || 0)
+        );
+
+    const usedActivities = new Set();
+
+    days.forEach(
+        (day, dayIndex) => {
+
+            if (
+                !Array.isArray(
+                    day.activities
+                )
+            ) {
+                return;
+            }
+
+            day.activities =
+                day.activities.map(
+                    (
+                        activity,
+                        activityIndex
+                    ) => {
+
+                        const activityKey =
+                            String(
+                                activity?.name || ""
+                            )
+                                .trim()
+                                .toLowerCase();
+
+                        /*
+                         * Keep the first occurrence.
+                         */
+                        if (
+                            activityKey &&
+                            !usedActivities.has(
+                                activityKey
+                            )
+                        ) {
+
+                            usedActivities.add(
+                                activityKey
+                            );
+
+                            return activity;
+                        }
+
+                        /*
+                         * Find an unused activity.
+                         */
+                        const replacement =
+                            sortedActivities.find(
+                                candidate =>
+                                    !usedActivities.has(
+                                        candidate.name
+                                            .trim()
+                                            .toLowerCase()
+                                    )
+                            );
+
+                        /*
+                         * If all available activities
+                         * have already been used,
+                         * keep the original.
+                         */
+                        if (!replacement) {
+                            return activity;
+                        }
+
+                        const replacementKey =
+                            replacement.name
+                                .trim()
+                                .toLowerCase();
+
+                        usedActivities.add(
+                            replacementKey
+                        );
+
+                        const attractions =
+                            destinationData.attractions ||
+                            [];
+
+                        const location =
+                            attractions.length > 0
+                                ? attractions[
+                                      (
+                                          dayIndex +
+                                          activityIndex
+                                      ) %
+                                          attractions.length
+                                  ]
+                                : destinationData.name;
+
+                        return {
+                            name:
+                                replacement.name,
+
+                            location,
+
+                            cost:
+                                Number(
+                                    replacement.cost
+                                ) || 0
+                        };
+                    }
+                );
+        }
+    );
+
+    return days;
+}
+
+
+/**
+ * ============================================================
+ * NORMALIZE COMPLETE ITINERARY
+ *
+ * This function was missing from the previous file.
+ * It validates the AI response, normalizes activities,
+ * enforces activity diversity and recalculates costs.
+ * ============================================================
+ */
+function normalizeItinerary(
+    itinerary,
+    query,
+    destinationData,
+    mode
+) {
 
     if (
-        days.length !==
-        Number(query.duration_days)
+        !itinerary ||
+        !Array.isArray(itinerary.days)
     ) {
         return null;
     }
 
-    const normalizedDays = days.map(
-        (day, index) => {
+    const requestedDays =
+        Number(query.duration_days);
 
-            if (!day || !Array.isArray(day.activities)) {
-                return null;
-            }
-
-            /*
-             * Maximum 4 activities per day.
-             */
-            const activities =
-                day.activities
-                    .slice(0, 4)
-                    .map(activity =>
-                        normalizeActivity(
-                            activity,
-                            destinationData
-                        )
-                    )
-                    .filter(Boolean);
-
-            if (activities.length === 0) {
-                return null;
-            }
-
-            let estimatedCost =
-                Number(day.estimated_cost);
-
-            /*
-             * If AI did not provide a valid estimated cost,
-             * calculate it from activities + average daily cost.
-             */
-            if (
-                Number.isNaN(estimatedCost) ||
-                estimatedCost <= 0
-            ) {
-
-                const activityCost =
-                    activities.reduce(
-                        (sum, activity) =>
-                            sum + activity.cost,
-                        0
-                    );
-
-                estimatedCost =
-                    destinationData.avg_cost_per_day +
-                    activityCost;
-            }
-
-            let travelTime =
-                Number(day.travel_time_hours);
-
-            if (
-                Number.isNaN(travelTime) ||
-                travelTime < 0
-            ) {
-                travelTime =
-                    destinationData.travel_time_between;
-            }
-
-            return {
-                day: index + 1,
-                activities,
-                accommodation:
-                    typeof day.accommodation === "string"
-                        ? day.accommodation
-                        : "Budget-friendly local accommodation",
-                estimated_cost:
-                    Math.round(estimatedCost),
-                travel_time_hours:
-                    travelTime
-            };
-        }
-    );
-
-    if (normalizedDays.some(day => !day)) {
+    if (
+        !Number.isInteger(requestedDays) ||
+        requestedDays <= 0
+    ) {
         return null;
     }
 
     /*
-     * Keep total cost within budget.
+     * The AI must return exactly the requested
+     * number of days.
+     */
+    if (
+        itinerary.days.length !==
+        requestedDays
+    ) {
+        return null;
+    }
+
+    const normalizedDays = [];
+
+    for (
+        let index = 0;
+        index < itinerary.days.length;
+        index++
+    ) {
+
+        const day =
+            itinerary.days[index];
+
+        if (
+            !day ||
+            !Array.isArray(day.activities)
+        ) {
+            return null;
+        }
+
+        /*
+         * Normalize up to 4 activities per day.
+         */
+        const activities =
+            day.activities
+                .slice(0, 4)
+                .map(
+                    activity =>
+                        normalizeActivity(
+                            activity,
+                            destinationData
+                        )
+                )
+                .filter(Boolean);
+
+        if (
+            activities.length === 0
+        ) {
+            return null;
+        }
+
+        /*
+         * Normalize accommodation.
+         *
+         * Budget itineraries always receive
+         * budget accommodation.
+         *
+         * Experience itineraries always receive
+         * premium accommodation.
+         */
+        const accommodation =
+            mode === "experience"
+                ? "Premium hotel or resort accommodation"
+                : "Budget-friendly local accommodation";
+
+        /*
+         * Calculate activity costs.
+         */
+        const activityCost =
+            activities.reduce(
+                (sum, activity) =>
+                    sum +
+                    Number(activity.cost || 0),
+                0
+            );
+
+        /*
+         * Use the destination's average daily
+         * base cost plus activities.
+         */
+        const estimatedCost =
+            Math.round(
+                Number(
+                    destinationData.avg_cost_per_day ||
+                    0
+                ) +
+                activityCost
+            );
+
+        normalizedDays.push({
+            day: index + 1,
+
+            activities,
+
+            accommodation,
+
+            estimated_cost:
+                estimatedCost,
+
+            travel_time_hours:
+                Number(
+                    destinationData.travel_time_between ||
+                    0
+                )
+        });
+    }
+
+    /*
+     * Enforce diversity AFTER all activities
+     * have been normalized.
+     */
+    ensureActivityDiversity(
+        normalizedDays,
+        destinationData,
+        mode
+    );
+
+    /*
+     * Recalculate costs after replacements.
+     */
+    normalizedDays.forEach(day => {
+
+        const activityCost =
+            day.activities.reduce(
+                (sum, activity) =>
+                    sum +
+                    Number(activity.cost || 0),
+                0
+            );
+
+        day.estimated_cost =
+            Math.round(
+                Number(
+                    destinationData.avg_cost_per_day ||
+                    0
+                ) +
+                activityCost
+            );
+    });
+
+    /*
+     * If the generated itinerary exceeds the
+     * requested budget, keep the itinerary valid
+     * but prefer cheaper activities for budget mode.
      */
     const totalCost =
         normalizedDays.reduce(
             (sum, day) =>
-                sum + day.estimated_cost,
+                sum +
+                Number(
+                    day.estimated_cost || 0
+                ),
             0
         );
 
-    if (totalCost > Number(query.budget_total)) {
-        /*
-         * Do not reject immediately.
-         * Recalculate estimated cost from the actual
-         * destination average and activity costs.
-         */
+    const budget =
+        Number(query.budget_total);
+
+    if (
+        mode === "budget" &&
+        Number.isFinite(budget) &&
+        totalCost > budget
+    ) {
+
+        const budgetActivities =
+            [...(destinationData.activities || [])]
+                .sort(
+                    (a, b) =>
+                        Number(a.cost || 0) -
+                        Number(b.cost || 0)
+                );
+
+        const replacementMap =
+            new Map(
+                budgetActivities.map(
+                    activity => [
+                        activity.name
+                            .toLowerCase(),
+                        activity
+                    ]
+                )
+            );
+
         normalizedDays.forEach(day => {
+
+            day.activities =
+                day.activities.map(
+                    activity => {
+
+                        const matched =
+                            replacementMap.get(
+                                activity.name
+                                    .toLowerCase()
+                            );
+
+                        if (matched) {
+                            return {
+                                name:
+                                    matched.name,
+                                location:
+                                    activity.location,
+                                cost:
+                                    Number(
+                                        matched.cost
+                                    ) || 0
+                            };
+                        }
+
+                        return activity;
+                    }
+                );
 
             const activityCost =
                 day.activities.reduce(
                     (sum, activity) =>
-                        sum + activity.cost,
+                        sum +
+                        Number(
+                            activity.cost || 0
+                        ),
                     0
                 );
 
             day.estimated_cost =
                 Math.round(
-                    destinationData.avg_cost_per_day +
+                    Number(
+                        destinationData.avg_cost_per_day ||
+                        0
+                    ) +
                     activityCost
                 );
         });
@@ -372,8 +661,8 @@ function normalizeItinerary(itinerary, query, destinationData) {
  * ============================================================
  * FALLBACK ITINERARY
  *
- * This guarantees the application can still produce a valid
- * itinerary if the local model fails.
+ * Used when Ollama fails.
+ * Still produces two different styles.
  * ============================================================
  */
 function createFallbackItinerary(
@@ -385,110 +674,126 @@ function createFallbackItinerary(
     const requestedDays =
         Number(query.duration_days);
 
-    const interests =
-        Array.isArray(query.interests)
-            ? query.interests.map(i =>
-                String(i).toLowerCase()
-            )
-            : [];
-
     let availableActivities =
-        [...destinationData.activities];
+        [
+            ...(destinationData.activities || [])
+        ];
 
-    /*
-     * Budget mode:
-     * cheapest activities first.
-     */
     if (mode === "budget") {
+
         availableActivities.sort(
-            (a, b) => a.cost - b.cost
+            (a, b) =>
+                Number(a.cost || 0) -
+                Number(b.cost || 0)
         );
+
     } else {
-        /*
-         * Experience mode:
-         * expensive/unique activities first.
-         */
+
         availableActivities.sort(
-            (a, b) => b.cost - a.cost
+            (a, b) =>
+                Number(b.cost || 0) -
+                Number(a.cost || 0)
         );
     }
 
     /*
-     * Try to match interests using activity names.
+     * Remove duplicate activity names.
      */
-    const interestMatches =
-        availableActivities.filter(activity =>
-            interests.some(interest =>
+    const uniqueActivities = [];
+
+    const seen = new Set();
+
+    availableActivities.forEach(
+        activity => {
+
+            const key =
                 activity.name
-                    .toLowerCase()
-                    .includes(interest)
-            )
-        );
+                    .trim()
+                    .toLowerCase();
 
-    const remaining =
-        availableActivities.filter(
-            activity =>
-                !interestMatches.includes(activity)
-        );
+            if (!seen.has(key)) {
 
-    availableActivities = [
-        ...interestMatches,
-        ...remaining
-    ];
+                seen.add(key);
+
+                uniqueActivities.push(
+                    activity
+                );
+            }
+        }
+    );
+
+    availableActivities =
+        uniqueActivities;
 
     const days = [];
 
-    for (let i = 0; i < requestedDays; i++) {
+    for (
+        let i = 0;
+        i < requestedDays;
+        i++
+    ) {
 
-        const activities = [];
+        const activity =
+            availableActivities[
+                i %
+                    availableActivities.length
+            ];
 
-        /*
-         * 2 activities per day is enough for the
-         * deterministic fallback.
-         */
-        for (let j = 0; j < 2; j++) {
-
-            const index =
-                (i * 2 + j) %
-                availableActivities.length;
-
-            const activity =
-                availableActivities[index];
-
-            if (activity) {
-                activities.push({
-                    name: activity.name,
-                    location:
-                        destinationData.attractions[
-                            (i * 2 + j) %
-                            destinationData.attractions.length
-                        ],
-                    cost: activity.cost
-                });
-            }
+        if (!activity) {
+            continue;
         }
 
+        const attractions =
+            destinationData.attractions ||
+            [];
+
+        const attractionIndex =
+            attractions.length > 0
+                ? i % attractions.length
+                : 0;
+
         const activityCost =
-            activities.reduce(
-                (sum, activity) =>
-                    sum + activity.cost,
-                0
-            );
+            Number(activity.cost || 0);
 
         days.push({
+
             day: i + 1,
-            activities,
+
+            activities: [
+                {
+                    name:
+                        activity.name,
+
+                    location:
+                        attractions[
+                            attractionIndex
+                        ] ||
+                        destinationData.name,
+
+                    cost:
+                        activityCost
+                }
+            ],
+
             accommodation:
                 mode === "budget"
                     ? "Budget-friendly local accommodation"
-                    : "Comfortable premium accommodation",
+                    : "Premium hotel or resort accommodation",
+
             estimated_cost:
                 Math.round(
-                    destinationData.avg_cost_per_day +
+                    Number(
+                        destinationData.avg_cost_per_day ||
+                        0
+                    ) +
                     activityCost
                 ),
+
             travel_time_hours:
-                destinationData.travel_time_between
+                Number(
+                    destinationData.travel_time_between ||
+                    0
+                )
         });
     }
 
@@ -512,11 +817,15 @@ async function generateItinerary(
     const destinationData =
         destinations.find(
             destination =>
-                destination.name.toLowerCase() ===
-                String(query.destination).toLowerCase()
+                destination.name
+                    .toLowerCase() ===
+                String(
+                    query.destination
+                ).toLowerCase()
         );
 
     if (!destinationData) {
+
         console.error(
             `Destination not found: ${query.destination}`
         );
@@ -527,12 +836,34 @@ async function generateItinerary(
     const style =
         mode === "budget"
             ? `
-Create a budget-oriented itinerary.
-Prefer free and low-cost activities.
+Create a BUDGET EXPLORER itinerary.
+
+Priorities:
+- Minimize total trip cost.
+- Prefer free and low-cost activities.
+- Prefer simple local accommodation.
+- Avoid expensive paid activities when a free or low-cost alternative exists.
+- Keep activities practical and geographically efficient.
+- Focus on essential sightseeing and affordable experiences.
+- The itinerary must contain VARIETY.
+- Do NOT use the same activity on multiple days unless there are not enough activities available.
+- Include a mixture of beaches, sightseeing, culture, food, nature or other available low-cost activities.
+- The itinerary should feel clearly different from a premium itinerary.
 `
             : `
-Create an experience-oriented itinerary.
-Prefer memorable and premium activities.
+Create a PREMIUM EXPERIENCE itinerary.
+
+Priorities:
+- Focus on memorable and distinctive experiences.
+- Prefer higher-cost activities when they provide substantially more experience value.
+- Use comfortable or premium accommodation.
+- Include a richer mix of sightseeing, activities and experiences.
+- Do NOT use "Budget-friendly accommodation".
+- Do NOT describe accommodation as budget-friendly.
+- Do not simply repeat the same activities in the same order as the budget itinerary.
+- Do NOT use the same activity on multiple days unless there are not enough activities available.
+- Prioritize unique and paid experiences where appropriate.
+- The itinerary should feel clearly different from a budget itinerary.
 `;
 
     const prompt = `
@@ -554,16 +885,28 @@ GROUP TYPE:
 ${query.group_type || "not specified"}
 
 INTERESTS:
-${(query.interests || []).join(", ") || "none"}
+${
+    Array.isArray(query.interests)
+        ? query.interests.join(", ")
+        : query.interests || "none"
+}
 
 AVOID:
-${(query.avoid || []).join(", ") || "none"}
+${
+    Array.isArray(query.avoid)
+        ? query.avoid.join(", ")
+        : query.avoid || "none"
+}
 
 AVAILABLE ATTRACTIONS:
-${JSON.stringify(destinationData.attractions)}
+${JSON.stringify(
+    destinationData.attractions
+)}
 
 AVAILABLE ACTIVITIES:
-${JSON.stringify(destinationData.activities)}
+${JSON.stringify(
+    destinationData.activities
+)}
 
 TRAVEL TIME BETWEEN LOCATIONS:
 ${destinationData.travel_time_between} hours
@@ -574,18 +917,46 @@ AVERAGE DAILY COST:
 ${style}
 
 RULES:
+
 1. Create exactly ${query.duration_days} days.
+
 2. Every day must have 1 to 4 activities.
+
 3. Use ONLY activities from AVAILABLE ACTIVITIES.
+
 4. Use ONLY attractions from AVAILABLE ATTRACTIONS.
+
 5. Use the exact activity names.
+
 6. Use the exact activity costs.
+
 7. Do not invent activities.
+
 8. Do not invent attractions.
+
 9. Do not use another destination.
+
 10. Keep the total estimated cost within ₹${query.budget_total}.
+
 11. Use travel time of ${destinationData.travel_time_between} hours per day.
-12. Return compact JSON.
+
+12. Make the itinerary internally consistent with the requested mode.
+
+13. Do not repeat the same activity across multiple days when enough different activities exist.
+
+14. For BUDGET EXPLORER:
+    - Favor low-cost or free activities.
+    - Use budget-friendly accommodation.
+    - Avoid repeatedly selecting expensive activities.
+    - Prefer variety among available low-cost activities.
+
+15. For PREMIUM EXPERIENCE:
+    - Favor distinctive and higher-value experiences.
+    - Use comfortable or premium accommodation.
+    - Never use "Budget-friendly accommodation".
+    - Do not simply copy the budget itinerary.
+
+16. Return compact JSON.
 
 OUTPUT:
 
@@ -600,7 +971,7 @@ OUTPUT:
           "cost": 0
         }
       ],
-      "accommodation": "Budget-friendly accommodation",
+      "accommodation": "Budget-friendly local accommodation",
       "estimated_cost": 2500,
       "travel_time_hours": 2
     }
@@ -610,10 +981,11 @@ OUTPUT:
 Return ONLY JSON.
 `;
 
-    /*
-     * Try AI up to 3 times.
-     */
-    for (let attempt = 1; attempt <= 3; attempt++) {
+    for (
+        let attempt = 1;
+        attempt <= 3;
+        attempt++
+    ) {
 
         try {
 
@@ -628,10 +1000,12 @@ Return ONLY JSON.
                         model: MODEL,
                         stream: false,
                         format: "json",
+
                         options: {
                             temperature: 0,
                             num_predict: 4000
                         },
+
                         messages: [
                             {
                                 role: "system",
@@ -643,6 +1017,22 @@ Never explain.
 Never invent fields.
 Never invent activities.
 Never invent locations.
+
+The requested itinerary mode is:
+${mode}
+
+If the mode is "budget":
+- prioritize low-cost activities
+- use budget-friendly accommodation
+- use varied activities
+- do not repeat the same activity unnecessarily
+
+If the mode is "experience":
+- prioritize memorable and premium experiences
+- use comfortable or premium accommodation
+- never use budget-friendly accommodation
+- use varied activities
+- avoid copying the budget itinerary structure
 `
                             },
                             {
@@ -657,12 +1047,17 @@ Never invent locations.
                 );
 
             let text =
-                response.data?.message?.content?.trim();
+                response.data
+                    ?.message
+                    ?.content
+                    ?.trim();
 
             if (!text) {
+
                 console.warn(
                     `Attempt ${attempt}: empty AI response`
                 );
+
                 continue;
             }
 
@@ -671,13 +1066,18 @@ Never invent locations.
             let itinerary;
 
             try {
+
                 itinerary =
                     JSON.parse(text);
+
             } catch (error) {
+
                 console.warn(
                     `Attempt ${attempt}: invalid JSON`
                 );
+
                 console.warn(text);
+
                 continue;
             }
 
@@ -685,10 +1085,12 @@ Never invent locations.
                 normalizeItinerary(
                     itinerary,
                     query,
-                    destinationData
+                    destinationData,
+                    mode
                 );
 
             if (normalized) {
+
                 console.log(
                     `✓ ${mode} itinerary generated successfully`
                 );
@@ -709,14 +1111,6 @@ Never invent locations.
         }
     }
 
-    /*
-     * --------------------------------------------------------
-     * AI failed.
-     *
-     * Use deterministic local fallback so the API does not
-     * fail just because Phi-3 generated malformed JSON.
-     * --------------------------------------------------------
-     */
     console.warn(
         `⚠️ ${mode} AI generation failed. Using local fallback.`
     );
@@ -731,25 +1125,94 @@ Never invent locations.
 
 /**
  * ============================================================
+ * GENERATE TWO ITINERARY OPTIONS
+ * ============================================================
+ */
+async function generateItineraryOptions(
+    query,
+    destinations = []
+) {
+
+    const budgetItinerary =
+        await generateItinerary(
+            query,
+            "budget",
+            destinations
+        );
+
+    const experienceItinerary =
+        await generateItinerary(
+            query,
+            "experience",
+            destinations
+        );
+
+    if (
+        !budgetItinerary &&
+        !experienceItinerary
+    ) {
+        return null;
+    }
+
+    return {
+        options: [
+
+            {
+                id: "A",
+                type: "budget",
+                title: "Budget Explorer",
+                description:
+                    "A cost-conscious itinerary focused on essential experiences and practical travel.",
+                itinerary:
+                    budgetItinerary
+            },
+
+            {
+                id: "B",
+                type: "experience",
+                title: "Premium Experience",
+                description:
+                    "A richer itinerary focused on memorable experiences, comfort and premium activities.",
+                itinerary:
+                    experienceItinerary
+            }
+
+        ].filter(
+            option =>
+                option.itinerary
+        )
+    };
+}
+
+
+/**
+ * ============================================================
  * AI QUOTE SUMMARY
  * ============================================================
  */
-async function generateQuoteSummary(quote) {
+async function generateQuoteSummary(
+    quote
+) {
 
     const total =
-        Number(quote?.group_total || 0);
+        Number(
+            quote?.group_total || 0
+        );
 
     const margin =
-        Number(quote?.margin_applied || 0);
-
-    const breakdown =
-        quote?.breakdown || {};
+        Number(
+            quote?.margin_applied || 0
+        );
 
     const prompt = `
 Write a 2-sentence professional summary of this travel quote for a customer.
 
 QUOTE DETAILS:
-${JSON.stringify(quote, null, 2)}
+${JSON.stringify(
+    quote,
+    null,
+    2
+)}
 
 IMPORTANT:
 - The currency is INR (Indian Rupees).
@@ -766,19 +1229,22 @@ IMPORTANT:
 
     try {
 
-        const response = await axios.post(
-            OLLAMA_URL,
-            {
-                model: MODEL,
-                stream: false,
-                options: {
-                    temperature: 0,
-                    num_predict: 300
-                },
-                messages: [
-                    {
-                        role: "system",
-                        content: `
+        const response =
+            await axios.post(
+                OLLAMA_URL,
+                {
+                    model: MODEL,
+                    stream: false,
+
+                    options: {
+                        temperature: 0,
+                        num_predict: 300
+                    },
+
+                    messages: [
+                        {
+                            role: "system",
+                            content: `
 You are a professional travel quotation assistant.
 
 Always use Indian Rupees (₹).
@@ -787,50 +1253,52 @@ Use the exact total supplied by the application.
 Return exactly 2 sentences.
 Return plain text only.
 `
-                    },
-                    {
-                        role: "user",
-                        content: prompt
-                    }
-                ]
-            },
-            {
-                timeout: 120000
-            }
-        );
+                        },
+
+                        {
+                            role: "user",
+                            content: prompt
+                        }
+                    ]
+                },
+                {
+                    timeout: 120000
+                }
+            );
 
         let summary =
-            response.data?.message?.content?.trim() || "";
+            response.data
+                ?.message
+                ?.content
+                ?.trim() || "";
 
-        /*
-         * Protect against the model changing INR to USD.
-         */
-        summary = summary
-            .replace(/\$/g, "₹")
-            .replace(/\bUSD\b/gi, "INR")
-            .replace(/\bdollars?\b/gi, "Indian Rupees");
+        summary =
+            summary
+                .replace(/\$/g, "₹")
+                .replace(
+                    /\bUSD\b/gi,
+                    "INR"
+                )
+                .replace(
+                    /\bdollars?\b/gi,
+                    "Indian Rupees"
+                );
 
-        /*
-         * If the model omitted the currency entirely,
-         * append the exact total.
-         */
         if (
             !summary.includes("₹") &&
             !summary.includes("INR")
         ) {
+
             summary =
                 `${summary} The total quoted amount is ₹${total.toLocaleString("en-IN")}.`;
         }
 
-        /*
-         * Make sure the exact application-calculated total
-         * appears in the final summary.
-         */
         if (
             !summary.includes(
                 `₹${total.toLocaleString("en-IN")}`
             )
         ) {
+
             summary =
                 `The total quoted amount for your trip is ₹${total.toLocaleString("en-IN")}. ${summary}`;
         }
@@ -844,10 +1312,6 @@ Return plain text only.
             error.message
         );
 
-        /*
-         * Deterministic fallback ensures the quotation
-         * still has a usable customer-facing summary.
-         */
         return (
             `The total quoted amount for your trip is ₹${total.toLocaleString("en-IN")}, including activities, transport, and accommodation. ` +
             `A ${margin}% margin has been applied to the calculated travel costs.`
@@ -856,8 +1320,14 @@ Return plain text only.
 }
 
 
+/**
+ * ============================================================
+ * EXPORTS
+ * ============================================================
+ */
 module.exports = {
     generateTrip,
     generateItinerary,
+    generateItineraryOptions,
     generateQuoteSummary
 };

@@ -10,9 +10,15 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors());
-app.use(helmet());
 
+app.use(
+  cors({
+    origin: "http://localhost:5173",
+    credentials: true,
+  })
+);
+
+app.use(helmet());
 
 // Routes
 const leadRoutes = require("./routes/leadRoutes");
@@ -23,7 +29,7 @@ const analyticsRoutes = require("./routes/analyticsRoutes");
 const bookingRoutes = require("./routes/bookingRoutes");
 const pdfRoutes = require("./routes/pdfRoutes");
 const quotationRoutes = require("./routes/quotationRoutes");
-
+const itineraryRoutes = require("./routes/itineraryRoutes");
 
 // API routes
 app.use("/api/config", configRoutes);
@@ -35,17 +41,16 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use("/api/quotations", quotationRoutes);
-
+app.use("/api/itinerary", itineraryRoutes);
 
 // Test route
 app.get("/", (req, res) => {
-    res.send("API is running...");
+  res.send("API is running...");
 });
-
 
 // Start server
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+  console.log(`Server running on port ${PORT}`);
 });
