@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Bell, X, Menu } from 'lucide-react'
+import { Search, X, Menu } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
@@ -28,7 +28,6 @@ function Navbar({ onMenuClick }) {
   const [grouped, setGrouped]       = useState({})
   const [searching, setSearching]   = useState(false)
   const [showDrop, setShowDrop]     = useState(false)
-  const [notifications]             = useState(3)
   const [activeIdx, setActiveIdx]   = useState(-1)
 
   const debounceRef = useRef(null)
@@ -311,27 +310,8 @@ function Navbar({ onMenuClick }) {
         )}
       </div>
 
-      {/* ── Right: Bell + Avatar ────────────────────────────────────────────── */}
+      {/* ── Right: Avatar ───────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-        <button style={{
-          position: 'relative', background: 'none',
-          border: '1px solid #e5e7eb', borderRadius: '10px', cursor: 'pointer',
-          width: '38px', height: '38px',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}
-          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f9fafb'}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-        >
-          <Bell size={17} color="#6b7280" />
-          {notifications > 0 && (
-            <span style={{
-              position: 'absolute', top: '7px', right: '7px',
-              width: '7px', height: '7px', borderRadius: '50%',
-              backgroundColor: '#ef4444', border: '1.5px solid #fff',
-            }} />
-          )}
-        </button>
-
         <div style={{
           width: '36px', height: '36px', borderRadius: '50%',
           backgroundColor: '#ccfbf1', display: 'flex',

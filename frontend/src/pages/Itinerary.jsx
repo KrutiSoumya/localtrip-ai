@@ -5,7 +5,7 @@ import {
   Heart, Loader, Wand2, Sun, Coffee,
   Moon, Edit3, Trash2, Plus, CheckCircle,
   Star, ChevronDown, ChevronUp, RotateCcw, Save,
-  XCircle, RefreshCw, Check, X
+  XCircle, RefreshCw, Check, X, Download
 } from 'lucide-react'
 import api, { getLeadById } from '../services/api'
 
@@ -1124,7 +1124,7 @@ function VariationCard({
 
 // ── Approval Bar ──────────────────────────────────────────────────────────────
 
-function ApprovalBar({ selectedId, onApprove, onDraft, onReject, loading, leadSelected }) {
+function ApprovalBar({ selectedId, onApprove, onDraft, onReject, onDownloadPDF, loading, pdfLoading, leadSelected }) {
   return (
     <div
       style={{
@@ -1169,8 +1169,35 @@ function ApprovalBar({ selectedId, onApprove, onDraft, onReject, loading, leadSe
           display: 'flex',
           gap: '10px',
           flexShrink: 0,
+          flexWrap: 'wrap',
+          justifyContent: 'flex-end',
         }}
       >
+        <button
+          onClick={onDownloadPDF}
+          disabled={loading || pdfLoading || !leadSelected}
+          style={{
+            display: 'flex', alignItems: 'center', gap: '7px',
+            padding: '10px 16px', borderRadius: '10px',
+            border: '1px solid #c7d2fe', backgroundColor: '#eef2ff',
+            color: '#4338ca', fontSize: '14px', fontWeight: '500',
+            opacity: loading || pdfLoading || !leadSelected ? 0.55 : 1,
+            cursor: loading || pdfLoading || !leadSelected ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {pdfLoading ? (
+            <>
+              <Loader size={14} style={{ animation: 'spin 0.8s linear infinite' }} />
+              Preparing PDF...
+            </>
+          ) : (
+            <>
+              <Download size={15} />
+              Download PDF
+            </>
+          )}
+        </button>
+
         <button
           onClick={onReject}
           disabled={loading}
@@ -1256,6 +1283,7 @@ function Itinerary() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const leadId   = params.get('leadId')
+  const itineraryId = params.get('itineraryId')
   const [lead, setLead] = useState(null)
   const [leads, setLeads] = useState([])
   const [selectedLeadId, setSelectedLeadId] = useState(leadId || '')
@@ -1268,9 +1296,10 @@ function Itinerary() {
   const [previousVariations, setPreviousVariations] = useState(null)
   const [selectedId, setSelectedId]       = useState(null)
   const [editedDays, setEditedDays]       = useState({})
-  const [parsing, setParsing]             = useState(false)
-  const [generating, setGenerating]       = useState(false)
-  const [approving, setApproving]         = useState(false)
+  const [parsing, setParsing] = useState(false)
+  const [generating, setGenerating] = useState(false)
+  const [approving, setApproving] = useState(false)
+  const [pdfLoading, setPdfLoading] = useState(false)
   const [parseError, setParseError]       = useState(null)
   const [generationError, setGenerationError] = useState(null)
   const [toast, setToast]                 = useState(null)
@@ -1394,77 +1423,193 @@ function Itinerary() {
   // ── Generate ───────────────────────────────────────────────────────────────
 
   const handleGenerate = async () => {
-  try {
-    setGenerating(true)
-    setGenerationError(null)
-
-    if (variations) {
-      setPreviousVariations(variations)
+    if (!parsed) {
+      setGenerationError('Please parse the customer inquiry before generating an itinerary.');
+      return;
     }
 
-    setSelectedId(null)
-    setEditedDays({})
+    if (!parsed.destination || !parsed.duration_days || !parsed.budget_total) {
+      setGenerationError('Destination, duration, and budget are required. Please review the extracted fields.');
+      return;
+    }
 
-    const res = await api.post('/trip/generate', parsed)
+    try {
+      setGenerating(true);
+      setGenerationError(null);
 
-    const options = res.data.options || []
+      if (variations) {
+        setPreviousVariations(variations);
+      }
 
-    setVariations(
-      options.map(option => ({
-        id: option.id,
-        title: option.title,
-        score: option.type === 'budget' ? 88 : 92,
-        scoreLabel:
-          option.type === 'budget'
-            ? 'Budget Focused'
-            : 'Experience Focused',
-        scoreColor:
-          option.type === 'budget'
-            ? '#0369a1'
-            : '#7c3aed',
-        scoreBg:
-          option.type === 'budget'
-            ? '#eff6ff'
-            : '#f5f3ff',
-        explanation: option.description,
-        totalCost: `₹${option.itinerary.days
-          .reduce(
-            (sum, day) => sum + Number(day.estimated_cost || 0),
-            0
-          )
-          .toLocaleString('en-IN')}`,
-        highlights: parsed.interests
-          ? (
-              Array.isArray(parsed.interests)
-                ? parsed.interests
-                : parsed.interests
-                    .split(',')
-                    .map(i => i.trim())
-            )
-          : [],
-        days: option.itinerary.days.map(day => ({
-          day: day.day,
-          title:
-            day.activities?.[0]?.name ||
-            `Day ${day.day}`,
-          activities:
-            day.activities?.map(activity =>
-              `${activity.name} — ${activity.location}`
-            ) || [],
+      setSelectedId(null);
+      setEditedDays({});
+
+      // The backend mounts aiRoutes at /api/ai and exposes /generate-itinerary.
+      const res = await api.post('/ai/generate-itinerary', {
+        ...parsed,
+        duration_days: Number(parsed.duration_days),
+        budget_total: Number(parsed.budget_total),
+        group_size: Number(parsed.group_size || 2),
+        interests: Array.isArray(parsed.interests)
+          ? parsed.interests
+          : typeof parsed.interests === 'string'
+            ? parsed.interests.split(',').map(item => item.trim()).filter(Boolean)
+            : [],
+      });
+
+      console.log('AI GENERATION RESPONSE:', res.data);
+
+      // aiController returns { output_id, variations, ranked, explanation }.
+      const options = Array.isArray(res.data?.variations)
+        ? res.data.variations
+        : [];
+
+      if (options.length === 0) {
+        throw new Error('The backend response did not contain any valid itinerary variations.');
+      }
+
+      const interests = Array.isArray(parsed.interests)
+        ? parsed.interests
+        : typeof parsed.interests === 'string'
+          ? parsed.interests.split(',').map(item => item.trim()).filter(Boolean)
+          : [];
+
+      const formattedVariations = options.map((option, index) => {
+        const isBudget = option.type === 'budget';
+        const itinerary = option.itinerary || {};
+        const sourceDays = Array.isArray(itinerary.days) ? itinerary.days : [];
+
+        if (sourceDays.length === 0) {
+          throw new Error(`The ${option.type || `variation ${index + 1}`} itinerary contains no days.`);
+        }
+
+        const days = sourceDays.map((day, dayIndex) => ({
+          ...day,
+          day: Number(day.day ?? day.day_number ?? dayIndex + 1),
+          title: day.title || day.activities?.[0]?.name || `Day ${dayIndex + 1}`,
+          // VariationCard edits activity strings; retain structured backend data
+          // separately so the save flow can be extended without losing it.
+          activities: Array.isArray(day.activities)
+            ? day.activities.map(activity => {
+                if (typeof activity === 'string') return activity;
+                const name = activity?.name || 'Activity';
+                const location = activity?.location;
+                return location ? `${name} — ${location}` : name;
+              })
+            : [],
+        }));
+
+        const totalCost = sourceDays.reduce(
+          (sum, day) => sum + Number(day.estimated_cost || 0),
+          0
+        );
+
+        return {
+          id: option.type || `version-${index + 1}`,
+          type: option.type || 'standard',
+          title: isBudget ? 'Budget Optimised' : 'Experience Optimised',
+          score: isBudget ? 88 : 92,
+          scoreLabel: isBudget ? 'Budget Focused' : 'Experience Focused',
+          scoreColor: isBudget ? '#0369a1' : '#7c3aed',
+          scoreBg: isBudget ? '#eff6ff' : '#f5f3ff',
+          explanation: isBudget
+            ? 'Designed to maximise value while staying within the available budget.'
+            : 'Designed to prioritise memorable experiences while respecting the budget.',
+          totalCost: `₹${totalCost.toLocaleString('en-IN')}`,
+          highlights: interests,
+          days,
+          // Preserve the raw generated itinerary and AI log ID for downstream actions.
+          itinerary,
+          output_id: res.data?.output_id ?? null,
+        };
+      });
+
+      setVariations(formattedVariations);
+      setIsRegenerate(false);
+      console.log('FORMATTED VARIATIONS:', formattedVariations);
+    } catch (error) {
+      console.error('Itinerary generation failed:', error);
+      setVariations([]);
+      setGenerationError(
+        error.response?.data?.error ||
+        error.response?.data?.details ||
+        error.message ||
+        'Unable to generate itinerary options. Please check the backend and try again.'
+      );
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // ── PDF download ───────────────────────────────────────────────────────────
+  const handleDownloadPDF = async () => {
+    if (!selectedLeadId) {
+      showToast('Please select a customer before downloading the itinerary PDF.', 'error')
+      return
+    }
+
+    const finalDays =
+      editedDays[selectedId] ||
+      variations?.find(v => v.id === selectedId)?.days
+
+    if (!finalDays?.length) {
+      showToast('Select a valid itinerary before downloading its PDF.', 'error')
+      return
+    }
+
+    try {
+      setPdfLoading(true)
+
+      // Save the selected version as a draft first so the PDF endpoint receives a database ID.
+      const saveResponse = await api.post('/itinerary/save', {
+        title: finalDays?.[0]?.title
+          ? `Travel Itinerary - ${finalDays[0].title}`
+          : 'Travel Itinerary',
+
+        leadId: selectedLeadId,
+
+        days: finalDays.map((day, index) => ({
+          ...day,
+          day_number: Number(day.day_number ?? day.day ?? index + 1),
         })),
-      }))
-    )
 
-    setIsRegenerate(false)
+        status: 'draft',
+      })
 
-  } catch (error) {
-    console.error('Itinerary generation failed:', error)
-    setVariations([])
-    setGenerationError('Unable to generate itinerary options. Please check that the backend is running and try again.')
-  } finally {
-    setGenerating(false)
+      const savedData = saveResponse.data?.itinerary || saveResponse.data?.data || saveResponse.data
+      const itineraryId = savedData?.id ?? savedData?.itinerary_id ?? savedData?.itineraryId
+
+      if (!itineraryId) {
+        throw new Error('The save endpoint did not return an itinerary ID.')
+      }
+
+      const pdfResponse = await api.post(
+        '/pdf/itinerary',
+        { itinerary_id: itineraryId },
+        { responseType: 'blob' }
+      )
+
+      const blob = new Blob([pdfResponse.data], { type: 'application/pdf' })
+      const objectUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = `itinerary-${itineraryId}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(objectUrl)
+
+      showToast('Itinerary PDF downloaded successfully.')
+    } catch (error) {
+      console.error('Itinerary PDF download failed:', error)
+      showToast(
+        error.response?.data?.message || error.message || 'Could not generate the itinerary PDF. Please try again.',
+        'error'
+      )
+    } finally {
+      setPdfLoading(false)
+    }
   }
-}
 
   // ── Approval actions ───────────────────────────────────────────────────────
   const handleApprove = async () => {
@@ -1473,9 +1618,12 @@ function Itinerary() {
       return
     }
 
+    const selectedVariation = variations?.find(
+      v => v.id === selectedId
+    )
+
     const finalDays =
-      editedDays[selectedId] ||
-      variations?.find(v => v.id === selectedId)?.days
+      editedDays[selectedId] || selectedVariation?.days
 
     if (!finalDays?.length) {
       showToast('Select a valid itinerary before approving.', 'error')
@@ -1485,22 +1633,47 @@ function Itinerary() {
     try {
       setApproving(true)
 
-      // Save the approved itinerary against the selected lead first.
-      await api.post('/itinerary/save', {
-        leadId: selectedLeadId,
-        days: finalDays,
+      // 1. Save the selected itinerary and retrieve its database ID.
+      const saveResponse = await api.post('/itinerary/save', {
+        leadId: Number(selectedLeadId),
+        title: selectedVariation?.title || 'Travel Itinerary',
+        days: finalDays.map((day, index) => ({
+          ...day,
+          day_number: Number(day.day_number ?? day.day ?? index + 1),
+        })),
         status: 'approved',
       })
 
-      // Record acceptance after the itinerary save succeeds.
-      await api.post('/ai/feedback', {
-        action: 'accept',
-        versionId: selectedId,
+      const savedData =
+        saveResponse.data?.itinerary ||
+        saveResponse.data?.data ||
+        saveResponse.data
+
+      const savedItineraryId = Number(
+        savedData?.id ?? savedData?.itinerary_id ?? savedData?.itineraryId
+      )
+
+      if (!Number.isInteger(savedItineraryId) || savedItineraryId <= 0) {
+        throw new Error('The itinerary was saved, but its ID was not returned.')
+      }
+
+      // 2. Create the booking. The backend creates its required internal
+      // quotation record automatically, so the frontend does not call /quotation.
+      await api.post('/bookings', {
+        leadId: Number(selectedLeadId),
+        itineraryId: savedItineraryId,
       })
 
-      navigate(`/leads/${selectedLeadId}`, { state: { saved: true } })
-    } catch {
-      showToast('Could not approve the itinerary. Please try again.', 'error')
+      // 3. The Bookings page loads the newly created booking and lead details.
+      navigate('/bookings')
+    } catch (error) {
+      console.error('Booking approval failed:', error)
+      showToast(
+        error.response?.data?.message ||
+          error.message ||
+          'Could not complete the booking. Please try again.',
+        'error'
+      )
     } finally {
       setApproving(false)
     }
@@ -1523,9 +1696,17 @@ function Itinerary() {
 
     try {
       setApproving(true)
+      const selectedVariation = variations?.find(
+        v => v.id === selectedId
+      )
+
       await api.post('/itinerary/save', {
         leadId: selectedLeadId,
-        days: finalDays,
+        title: selectedVariation?.title || 'Travel Itinerary',
+        days: finalDays.map((day, index) => ({
+          ...day,
+          day_number: Number(day.day_number ?? day.day ?? index + 1),
+        })),
         status: 'draft',
       })
 
@@ -2231,7 +2412,9 @@ function Itinerary() {
           onApprove={handleApprove}
           onDraft={handleDraft}
           onReject={handleReject}
+          onDownloadPDF={handleDownloadPDF}
           loading={approving}
+          pdfLoading={pdfLoading}
           leadSelected={Boolean(selectedLeadId)}
         />
       )}

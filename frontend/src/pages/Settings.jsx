@@ -1,614 +1,357 @@
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  User, Phone, Mail, Building2, Save,
-  Plus, Trash2, MapPin, RefreshCw,
-  CheckCircle, AlertCircle, Globe, Database
+  User, Phone, Mail, Building2, Plus, Trash2, MapPin, RefreshCw,
+  CheckCircle, AlertCircle, Globe, Database, ChevronDown, ChevronRight,
+  X, Save, Info
 } from 'lucide-react'
 import api from '../services/api'
 
-// ── Mock fallback data ────────────────────────────────────────────────────────
-
-const mockProfile = {
-  name:       'Hari Krishnan',
-  phone:      '+91 98765 43210',
-  email:      'hari@horizontravels.in',
-  agencyName: 'Horizon Travels',
-}
-
-const mockDestinations = [
-  { id: 1,  name: 'Bali, Indonesia',      region: 'Southeast Asia', active: true  },
-  { id: 2,  name: 'Manali, Himachal',     region: 'North India',    active: true  },
-  { id: 3,  name: 'Dubai, UAE',           region: 'Middle East',    active: true  },
-  { id: 4,  name: 'Kerala Backwaters',    region: 'South India',    active: true  },
-  { id: 5,  name: 'Goa, India',           region: 'West India',     active: true  },
-  { id: 6,  name: 'Paris, France',        region: 'Europe',         active: true  },
-  { id: 7,  name: 'Maldives',             region: 'South Asia',     active: true  },
-  { id: 8,  name: 'Rajasthan Circuit',    region: 'North India',    active: false },
-  { id: 9,  name: 'Singapore + Malaysia', region: 'Southeast Asia', active: true  },
-  { id: 10, name: 'Shimla, Himachal',     region: 'North India',    active: false },
-]
-
-// ── Reusable field ────────────────────────────────────────────────────────────
-
-function Field({ label, icon: Icon, children }) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      <label style={{
-        fontSize: '12px', fontWeight: '500', color: '#6b7280',
-        display: 'flex', alignItems: 'center', gap: '5px',
-      }}>
-        <Icon size={12} color="#9ca3af" /> {label}
-      </label>
-      {children}
-    </div>
-  )
+const getLoggedInProfile = () => {
+  try {
+    const storedUser = JSON.parse(localStorage.getItem('user') || '{}')
+    const user = storedUser.user || storedUser.profile || storedUser
+    return {
+      name: user.name || user.fullName || user.full_name || '',
+      email: user.email || '',
+      phone: user.phone || user.phoneNumber || user.phone_number || '',
+      agencyName: user.agencyName || user.agency_name || user.agency || '',
+    }
+  } catch (error) {
+    console.error('Unable to read logged-in user details:', error)
+    return { name: '', email: '', phone: '', agencyName: '' }
+  }
 }
 
 const inputStyle = {
-  width: '100%', padding: '10px 14px',
-  borderRadius: '10px', border: '1px solid #e5e7eb',
-  fontSize: '14px', color: '#111827', outline: 'none',
-  boxSizing: 'border-box', backgroundColor: '#fafafa',
-  transition: 'border-color 0.15s',
+  width: '100%', padding: '10px 14px', borderRadius: '10px',
+  border: '1px solid #e5e7eb', fontSize: '14px', color: '#111827',
+  outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff',
 }
 
-// ── Toast ─────────────────────────────────────────────────────────────────────
+function Field({ label, icon: Icon, children }) {
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <label style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 5 }}>
+      {Icon && <Icon size={12} color="#9ca3af" />} {label}
+    </label>
+    {children}
+  </div>
+}
 
 function Toast({ message, type, onClose }) {
   useEffect(() => {
-    const t = setTimeout(onClose, 3500)
-    return () => clearTimeout(t)
+    const timer = setTimeout(onClose, 3500)
+    return () => clearTimeout(timer)
+  }, [onClose])
+  return <div role="status" style={{
+    position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
+    display: 'flex', alignItems: 'center', gap: 10, padding: '13px 18px',
+    borderRadius: 12, background: type === 'success' ? '#f0fdfa' : '#fef2f2',
+    border: `1px solid ${type === 'success' ? '#99f6e4' : '#fecaca'}`,
+    boxShadow: '0 8px 24px rgba(0,0,0,.10)', minWidth: 260,
+  }}>
+    {type === 'success' ? <CheckCircle size={16} color="#0f766e" /> : <AlertCircle size={16} color="#dc2626" />}
+    <span style={{ fontSize: 13, fontWeight: 500, flex: 1, color: type === 'success' ? '#0f766e' : '#dc2626' }}>{message}</span>
+    <button onClick={onClose} aria-label="Dismiss notification" style={{ border: 0, background: 'transparent', cursor: 'pointer' }}><X size={14} /></button>
+  </div>
+}
+
+const formatMoney = value => {
+  const number = Number(value)
+  return Number.isFinite(number) ? `₹${number.toLocaleString('en-IN')}` : 'Not specified'
+}
+
+const getDestinationKey = destination => destination.name || destination.destination || destination.id
+const getDestinationRegion = destination => destination.region || destination.state || destination.country || 'Region not specified'
+const asArray = value => Array.isArray(value) ? value : []
+
+function Settings() {
+  const [profile, setProfile] = useState({ name: '', email: '', phone: '', agencyName: '' })
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [destinations, setDestinations] = useState([])
+  const [destLoading, setDestLoading] = useState(true)
+  const [destError, setDestError] = useState('')
+  const [refreshing, setRefreshing] = useState(false)
+  const [searchDest, setSearchDest] = useState('')
+  const [expanded, setExpanded] = useState({})
+  const [busyKey, setBusyKey] = useState(null)
+  const [toast, setToast] = useState(null)
+  const [showAddForm, setShowAddForm] = useState(false)
+  const [addingDest, setAddingDest] = useState(false)
+  const [newDestinationJson, setNewDestinationJson] = useState('')
+  const [jsonError, setJsonError] = useState('')
+
+  const showToast = useCallback((message, type = 'success') => setToast({ message, type }), [])
+
+  const loadDestinations = useCallback(async (showRefresh = false) => {
+    if (showRefresh) setRefreshing(true)
+    else setDestLoading(true)
+    setDestError('')
+    try {
+      // This endpoint must read backend/data/destinations.json, not the old Prisma JSON field.
+      const response = await api.get('/config/destinations')
+      const records = Array.isArray(response.data)
+        ? response.data
+        : Array.isArray(response.data?.destinations)
+          ? response.data.destinations
+          : null
+      if (!records) throw new Error('The destinations API returned an unexpected response.')
+      setDestinations(records.map((destination, index) => ({
+        ...destination,
+        // Existing dataset records without an active flag remain enabled by default.
+        active: destination.active !== false,
+        _key: String(getDestinationKey(destination) ?? index),
+      })))
+    } catch (error) {
+      console.error('Failed to load the AI destination dataset:', error)
+      setDestinations([])
+      setDestError(error.response?.data?.message || error.message || 'Unable to load the AI dataset.')
+    } finally {
+      setDestLoading(false)
+      setRefreshing(false)
+    }
   }, [])
 
-  return (
-    <div style={{
-      position: 'fixed', bottom: '28px', right: '28px', zIndex: 999,
-      display: 'flex', alignItems: 'center', gap: '10px',
-      padding: '13px 18px', borderRadius: '12px',
-      backgroundColor: type === 'success' ? '#f0fdfa' : '#fef2f2',
-      border: `1px solid ${type === 'success' ? '#99f6e4' : '#fecaca'}`,
-      boxShadow: '0 8px 24px rgba(0,0,0,0.10)', minWidth: '260px',
-    }}>
-      {type === 'success'
-        ? <CheckCircle size={16} color="#0f766e" />
-        : <AlertCircle size={16} color="#dc2626" />
+  useEffect(() => {
+    setProfile(getLoggedInProfile())
+    setProfileLoading(false)
+    loadDestinations()
+  }, [loadDestinations])
+
+  const filteredDestinations = useMemo(() => {
+    const query = searchDest.trim().toLowerCase()
+    if (!query) return destinations
+    return destinations.filter(destination => {
+      const searchable = [
+        destination.name, destination.region, destination.state, destination.country,
+        ...asArray(destination.attractions).map(item => typeof item === 'string' ? item : item?.name),
+        ...asArray(destination.activities).map(item => typeof item === 'string' ? item : item?.name),
+      ].filter(Boolean).join(' ').toLowerCase()
+      return searchable.includes(query)
+    })
+  }, [destinations, searchDest])
+
+  const activeCount = destinations.filter(destination => destination.active !== false).length
+  const inactiveCount = destinations.length - activeCount
+
+  const handleToggleActive = async destination => {
+    const name = getDestinationKey(destination)
+    const nextActive = destination.active === false
+    const key = String(name)
+    setBusyKey(key)
+    try {
+      // Requires PATCH /api/config/destinations/:name/status with { active }.
+      const response = await api.patch(`/config/destinations/${encodeURIComponent(name)}/status`, { active: nextActive })
+      const updatedRecords = Array.isArray(response.data?.destinations) ? response.data.destinations : null
+      if (updatedRecords) {
+        setDestinations(updatedRecords.map(item => ({ ...item, active: item.active !== false, _key: String(getDestinationKey(item)) })))
+      } else {
+        setDestinations(current => current.map(item => getDestinationKey(item) === name ? { ...item, active: nextActive } : item))
       }
-      <p style={{
-        margin: 0, fontSize: '13px', fontWeight: '500', flex: 1,
-        color: type === 'success' ? '#0f766e' : '#dc2626',
-      }}>
-        {message}
-      </p>
+      showToast(`${name} ${nextActive ? 'enabled' : 'disabled'} for AI generation.`)
+    } catch (error) {
+      console.error('Failed to update destination status:', error)
+      showToast(error.response?.data?.message || 'Could not update status. Check that the backend status route is installed.', 'error')
+    } finally {
+      setBusyKey(null)
+    }
+  }
+
+  const handleDeleteDestination = async destination => {
+    const name = getDestinationKey(destination)
+    if (!name || !window.confirm(`Permanently remove "${name}" from the AI destination dataset?`)) return
+    const key = String(name)
+    setBusyKey(key)
+    try {
+      const response = await api.delete(`/config/destinations/${encodeURIComponent(name)}`)
+      const updatedRecords = Array.isArray(response.data?.destinations) ? response.data.destinations : null
+      setDestinations(updatedRecords
+        ? updatedRecords.map(item => ({ ...item, active: item.active !== false, _key: String(getDestinationKey(item)) }))
+        : current => current.filter(item => getDestinationKey(item) !== name))
+      showToast(`${name} removed from the AI dataset.`)
+    } catch (error) {
+      console.error('Failed to delete destination:', error)
+      showToast(error.response?.data?.message || 'Could not delete destination.', 'error')
+    } finally {
+      setBusyKey(null)
+    }
+  }
+
+  const handleAddDestination = async () => {
+    setJsonError('')
+    let destination
+    try {
+      destination = JSON.parse(newDestinationJson)
+    } catch {
+      setJsonError('Enter valid JSON before adding the destination.')
+      return
+    }
+    if (!destination || typeof destination !== 'object' || Array.isArray(destination) || !String(destination.name || '').trim()) {
+      setJsonError('The destination must be a JSON object with a non-empty "name" field.')
+      return
+    }
+    if (!Array.isArray(destination.attractions) || !Array.isArray(destination.activities) || !Number.isFinite(Number(destination.avg_cost_per_day))) {
+      setJsonError('Include attractions (array), activities (array), and a numeric avg_cost_per_day. Use the existing destinations.json schema.')
+      return
+    }
+    if (destinations.some(item => String(item.name).toLowerCase() === destination.name.trim().toLowerCase())) {
+      setJsonError('A destination with this name already exists.')
+      return
+    }
+    setAddingDest(true)
+    try {
+      const payload = { ...destination, name: destination.name.trim(), active: true }
+      const response = await api.post('/config/destinations', payload)
+      const updatedRecords = Array.isArray(response.data?.destinations) ? response.data.destinations : null
+      if (updatedRecords) {
+        setDestinations(updatedRecords.map(item => ({ ...item, active: item.active !== false, _key: String(getDestinationKey(item)) })))
+      } else {
+        await loadDestinations(true)
+      }
+      setNewDestinationJson('')
+      setShowAddForm(false)
+      showToast(`${payload.name} added to the AI dataset.`)
+    } catch (error) {
+      console.error('Failed to add destination:', error)
+      setJsonError(error.response?.data?.message || 'Could not add destination. The backend must save the complete record to destinations.json.')
+    } finally {
+      setAddingDest(false)
+    }
+  }
+
+  const toggleExpanded = key => setExpanded(current => ({ ...current, [key]: !current[key] }))
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      <div>
+        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Settings</h1>
+        <p style={{ margin: '4px 0 0', fontSize: 14, color: '#9ca3af' }}>View your account details and manage the AI grounding dataset.</p>
+      </div>
+
+      <section style={{ background: '#fff', border: '1px solid #f3f4f6', borderRadius: 14, overflow: 'hidden' }}>
+        <header style={{ padding: '18px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 10, background: '#fafafa' }}>
+          <div style={{ width: 32, height: 32, borderRadius: 9, background: '#f0fdfa', display: 'grid', placeItems: 'center' }}><User size={16} color="#0f766e" /></div>
+          <div><h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#111827' }}>Agent Profile</h2><p style={{ margin: 0, fontSize: 12, color: '#9ca3af' }}>Details from the currently logged-in account</p></div>
+        </header>
+        <div style={{ padding: 24 }}>
+          {profileLoading ? <p style={{ color: '#9ca3af', fontSize: 13 }}>Loading profile…</p> : <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, padding: 16, background: '#f9fafb', borderRadius: 12, border: '1px solid #f3f4f6' }}>
+              <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#ccfbf1', display: 'grid', placeItems: 'center', fontSize: 22, fontWeight: 700, color: '#0f766e', flexShrink: 0 }}>{profile.name?.charAt(0)?.toUpperCase() || 'A'}</div>
+              <div><p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#111827' }}>{profile.name || 'Agent'}</p><p style={{ margin: '2px 0 0', fontSize: 13, color: '#9ca3af' }}>{profile.agencyName || 'Your Agency'}</p></div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+              <Field label="Full Name" icon={User}><input readOnly value={profile.name || 'Not provided'} style={inputStyle} /></Field>
+              <Field label="Agency Name" icon={Building2}><input readOnly value={profile.agencyName || 'Not provided'} style={inputStyle} /></Field>
+              <Field label="Email" icon={Mail}><input readOnly value={profile.email || 'Not provided'} style={inputStyle} /></Field>
+              <Field label="Phone" icon={Phone}><input readOnly value={profile.phone || 'Not provided'} style={inputStyle} /></Field>
+            </div>
+            <p style={{ margin: '18px 0 0', fontSize: 12, color: '#9ca3af' }}>These details are read from the account used to sign in.</p>
+          </>}
+        </div>
+      </section>
+
+      <section style={{ background: '#fff', border: '1px solid #f3f4f6', borderRadius: 14, overflow: 'hidden' }}>
+        <header style={{ padding: '18px 24px', borderBottom: '1px solid #f3f4f6', background: '#fafafa' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: '#f5f3ff', display: 'grid', placeItems: 'center' }}><Database size={16} color="#7c3aed" /></div>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#111827' }}>Dataset Manager</h2>
+              <p style={{ margin: 0, fontSize: 12, color: '#9ca3af' }}>{destinations.length} destinations · {activeCount} active · {inactiveCount} inactive</p>
+            </div>
+            <button onClick={() => loadDestinations(true)} disabled={refreshing || destLoading} style={{ ...buttonStyle('secondary'), display: 'flex', alignItems: 'center', gap: 6 }}><RefreshCw size={14} /> {refreshing ? 'Refreshing…' : 'Refresh'}</button>
+            <button onClick={() => { setShowAddForm(value => !value); setJsonError('') }} style={{ ...buttonStyle('primary'), display: 'flex', alignItems: 'center', gap: 6 }}><Plus size={14} /> {showAddForm ? 'Cancel' : 'Add Destination'}</button>
+          </div>
+          <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f5f3ff', border: '1px solid #ddd6fe', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+            <Globe size={14} color="#7c3aed" style={{ flexShrink: 0, marginTop: 1 }} />
+            <p style={{ margin: 0, fontSize: 12, color: '#6d28d9', lineHeight: 1.5 }}>This manager is intended to read and update the same <strong>backend/data/destinations.json</strong> file used by itinerary generation. Existing records without an active flag are treated as active.</p>
+          </div>
+        </header>
+
+        {showAddForm && <div style={{ padding: '20px 24px', borderBottom: '1px solid #f3f4f6', background: '#fafafa' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><Info size={15} color="#7c3aed" /><strong style={{ fontSize: 13, color: '#374151' }}>Add a complete destination record</strong></div>
+          <p style={{ margin: '0 0 12px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Paste a complete destination object using the same schema as destinations.json. This prevents adding a name-only record that the AI cannot use.</p>
+          <textarea rows={12} value={newDestinationJson} onChange={event => setNewDestinationJson(event.target.value)} spellCheck={false} placeholder={'{\n  "name": "Example State",\n  "attractions": ["Place 1", "Place 2"],\n  "avg_cost_per_day": 3000,\n  "activities": [{ "name": "Example activity", "cost": 500 }],\n  "accommodation": {},\n  "transport": {},\n  "travel_time_between": {},\n  "pricing_metadata": {}\n}'} style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12, resize: 'vertical' }} />
+          {jsonError && <p role="alert" style={{ color: '#dc2626', fontSize: 12, margin: '8px 0 0' }}>{jsonError}</p>}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
+            <button onClick={() => { setShowAddForm(false); setJsonError('') }} style={buttonStyle('secondary')}>Cancel</button>
+            <button onClick={handleAddDestination} disabled={addingDest || !newDestinationJson.trim()} style={{ ...buttonStyle('primary'), display: 'flex', alignItems: 'center', gap: 6, opacity: addingDest || !newDestinationJson.trim() ? .6 : 1 }}><Save size={14} /> {addingDest ? 'Adding…' : 'Add to dataset'}</button>
+          </div>
+        </div>}
+
+        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f3f4f6' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '0 14px', height: 40 }}>
+            <RefreshCw size={14} color="#9ca3af" />
+            <input value={searchDest} onChange={event => setSearchDest(event.target.value)} placeholder="Search states, destinations, attractions or activities…" style={{ flex: 1, border: 0, outline: 0, fontSize: 13, background: 'transparent', color: '#111827' }} />
+          </div>
+        </div>
+
+        <div style={{ padding: '16px 24px' }}>
+          {destLoading ? <div style={{ display: 'grid', gap: 10 }}>{[1, 2, 3, 4].map(index => <div key={index} style={{ height: 62, background: '#f3f4f6', borderRadius: 10 }} />)}</div>
+            : destError ? <div style={{ padding: 24, borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b' }}><strong style={{ fontSize: 14 }}>Could not load the actual AI dataset</strong><p style={{ fontSize: 12, margin: '6px 0 12px' }}>{destError}</p><button onClick={() => loadDestinations(true)} style={buttonStyle('secondary')}>Retry</button></div>
+              : filteredDestinations.length === 0 ? <div style={{ textAlign: 'center', padding: 32, color: '#9ca3af' }}><Database size={28} style={{ margin: '0 auto 10px', display: 'block', opacity: .4 }} /><p style={{ margin: 0, fontSize: 14 }}>{destinations.length === 0 ? 'The AI destination dataset is empty.' : 'No matching destinations found.'}</p></div>
+                : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {filteredDestinations.map(destination => {
+                    const key = destination._key
+                    const isActive = destination.active !== false
+                    const isExpanded = !!expanded[key]
+                    const attractions = asArray(destination.attractions)
+                    const activities = asArray(destination.activities)
+                    return <article key={key} style={{ border: '1px solid #eef0f3', borderRadius: 11, overflow: 'hidden', background: isActive ? '#fff' : '#fafafa', opacity: isActive ? 1 : .75 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', flexWrap: 'wrap' }}>
+                        <button onClick={() => toggleExpanded(key)} aria-label={isExpanded ? 'Collapse destination details' : 'Expand destination details'} style={{ border: 0, background: 'transparent', cursor: 'pointer', padding: 2, color: '#6b7280' }}>{isExpanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}</button>
+                        <div style={{ width: 36, height: 36, borderRadius: 9, background: isActive ? '#f0fdfa' : '#f3f4f6', display: 'grid', placeItems: 'center', flexShrink: 0 }}><MapPin size={16} color={isActive ? '#0f766e' : '#9ca3af'} /></div>
+                        <div style={{ flex: 1, minWidth: 160 }}>
+                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111827' }}>{destination.name || 'Unnamed destination'}</p>
+                          <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>{getDestinationRegion(destination)} · {attractions.length} attractions · {activities.length} activities</p>
+                        </div>
+                        <div style={{ textAlign: 'right', minWidth: 105 }}><p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827' }}>{formatMoney(destination.avg_cost_per_day)}</p><p style={{ margin: '2px 0 0', fontSize: 10, color: '#9ca3af' }}>average per day</p></div>
+                        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 999, fontWeight: 600, background: isActive ? '#f0fdfa' : '#f3f4f6', color: isActive ? '#0f766e' : '#6b7280', border: `1px solid ${isActive ? '#99f6e4' : '#e5e7eb'}` }}>{isActive ? 'Active' : 'Inactive'}</span>
+                        <button disabled={busyKey === key} onClick={() => handleToggleActive(destination)} style={buttonStyle('secondary')}>{busyKey === key ? 'Saving…' : isActive ? 'Disable' : 'Enable'}</button>
+                        <button disabled={busyKey === key} onClick={() => handleDeleteDestination(destination)} title="Remove destination from dataset" style={{ ...buttonStyle('danger'), padding: '8px 10px' }}><Trash2 size={14} /></button>
+                      </div>
+                      {isExpanded && <div style={{ padding: '14px 18px 18px 56px', borderTop: '1px solid #f3f4f6', background: '#fcfcfd', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                        <DetailList title="Attractions" items={attractions} />
+                        <DetailList title="Activities" items={activities} showCost />
+                        <div><p style={detailHeading}>Accommodation</p><pre style={detailPre}>{JSON.stringify(destination.accommodation || {}, null, 2)}</pre></div>
+                        <div><p style={detailHeading}>Transport</p><pre style={detailPre}>{JSON.stringify(destination.transport || {}, null, 2)}</pre></div>
+                        {destination.pricing_metadata && <div><p style={detailHeading}>Pricing metadata</p><pre style={detailPre}>{JSON.stringify(destination.pricing_metadata, null, 2)}</pre></div>}
+                      </div>}
+                    </article>
+                  })}
+                </div>}
+          {!destLoading && !destError && destinations.length > 0 && <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
+            <p style={{ margin: 0, fontSize: 12, color: '#9ca3af' }}>{filteredDestinations.length} of {destinations.length} destinations shown</p>
+            <p style={{ margin: 0, fontSize: 12, color: '#9ca3af' }}>{activeCount} active in AI dataset</p>
+          </div>}
+        </div>
+      </section>
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+function DetailList({ title, items, showCost = false }) {
+  return <div>
+    <p style={detailHeading}>{title} ({items.length})</p>
+    {items.length === 0 ? <p style={{ fontSize: 12, color: '#9ca3af' }}>None listed</p> : <ul style={{ margin: 0, paddingLeft: 17, color: '#4b5563', fontSize: 12, lineHeight: 1.8 }}>
+      {items.map((item, index) => {
+        const label = typeof item === 'string' ? item : item?.name || item?.activity || JSON.stringify(item)
+        const cost = typeof item === 'object' && item !== null ? item.cost ?? item.avg_cost : null
+        return <li key={`${label}-${index}`}>{label}{showCost && cost != null ? ` — ${formatMoney(cost)}` : ''}</li>
+      })}
+    </ul>}
+  </div>
+}
 
-function Settings() {
-  // ── Profile state ──────────────────────────────────────────────────────────
-  const [profile, setProfile]         = useState(mockProfile)
-  const [profileLoading, setProfileLoading] = useState(true)
-  const [savingProfile, setSavingProfile]   = useState(false)
-  const [profileDirty, setProfileDirty]     = useState(false)
+const detailHeading = { margin: '0 0 7px', fontSize: 12, fontWeight: 700, color: '#374151' }
+const detailPre = { margin: 0, padding: 10, borderRadius: 8, background: '#f3f4f6', color: '#4b5563', fontSize: 10, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: 180, overflow: 'auto' }
 
-  // ── Destinations state ─────────────────────────────────────────────────────
-  const [destinations, setDestinations]   = useState([])
-  const [destLoading, setDestLoading]     = useState(true)
-  const [newDest, setNewDest]             = useState('')
-  const [newRegion, setNewRegion]         = useState('')
-  const [addingDest, setAddingDest]       = useState(false)
-  const [showAddForm, setShowAddForm]     = useState(false)
-  const [deletingId, setDeletingId]       = useState(null)
-  const [searchDest, setSearchDest]       = useState('')
-
-  // ── Toast ──────────────────────────────────────────────────────────────────
-  const [toast, setToast] = useState(null)
-  const showToast = (message, type = 'success') => setToast({ message, type })
-
-  // ── Fetch on mount ─────────────────────────────────────────────────────────
-  useEffect(() => {
-    const fetchAll = async () => {
-      // Profile
-      try {
-        const res = await api.get('/config')
-        setProfile(res.data?.profile || mockProfile)
-      } catch { setProfile(mockProfile) }
-      finally { setProfileLoading(false) }
-
-      // Destinations
-      try {
-        const res = await api.get('/config')
-        setDestinations(res.data?.destinations || mockDestinations)
-      } catch { setDestinations(mockDestinations) }
-      finally { setDestLoading(false) }
-    }
-    fetchAll()
-  }, [])
-
-  // ── Profile handlers ───────────────────────────────────────────────────────
-  const handleProfileChange = (field, value) => {
-    setProfile(prev => ({ ...prev, [field]: value }))
-    setProfileDirty(true)
-  }
-
-  const handleSaveProfile = async () => {
-    try {
-      setSavingProfile(true)
-      await api.put('/config', { profile })
-      setProfileDirty(false)
-      showToast('Profile saved successfully!')
-    } catch {
-      showToast('Profile saved successfully!') // optimistic on mock
-      setProfileDirty(false)
-    } finally { setSavingProfile(false) }
-  }
-
-  // ── Destination handlers ───────────────────────────────────────────────────
-  const handleAddDestination = async () => {
-    if (!newDest.trim()) return
-    try {
-      setAddingDest(true)
-      const newItem = { id: Date.now(), name: newDest.trim(), region: newRegion.trim() || 'General', active: true }
-      await api.put('/config', { destinations: [...destinations, newItem] })
-      setDestinations(prev => [...prev, newItem])
-      setNewDest('')
-      setNewRegion('')
-      setShowAddForm(false)
-      showToast(`"${newItem.name}" added to dataset!`)
-    } catch {
-      const newItem = { id: Date.now(), name: newDest.trim(), region: newRegion.trim() || 'General', active: true }
-      setDestinations(prev => [...prev, newItem])
-      setNewDest('')
-      setNewRegion('')
-      setShowAddForm(false)
-      showToast(`"${newItem.name}" added to dataset!`)
-    } finally { setAddingDest(false) }
-  }
-
-  const handleToggleActive = async (id) => {
-    const updated = destinations.map(d =>
-      d.id === id ? { ...d, active: !d.active } : d
-    )
-    setDestinations(updated)
-    try { await api.put('/config', { destinations: updated }) }
-    catch {}
-    const dest = updated.find(d => d.id === id)
-    showToast(`"${dest.name}" ${dest.active ? 'enabled' : 'disabled'} in dataset.`)
-  }
-
-  const handleDeleteDestination = async (id) => {
-    const dest = destinations.find(d => d.id === id)
-    if (!window.confirm(`Remove "${dest.name}" from the dataset?`)) return
-    try {
-      setDeletingId(id)
-      const updated = destinations.filter(d => d.id !== id)
-      await api.put('/config', { destinations: updated })
-      setDestinations(updated)
-      showToast(`"${dest.name}" removed from dataset.`)
-    } catch {
-      setDestinations(prev => prev.filter(d => d.id !== id))
-      showToast(`"${dest.name}" removed from dataset.`)
-    } finally { setDeletingId(null) }
-  }
-
-  const filteredDests = destinations.filter(d =>
-    d.name.toLowerCase().includes(searchDest.toLowerCase()) ||
-    d.region.toLowerCase().includes(searchDest.toLowerCase())
-  )
-
-  const activeCount   = destinations.filter(d => d.active).length
-  const inactiveCount = destinations.filter(d => !d.active).length
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-
-      {/* ── Page Header ──────────────────────────────────────────────────────── */}
-      <div>
-        <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#111827' }}>Settings</h1>
-        <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#9ca3af' }}>
-          Manage your agent profile and AI grounding dataset.
-        </p>
-      </div>
-
-      {/* ── Section 1: Agent Profile ──────────────────────────────────────────── */}
-      <div style={{
-        backgroundColor: '#fff', border: '1px solid #f3f4f6',
-        borderRadius: '14px', overflow: 'hidden',
-      }}>
-
-        {/* Section header */}
-        <div style={{
-          padding: '18px 24px', borderBottom: '1px solid #f3f4f6',
-          display: 'flex', alignItems: 'center', gap: '10px',
-          backgroundColor: '#fafafa',
-        }}>
-          <div style={{
-            width: '32px', height: '32px', borderRadius: '9px',
-            backgroundColor: '#f0fdfa', display: 'flex',
-            alignItems: 'center', justifyContent: 'center',
-          }}>
-            <User size={16} color="#0f766e" />
-          </div>
-          <div>
-            <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>Agent Profile</h2>
-            <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>Your personal and agency information</p>
-          </div>
-          {profileDirty && (
-            <span style={{
-              marginLeft: 'auto', fontSize: '11px', padding: '3px 10px',
-              borderRadius: '999px', backgroundColor: '#fffbeb',
-              color: '#d97706', fontWeight: '500', border: '1px solid #fde68a',
-            }}>
-              Unsaved changes
-            </span>
-          )}
-        </div>
-
-        {/* Profile form */}
-        <div style={{ padding: '24px' }}>
-          {profileLoading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} style={{ height: '42px', backgroundColor: '#f3f4f6', borderRadius: '10px' }} />
-              ))}
-            </div>
-          ) : (
-            <>
-              {/* Avatar section */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '16px',
-                marginBottom: '24px', padding: '16px',
-                backgroundColor: '#f9fafb', borderRadius: '12px',
-                border: '1px solid #f3f4f6',
-              }}>
-                <div style={{
-                  width: '56px', height: '56px', borderRadius: '50%',
-                  backgroundColor: '#ccfbf1', display: 'flex',
-                  alignItems: 'center', justifyContent: 'center',
-                  fontSize: '22px', fontWeight: '700', color: '#0f766e', flexShrink: 0,
-                }}>
-                  {profile.name?.charAt(0)?.toUpperCase() || 'A'}
-                </div>
-                <div>
-                  <p style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#111827' }}>
-                    {profile.name || 'Agent'}
-                  </p>
-                  <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#9ca3af' }}>
-                    {profile.agencyName || 'Your Agency'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Fields grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-
-                <Field label="Full Name" icon={User}>
-                  <input
-                    type="text" value={profile.name}
-                    onChange={e => handleProfileChange('name', e.target.value)}
-                    placeholder="Your full name"
-                    style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = '#0f766e'}
-                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                  />
-                </Field>
-
-                <Field label="Agency Name" icon={Building2}>
-                  <input
-                    type="text" value={profile.agencyName}
-                    onChange={e => handleProfileChange('agencyName', e.target.value)}
-                    placeholder="Your agency name"
-                    style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = '#0f766e'}
-                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                  />
-                </Field>
-
-                <Field label="Email" icon={Mail}>
-                  <input
-                    type="email" value={profile.email}
-                    onChange={e => handleProfileChange('email', e.target.value)}
-                    placeholder="your@email.com"
-                    style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = '#0f766e'}
-                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                  />
-                </Field>
-
-                <Field label="Phone" icon={Phone}>
-                  <input
-                    type="text" value={profile.phone}
-                    onChange={e => handleProfileChange('phone', e.target.value)}
-                    placeholder="+91 98765 43210"
-                    style={inputStyle}
-                    onFocus={e => e.target.style.borderColor = '#0f766e'}
-                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                  />
-                </Field>
-
-              </div>
-
-              {/* Save button */}
-              <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end' }}>
-                <button
-                  onClick={handleSaveProfile}
-                  disabled={savingProfile || !profileDirty}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '7px',
-                    padding: '10px 22px', borderRadius: '10px', border: 'none',
-                    backgroundColor: !profileDirty ? '#e5e7eb' : savingProfile ? '#9ca3af' : '#115e59',
-                    color: !profileDirty ? '#9ca3af' : '#fff',
-                    fontSize: '14px', fontWeight: '600',
-                    cursor: !profileDirty || savingProfile ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={e => { if (profileDirty && !savingProfile) e.currentTarget.style.backgroundColor = '#0f766e' }}
-                  onMouseLeave={e => { if (profileDirty && !savingProfile) e.currentTarget.style.backgroundColor = '#115e59' }}
-                >
-                  {savingProfile
-                    ? <><div style={{ width: '14px', height: '14px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} /> Saving...</>
-                    : <><Save size={15} /> Save Profile</>
-                  }
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      {/* ── Section 2: Dataset Manager ────────────────────────────────────────── */}
-      <div style={{
-        backgroundColor: '#fff', border: '1px solid #f3f4f6',
-        borderRadius: '14px', overflow: 'hidden',
-      }}>
-
-        {/* Section header */}
-        <div style={{
-          padding: '18px 24px', borderBottom: '1px solid #f3f4f6',
-          backgroundColor: '#fafafa',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{
-              width: '32px', height: '32px', borderRadius: '9px',
-              backgroundColor: '#f5f3ff', display: 'flex',
-              alignItems: 'center', justifyContent: 'center',
-            }}>
-              <Database size={16} color="#7c3aed" />
-            </div>
-            <div style={{ flex: 1 }}>
-              <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>Dataset Manager</h2>
-              <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>
-                Destinations in the AI grounding dataset · {activeCount} active · {inactiveCount} inactive
-              </p>
-            </div>
-
-            <button
-              onClick={() => setShowAddForm(p => !p)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '6px',
-                padding: '8px 16px', borderRadius: '10px', border: 'none',
-                backgroundColor: showAddForm ? '#f3f4f6' : '#115e59',
-                color: showAddForm ? '#374151' : '#fff',
-                fontSize: '13px', fontWeight: '600', cursor: 'pointer',
-              }}
-            >
-              <Plus size={14} />
-              {showAddForm ? 'Cancel' : 'Add Destination'}
-            </button>
-          </div>
-
-          {/* What this does explanation */}
-          <div style={{
-            marginTop: '14px', padding: '12px 14px', borderRadius: '10px',
-            backgroundColor: '#f5f3ff', border: '1px solid #ddd6fe',
-            display: 'flex', alignItems: 'flex-start', gap: '8px',
-          }}>
-            <Globe size={14} color="#7c3aed" style={{ flexShrink: 0, marginTop: '1px' }} />
-            <p style={{ margin: 0, fontSize: '12px', color: '#6d28d9', lineHeight: '1.5' }}>
-              Destinations added here are used to <strong>ground the AI</strong> when generating itineraries and quotes.
-              The SLM uses this dataset to understand pricing, attractions, and local context for each destination.
-              Toggle active/inactive to control which destinations the AI considers.
-            </p>
-          </div>
-        </div>
-
-        {/* Add destination form */}
-        {showAddForm && (
-          <div style={{
-            padding: '20px 24px', borderBottom: '1px solid #f3f4f6',
-            backgroundColor: '#fafafa',
-          }}>
-            <p style={{ margin: '0 0 14px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
-              Add New Destination
-            </p>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-end' }}>
-              <div style={{ flex: 2 }}>
-                <label style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500', display: 'block', marginBottom: '5px' }}>
-                  Destination Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Santorini, Greece"
-                  value={newDest}
-                  onChange={e => setNewDest(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleAddDestination()}
-                  style={{ ...inputStyle, backgroundColor: '#fff' }}
-                  onFocus={e => e.target.style.borderColor = '#7c3aed'}
-                  onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ fontSize: '12px', color: '#6b7280', fontWeight: '500', display: 'block', marginBottom: '5px' }}>
-                  Region
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Europe"
-                  value={newRegion}
-                  onChange={e => setNewRegion(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleAddDestination()}
-                  style={{ ...inputStyle, backgroundColor: '#fff' }}
-                  onFocus={e => e.target.style.borderColor = '#7c3aed'}
-                  onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                />
-              </div>
-              <button
-                onClick={handleAddDestination}
-                disabled={!newDest.trim() || addingDest}
-                style={{
-                  padding: '10px 20px', borderRadius: '10px', border: 'none',
-                  backgroundColor: !newDest.trim() ? '#e5e7eb' : '#7c3aed',
-                  color: !newDest.trim() ? '#9ca3af' : '#fff',
-                  fontSize: '13px', fontWeight: '600',
-                  cursor: !newDest.trim() ? 'not-allowed' : 'pointer',
-                  whiteSpace: 'nowrap', flexShrink: 0,
-                  display: 'flex', alignItems: 'center', gap: '6px',
-                }}
-              >
-                {addingDest
-                  ? <><div style={{ width: '13px', height: '13px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} /> Adding...</>
-                  : <><Plus size={14} /> Add</>
-                }
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Search */}
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f3f4f6' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            backgroundColor: '#f9fafb', border: '1px solid #e5e7eb',
-            borderRadius: '10px', padding: '0 14px', height: '38px',
-          }}>
-            <RefreshCw size={14} color="#9ca3af" />
-            <input
-              type="text"
-              placeholder="Search destinations or regions..."
-              value={searchDest}
-              onChange={e => setSearchDest(e.target.value)}
-              style={{ flex: 1, border: 'none', outline: 'none', fontSize: '13px', background: 'transparent', color: '#111827' }}
-            />
-          </div>
-        </div>
-
-        {/* Destinations list */}
-        <div style={{ padding: '16px 24px' }}>
-          {destLoading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              {[1, 2, 3, 4, 5].map(i => (
-                <div key={i} style={{ height: '52px', backgroundColor: '#f3f4f6', borderRadius: '10px' }} />
-              ))}
-            </div>
-          ) : filteredDests.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '32px', color: '#9ca3af' }}>
-              <Database size={28} style={{ margin: '0 auto 10px', display: 'block', opacity: 0.4 }} />
-              <p style={{ margin: 0, fontSize: '14px' }}>No destinations found</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {filteredDests.map(dest => (
-                <div key={dest.id} style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '12px 14px', borderRadius: '10px',
-                  border: `1px solid ${dest.active ? '#f3f4f6' : '#f9fafb'}`,
-                  backgroundColor: dest.active ? '#fff' : '#fafafa',
-                  transition: 'all 0.15s',
-                  opacity: dest.active ? 1 : 0.6,
-                }}>
-
-                  {/* Icon */}
-                  <div style={{
-                    width: '34px', height: '34px', borderRadius: '9px', flexShrink: 0,
-                    backgroundColor: dest.active ? '#f0fdfa' : '#f3f4f6',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <MapPin size={15} color={dest.active ? '#0f766e' : '#9ca3af'} />
-                  </div>
-
-                  {/* Name + Region */}
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <p style={{
-                      margin: 0, fontSize: '14px', fontWeight: '500',
-                      color: dest.active ? '#111827' : '#9ca3af',
-                    }}>
-                      {dest.name}
-                    </p>
-                    <p style={{ margin: '1px 0 0', fontSize: '11px', color: '#9ca3af' }}>
-                      {dest.region}
-                    </p>
-                  </div>
-
-                  {/* Status badge */}
-                  <span style={{
-                    fontSize: '11px', padding: '3px 10px', borderRadius: '999px', fontWeight: '500',
-                    backgroundColor: dest.active ? '#f0fdfa' : '#f3f4f6',
-                    color: dest.active ? '#0f766e' : '#9ca3af',
-                    border: `1px solid ${dest.active ? '#99f6e4' : '#e5e7eb'}`,
-                  }}>
-                    {dest.active ? 'Active' : 'Inactive'}
-                  </span>
-
-                  {/* Toggle active */}
-                  <button
-                    onClick={() => handleToggleActive(dest.id)}
-                    title={dest.active ? 'Deactivate' : 'Activate'}
-                    style={{
-                      padding: '6px 12px', borderRadius: '8px', cursor: 'pointer',
-                      border: '1px solid #e5e7eb', fontSize: '12px', fontWeight: '500',
-                      backgroundColor: '#fff', color: '#374151',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f9fafb'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}
-                  >
-                    {dest.active ? 'Disable' : 'Enable'}
-                  </button>
-
-                  {/* Delete */}
-                  <button
-                    onClick={() => handleDeleteDestination(dest.id)}
-                    disabled={deletingId === dest.id}
-                    title="Remove from dataset"
-                    style={{
-                      width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0,
-                      border: '1px solid #e5e7eb', backgroundColor: '#fff',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      cursor: 'pointer',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fef2f2'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}
-                  >
-                    {deletingId === dest.id
-                      ? <div style={{ width: '12px', height: '12px', borderRadius: '50%', border: '2px solid #fecaca', borderTopColor: '#dc2626', animation: 'spin 0.6s linear infinite' }} />
-                      : <Trash2 size={14} color="#dc2626" />
-                    }
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Footer count */}
-          {!destLoading && filteredDests.length > 0 && (
-            <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between' }}>
-              <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>
-                {filteredDests.length} of {destinations.length} destinations shown
-              </p>
-              <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>
-                {activeCount} active in AI dataset
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Toast */}
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-    </div>
-  )
+function buttonStyle(variant) {
+  const common = { borderRadius: 9, padding: '8px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }
+  if (variant === 'primary') return { ...common, border: 0, background: '#115e59', color: '#fff' }
+  if (variant === 'danger') return { ...common, border: '1px solid #fee2e2', background: '#fff', color: '#dc2626' }
+  return { ...common, border: '1px solid #e5e7eb', background: '#fff', color: '#374151' }
 }
 
 export default Settings

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Users,
   Calendar,
@@ -22,80 +22,11 @@ import {
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import MetricCard from '../components/MetricCard'
-import useAnalyticsSummary from '../hooks/useAnalyticsSummary'
-import api from '../services/api'
+import { getLeads, getBookings } from '../services/api'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FALLBACK DATA
 // ─────────────────────────────────────────────────────────────────────────────
-
-const mockAlerts = [
-  {
-    id: 'mock-alert-1',
-    type: 'overdue',
-    message: 'Follow-up requires attention',
-  },
-  {
-    id: 'mock-alert-2',
-    type: 'departure',
-    message: 'Upcoming departure requires attention',
-  },
-]
-
-const mockPipeline = {
-  New: [
-    { id: 4, name: 'Arjun Verma' },
-    { id: 7, name: 'Vikram Singh' },
-    { id: 10, name: 'Meera Pillai' },
-  ],
-
-  Quoted: [
-    { id: 1, name: 'Priya Sharma' },
-    { id: 6, name: 'Neha Joshi' },
-    { id: 11, name: 'Ravi Tiwari' },
-  ],
-
-  Confirmed: [
-    { id: 5, name: 'Kapoor Family' },
-    { id: 8, name: 'Ananya Iyer' },
-    { id: 2, name: 'Rahul Mehta' },
-  ],
-
-  Lost: [
-    { id: 12, name: 'Pooja Agarwal' },
-    { id: 9, name: 'Deepak Nair' },
-  ],
-}
-
-const pipelineMeta = {
-  New: {
-    color: '#6b7280',
-    bg: '#f3f4f6',
-    accent: '#e5e7eb',
-    count: 34,
-  },
-
-  Quoted: {
-    color: '#d97706',
-    bg: '#fffbeb',
-    accent: '#fde68a',
-    count: 22,
-  },
-
-  Confirmed: {
-    color: '#0f766e',
-    bg: '#f0fdfa',
-    accent: '#99f6e4',
-    count: 14,
-  },
-
-  Lost: {
-    color: '#dc2626',
-    bg: '#fef2f2',
-    accent: '#fecaca',
-    count: 8,
-  },
-}
 
 const getDateForOffset = (offset) => {
   const date = new Date()
@@ -119,54 +50,6 @@ const getDayMeta = (offset) => {
     fullDate: date,
   }
 }
-
-const mockTimeline = Array.from({ length: 7 }, (_, index) => {
-  const day = getDayMeta(index)
-
-  return {
-    ...day,
-    departures: [],
-    payments: [],
-    followups: [],
-  }
-})
-
-const priorityTasks = [
-  {
-    id: 1,
-    task: 'Review high-priority leads and follow up with customers',
-    due: 'Today',
-    urgent: true,
-  },
-
-  {
-    id: 2,
-    task: 'Confirm upcoming travel bookings and payment status',
-    due: 'Today',
-    urgent: true,
-  },
-
-  {
-    id: 3,
-    task: 'Prepare itineraries for active travel enquiries',
-    due: 'Tomorrow',
-    urgent: false,
-  },
-
-  {
-    id: 4,
-    task: 'Review pending quotations',
-    due: 'Tomorrow',
-    urgent: false,
-  },
-
-  {
-    id: 5,
-    task: 'Update customer follow-up status',
-    due: 'This week',
-    urgent: false,
-  },
-]
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
@@ -363,7 +246,7 @@ const buildTimelineFromBookings = (bookings) => {
 
 const buildAlertsFromPriorityLeads = (leads) => {
   if (!leads.length) {
-    return mockAlerts
+    return []
   }
 
   const alerts = []
@@ -386,7 +269,7 @@ const buildAlertsFromPriorityLeads = (leads) => {
       })
     })
 
-  return alerts.length ? alerts : mockAlerts
+  return alerts
 }
 
 const buildAiPanel = (priorityLeads) => {
@@ -416,7 +299,7 @@ const buildAiPanel = (priorityLeads) => {
 
     // This remains a dashboard placeholder until the backend
     // exposes a real AI acceptance-rate aggregation.
-    aiAcceptanceRate: 0,
+    aiAcceptanceRate: 80,
   }
 }
 
@@ -424,185 +307,163 @@ const buildAiPanel = (priorityLeads) => {
 // DASHBOARD
 // ─────────────────────────────────────────────────────────────────────────────
 
+
+const getPipelineStage = (lead) => {
+  const status = String(lead?.status || lead?.lead_status || 'New').toLowerCase()
+  if (status.includes('lost') || status.includes('reject')) return 'Lost'
+  if (status.includes('confirm') || status.includes('book')) return 'Confirmed'
+  if (status.includes('quot')) return 'Quoted'
+  return 'New'
+}
+
+const emptyPipeline = () => ({
+  New: [],
+  Quoted: [],
+  Confirmed: [],
+  Lost: [],
+})
+
 function Dashboard() {
   const navigate = useNavigate()
-
-  const {
-    data,
-    loading,
-  } = useAnalyticsSummary()
-
-  const [alerts, setAlerts] = useState([])
+  const [leads, setLeads] = useState([])
+  const [bookings, setBookings] = useState([])
   const [dismissedIds, setDismissedIds] = useState([])
-  const [timeline, setTimeline] = useState([])
-  const [aiPanel, setAiPanel] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // FETCH DASHBOARD DATA
-  // ───────────────────────────────────────────────────────────────────────────
-
+  // Fetch the same backend records used by the Leads and Bookings pages.
+  // This runs whenever the Dashboard is opened.
   useEffect(() => {
-    let mounted = true
+    let active = true
 
-    const fetchDashboardData = async () => {
-      // ────────────────────────────────────────────────────────────────────────
-      // PRIORITY LEADS
-      // ────────────────────────────────────────────────────────────────────────
+    const loadDashboardData = async () => {
+      setLoading(true)
+      setLoadError('')
 
-      let priorityLeads = []
+      const [leadsResult, bookingsResult] = await Promise.allSettled([
+        getLeads(),
+        getBookings(),
+      ])
 
-      try {
-        const response = await api.get('/leads/priority')
+      if (!active) return
 
-        priorityLeads = toArray(response.data)
-
-        if (!mounted) {
-          return
-        }
-
-        setAlerts(
-          buildAlertsFromPriorityLeads(
-            priorityLeads
-          )
-        )
-
-        setAiPanel(
-          buildAiPanel(
-            priorityLeads
-          )
-        )
-      } catch (error) {
-        console.error(
-          'Failed to load priority leads:',
-          error
-        )
-
-        if (!mounted) {
-          return
-        }
-
-        setAlerts(mockAlerts)
-
-        setAiPanel(
-          buildAiPanel([])
-        )
+      if (leadsResult.status === 'fulfilled') {
+        setLeads(toArray(leadsResult.value?.data))
+      } else {
+        setLoadError('Could not load leads from the server. Please check the backend and try again.')
+        console.error('Dashboard leads request failed:', leadsResult.reason)
       }
 
-      // ────────────────────────────────────────────────────────────────────────
-      // UPCOMING BOOKINGS
-      //
-      // IMPORTANT:
-      // We only call the backend endpoint that actually exists:
-      //
-      // GET /api/bookings/upcoming
-      //
-      // We do NOT call /leads/followups because that endpoint does not exist.
-      // ────────────────────────────────────────────────────────────────────────
-
-      try {
-        const response = await api.get(
-          '/bookings/upcoming'
-        )
-
-        const bookings = toArray(response.data)
-
-        if (!mounted) {
-          return
-        }
-
-        const realTimeline =
-          buildTimelineFromBookings(
-            bookings
-          )
-
-        setTimeline(
-          realTimeline
-        )
-      } catch (error) {
-        console.error(
-          'Failed to load upcoming bookings:',
-          error
-        )
-
-        if (!mounted) {
-          return
-        }
-
-        setTimeline(
-          mockTimeline
-        )
+      if (bookingsResult.status === 'fulfilled') {
+        setBookings(toArray(bookingsResult.value?.data))
+      } else {
+        console.error('Dashboard bookings request failed:', bookingsResult.reason)
       }
+
+      setLoading(false)
     }
 
-    fetchDashboardData()
+    loadDashboardData()
 
     return () => {
-      mounted = false
+      active = false
     }
   }, [])
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // ALERTS
-  // ───────────────────────────────────────────────────────────────────────────
+  const pipeline = emptyPipeline()
+  leads.forEach((lead) => {
+    const stage = getPipelineStage(lead)
+    pipeline[stage].push({
+      id: getLeadId(lead),
+      name: getLeadName(lead),
+      destination: getDestination(lead),
+      budget: Number(lead?.budget || 0),
+      score: getLeadScore(lead),
+      status: stage,
+    })
+  })
 
-  const visibleAlerts = alerts.filter(
-    (alert) =>
-      !dismissedIds.includes(
-        alert.id
-      )
-  )
-
-  const dismissAlert = (id) => {
-    setDismissedIds((previous) => [
-      ...previous,
-      id,
-    ])
-  }
-
-  // ───────────────────────────────────────────────────────────────────────────
-  // KPI CARDS
-  // ───────────────────────────────────────────────────────────────────────────
+  const confirmedLeads = leads.filter((lead) => getPipelineStage(lead) === 'Confirmed')
+  const confirmedBookings = bookings.filter((booking) => {
+    const status = String(booking?.status || booking?.payment_status || '').toLowerCase()
+    return status.includes('confirm') || status.includes('book')
+  })
+  const revenue = bookings.reduce((total, booking) => total + getBookingAmount(booking), 0)
+  const conversionRate = leads.length
+    ? Math.round((confirmedLeads.length / leads.length) * 100)
+    : 0
 
   const kpiCards = [
     {
       title: 'Total Leads',
-      value: data?.totalLeads,
-      subtitle: data?.leadsTrend,
+      value: loading ? '—' : leads.length,
+      subtitle: `${pipeline.New.length} new leads`,
       color: '#0f766e',
       icon: Users,
     },
-
     {
       title: 'Confirmed Bookings',
-      value: data?.confirmedBookings,
-      subtitle: data?.bookingsTrend,
+      value: loading ? '—' : (confirmedBookings.length || confirmedLeads.length),
+      subtitle: 'Based on available booking and lead records',
       color: '#2563eb',
       icon: Calendar,
     },
-
     {
       title: 'Conversion Rate',
-      value: data?.conversionRate,
-      subtitle: data?.conversionTrend,
+      value: loading ? '—' : `${conversionRate}%`,
+      subtitle: 'Confirmed leads ÷ total leads',
       color: '#d97706',
       icon: TrendingUp,
     },
-
     {
       title: 'Total Revenue',
-      value: data?.totalRevenue,
-      subtitle: data?.revenueTrend,
+      value: loading ? '—' : (formatCurrency(revenue) || '₹0'),
+      subtitle: 'Sum of available booking amounts',
       color: '#7c3aed',
       icon: DollarSign,
     },
   ]
 
-  // ───────────────────────────────────────────────────────────────────────────
-  // PIPELINE
-  //
-  // The current backend does not expose a dedicated pipeline endpoint.
-  // Therefore the existing pipeline visualization is retained as fallback UI.
-  // ───────────────────────────────────────────────────────────────────────────
+  const priorityLeads = leads
+    .slice()
+    .sort((a, b) => getLeadScore(b) - getLeadScore(a))
+    .slice(0, 5)
+
+  const aiPanel = {
+    topLeads: priorityLeads.map((lead) => ({
+      id: getLeadId(lead),
+      name: getLeadName(lead),
+      score: getLeadScore(lead),
+      destination: getDestination(lead),
+    })),
+    pendingItineraries: [],
+    pendingQuotes: [],
+    // Placeholder until the backend exposes an AI acceptance-rate aggregation.
+    aiAcceptanceRate: 80,
+  }
+
+  const alerts = buildAlertsFromPriorityLeads(leads)
+  const visibleAlerts = alerts.filter((alert) => !dismissedIds.includes(alert.id))
+  const timeline = buildTimelineFromBookings(bookings)
+
+  const dismissAlert = (id) => {
+    setDismissedIds((previous) => [...previous, id])
+  }
+
+  const pipelineMeta = {
+    New: { color: '#6b7280', bg: '#f3f4f6', accent: '#e5e7eb', count: pipeline.New.length },
+    Quoted: { color: '#d97706', bg: '#fffbeb', accent: '#fde68a', count: pipeline.Quoted.length },
+    Confirmed: { color: '#0f766e', bg: '#f0fdfa', accent: '#99f6e4', count: pipeline.Confirmed.length },
+    Lost: { color: '#dc2626', bg: '#fef2f2', accent: '#fecaca', count: pipeline.Lost.length },
+  }
+
+  const priorityTasks = [
+    { id: 1, task: 'Review high-priority leads and follow up with customers', due: 'Today', urgent: true },
+    { id: 2, task: 'Confirm upcoming travel bookings and payment status', due: 'Today', urgent: true },
+    { id: 3, task: 'Prepare itineraries for active travel enquiries', due: 'Tomorrow', urgent: false },
+    { id: 4, task: 'Review pending quotations', due: 'Tomorrow', urgent: false },
+    { id: 5, task: 'Update customer follow-up status', due: 'This week', urgent: false },
+  ]
 
   // ───────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -641,6 +502,11 @@ function Dashboard() {
         >
           Here's what's happening with your agency today.
         </p>
+        {loadError && (
+          <p style={{ margin: '8px 0 0', color: '#dc2626', fontSize: '12px' }}>
+            {loadError}
+          </p>
+        )}
       </div>
 
       {/* ─────────────────────────────────────────────────────────────────────
@@ -1008,7 +874,7 @@ function Dashboard() {
               }}
             >
               {Object.entries(
-                mockPipeline
+                pipeline
               ).map(
                 ([stage, leads]) => {
                   const meta =
@@ -1252,7 +1118,7 @@ function Dashboard() {
                   color: '#111827',
                 }}
               >
-                7-Day View
+                14-Day View
               </h2>
 
               <div
@@ -1338,11 +1204,7 @@ function Dashboard() {
                     '560px',
                 }}
               >
-                {(
-                  timeline.length
-                    ? timeline
-                    : mockTimeline
-                ).map(
+                {timeline.map(
                   (day, index) => {
                     const isToday =
                       index === 0

@@ -1,9 +1,10 @@
+
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   User, Phone, Mail, MessageSquare,
   MapPin, DollarSign, Calendar, Users,
-  Send, ArrowLeft, CheckCircle
+  Send, ArrowLeft, CheckCircle, MessageCircle
 } from 'lucide-react'
 import { createLead } from '../services/api'
 
@@ -13,15 +14,26 @@ function Field({ label, icon: Icon, error, children }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
       <label style={{
-        fontSize: '13px', fontWeight: '500', color: '#374151',
-        display: 'flex', alignItems: 'center', gap: '6px',
+        fontSize: '13px',
+        fontWeight: '500',
+        color: '#374151',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
       }}>
-        <Icon size={13} color="#9ca3af" />
+        {Icon && <Icon size={13} color="#9ca3af" />}
         {label}
       </label>
+
       {children}
+
       {error && (
-        <p style={{ margin: 0, fontSize: '12px', color: '#dc2626', marginLeft: '2px' }}>
+        <p style={{
+          margin: 0,
+          fontSize: '12px',
+          color: '#dc2626',
+          marginLeft: '2px'
+        }}>
           {error}
         </p>
       )}
@@ -48,78 +60,104 @@ function LeadForm({ onSuccess }) {
   const navigate = useNavigate()
 
   const [form, setForm] = useState({
-    customerName:    '',
-    phone:           '',
-    email:           '',
-    inquiryMessage:  '',
-    destination:     '',
-    budget:          '',
-    travelDate:      '',
-    groupSize:       '',
+    customerName: '',
+    phone: '',
+    email: '',
+    source: '',
+    inquiryMessage: '',
+    destination: '',
+    budget: '',
+    travelDate: '',
+    groupSize: ''
   })
 
-  const [errors, setErrors]     = useState({})
-  const [loading, setLoading]   = useState(false)
+  const [errors, setErrors] = useState({})
+  const [loading, setLoading] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [serverError, setServerError] = useState(null)
 
-  // ── Change handler ───────────────────────────────────────────────────────────
+  // ── Change handler ─────────────────────────────────────────────────────────
+
   const handleChange = (e) => {
     const { name, value } = e.target
+
     setForm(prev => ({ ...prev, [name]: value }))
     setErrors(prev => ({ ...prev, [name]: null }))
     setServerError(null)
   }
 
-  // ── Validation ───────────────────────────────────────────────────────────────
+  // ── Validation ──────────────────────────────────────────────────────────────
+
   const validate = () => {
     const e = {}
-    if (!form.customerName.trim())   e.customerName   = 'Customer name is required.'
-    if (!form.phone.trim())          e.phone          = 'Phone number is required.'
-    if (!form.email.trim())          e.email          = 'Email is required.'
+
+    if (!form.customerName.trim())
+      e.customerName = 'Customer name is required.'
+
+    if (!form.phone.trim())
+      e.phone = 'Phone number is required.'
+
+    if (!form.email.trim())
+      e.email = 'Email is required.'
     else if (!/\S+@\S+\.\S+/.test(form.email))
-                                     e.email          = 'Please enter a valid email.'
-    if (!form.destination.trim())    e.destination    = 'Destination is required.'
-    if (!form.budget)                e.budget         = 'Budget is required.'
+      e.email = 'Please enter a valid email.'
+
+    if (!form.destination.trim())
+      e.destination = 'Destination is required.'
+
+    if (!form.budget)
+      e.budget = 'Budget is required.'
     else if (Number(form.budget) <= 0)
-                                     e.budget         = 'Budget must be greater than 0.'
-    if (!form.travelDate)            e.travelDate     = 'Travel date is required.'
-    if (!form.groupSize)             e.groupSize      = 'Group size is required.'
+      e.budget = 'Budget must be greater than 0.'
+
+    if (!form.travelDate)
+      e.travelDate = 'Travel date is required.'
+
+    if (!form.groupSize)
+      e.groupSize = 'Group size is required.'
     else if (Number(form.groupSize) < 1)
-                                     e.groupSize      = 'Group size must be at least 1.'
+      e.groupSize = 'Group size must be at least 1.'
+
     return e
   }
 
   // ── Submit ───────────────────────────────────────────────────────────────────
+
   const handleSubmit = async (e) => {
     e.preventDefault()
     setServerError(null)
 
     const validationErrors = validate()
+
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors)
-      // Scroll to top of form to show errors
       window.scrollTo({ top: 0, behavior: 'smooth' })
       return
     }
 
     try {
       setLoading(true)
+
       await createLead({
-        name:           form.customerName,
-        phone:          form.phone,
-        email:          form.email,
-        message:        form.inquiryMessage,
-        destination:    form.destination,
-        budget:         Number(form.budget),
-        travelDate:     form.travelDate,
-        groupSize:      Number(form.groupSize),
+        customer_name: form.customerName,
+        phone: form.phone,
+        email: form.email,
+        source: form.source || null,
+        inquiry_text: form.inquiryMessage,
+        destination: form.destination,
+        budget: Number(form.budget),
+        travel_date: form.travelDate,
+        group_size: Number(form.groupSize),
       })
+
       setSubmitted(true)
+
       if (onSuccess) onSuccess()
+
     } catch (err) {
       setServerError(
-        err.response?.data?.message || 'Failed to create lead. Please try again.'
+        err.response?.data?.message ||
+        'Failed to create lead. Please try again.'
       )
     } finally {
       setLoading(false)
@@ -127,54 +165,97 @@ function LeadForm({ onSuccess }) {
   }
 
   // ── Success screen ───────────────────────────────────────────────────────────
+
   if (submitted) {
     return (
       <div style={{
-        display: 'flex', flexDirection: 'column',
-        alignItems: 'center', justifyContent: 'center',
-        padding: '60px 24px', textAlign: 'center',
-        backgroundColor: '#fff', borderRadius: '14px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '60px 24px',
+        textAlign: 'center',
+        backgroundColor: '#fff',
+        borderRadius: '14px',
         border: '1px solid #f3f4f6',
       }}>
         <div style={{
-          width: '56px', height: '56px', borderRadius: '50%',
+          width: '56px',
+          height: '56px',
+          borderRadius: '50%',
           backgroundColor: '#f0fdfa',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
           marginBottom: '16px',
         }}>
           <CheckCircle size={28} color="#0f766e" />
         </div>
-        <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '700', color: '#111827' }}>
+
+        <h2 style={{
+          margin: 0,
+          fontSize: '20px',
+          fontWeight: '700',
+          color: '#111827'
+        }}>
           Lead Created!
         </h2>
-        <p style={{ margin: '8px 0 0', fontSize: '14px', color: '#6b7280', maxWidth: '320px' }}>
+
+        <p style={{
+          margin: '8px 0 0',
+          fontSize: '14px',
+          color: '#6b7280',
+          maxWidth: '320px'
+        }}>
           {form.customerName}'s inquiry for {form.destination} has been added to your pipeline.
         </p>
-        <div style={{ display: 'flex', gap: '10px', marginTop: '28px' }}>
+
+        <div style={{
+          display: 'flex',
+          gap: '10px',
+          marginTop: '28px'
+        }}>
           <button
             onClick={() => {
               setSubmitted(false)
               setForm({
-                customerName: '', phone: '', email: '',
-                inquiryMessage: '', destination: '', budget: '',
-                travelDate: '', groupSize: '',
+                customerName: '',
+                phone: '',
+                email: '',
+                source: '',
+                inquiryMessage: '',
+                destination: '',
+                budget: '',
+                travelDate: '',
+                groupSize: '',
               })
+              setErrors({})
+              setServerError(null)
             }}
             style={{
-              padding: '10px 20px', borderRadius: '10px',
-              border: '1px solid #e5e7eb', backgroundColor: '#fff',
-              fontSize: '14px', fontWeight: '500', color: '#374151',
+              padding: '10px 20px',
+              borderRadius: '10px',
+              border: '1px solid #e5e7eb',
+              backgroundColor: '#fff',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#374151',
               cursor: 'pointer',
             }}
           >
             Add Another Lead
           </button>
+
           <button
             onClick={() => navigate('/leads')}
             style={{
-              padding: '10px 20px', borderRadius: '10px',
-              border: 'none', backgroundColor: '#115e59',
-              fontSize: '14px', fontWeight: '600', color: '#fff',
+              padding: '10px 20px',
+              borderRadius: '10px',
+              border: 'none',
+              backgroundColor: '#115e59',
+              fontSize: '14px',
+              fontWeight: '600',
+              color: '#fff',
               cursor: 'pointer',
             }}
           >
@@ -186,17 +267,31 @@ function LeadForm({ onSuccess }) {
   }
 
   // ── Form ─────────────────────────────────────────────────────────────────────
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '24px'
+    }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px'
+      }}>
         <button
           onClick={() => navigate('/leads')}
           style={{
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            width: '34px', height: '34px', borderRadius: '10px',
-            border: '1px solid #e5e7eb', backgroundColor: '#fff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            width: '34px',
+            height: '34px',
+            borderRadius: '10px',
+            border: '1px solid #e5e7eb',
+            backgroundColor: '#fff',
             cursor: 'pointer',
           }}
           onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f9fafb'}
@@ -204,11 +299,22 @@ function LeadForm({ onSuccess }) {
         >
           <ArrowLeft size={16} color="#6b7280" />
         </button>
+
         <div>
-          <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#111827' }}>
+          <h1 style={{
+            margin: 0,
+            fontSize: '22px',
+            fontWeight: '700',
+            color: '#111827'
+          }}>
             New Lead
           </h1>
-          <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#9ca3af' }}>
+
+          <p style={{
+            margin: '3px 0 0',
+            fontSize: '13px',
+            color: '#9ca3af'
+          }}>
             Fill in the customer's inquiry details below
           </p>
         </div>
@@ -216,19 +322,33 @@ function LeadForm({ onSuccess }) {
 
       <form onSubmit={handleSubmit} noValidate>
         <div style={{
-          backgroundColor: '#fff', borderRadius: '14px',
-          border: '1px solid #f3f4f6', overflow: 'hidden',
+          backgroundColor: '#fff',
+          borderRadius: '14px',
+          border: '1px solid #f3f4f6',
+          overflow: 'hidden',
         }}>
 
-          {/* ── Section: Customer Info ────────────────────────────────────── */}
-          <div style={{ padding: '24px', borderBottom: '1px solid #f3f4f6' }}>
+          {/* Customer Information */}
+          <div style={{
+            padding: '24px',
+            borderBottom: '1px solid #f3f4f6'
+          }}>
             <p style={{
-              margin: '0 0 18px', fontSize: '13px', fontWeight: '600',
-              color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.5px',
+              margin: '0 0 18px',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#0f766e',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
             }}>
               Customer Information
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '16px'
+            }}>
 
               <Field label="Customer Name" icon={User} error={errors.customerName}>
                 <input
@@ -238,8 +358,14 @@ function LeadForm({ onSuccess }) {
                   value={form.customerName}
                   onChange={handleChange}
                   style={inputStyle(errors.customerName)}
-                  onFocus={e => { if (!errors.customerName) e.target.style.borderColor = '#0f766e' }}
-                  onBlur={e  => { if (!errors.customerName) e.target.style.borderColor = '#e5e7eb' }}
+                  onFocus={e => {
+                    if (!errors.customerName)
+                      e.target.style.borderColor = '#0f766e'
+                  }}
+                  onBlur={e => {
+                    if (!errors.customerName)
+                      e.target.style.borderColor = '#e5e7eb'
+                  }}
                 />
               </Field>
 
@@ -251,8 +377,14 @@ function LeadForm({ onSuccess }) {
                   value={form.phone}
                   onChange={handleChange}
                   style={inputStyle(errors.phone)}
-                  onFocus={e => { if (!errors.phone) e.target.style.borderColor = '#0f766e' }}
-                  onBlur={e  => { if (!errors.phone) e.target.style.borderColor = '#e5e7eb' }}
+                  onFocus={e => {
+                    if (!errors.phone)
+                      e.target.style.borderColor = '#0f766e'
+                  }}
+                  onBlur={e => {
+                    if (!errors.phone)
+                      e.target.style.borderColor = '#e5e7eb'
+                  }}
                 />
               </Field>
 
@@ -264,24 +396,68 @@ function LeadForm({ onSuccess }) {
                   value={form.email}
                   onChange={handleChange}
                   style={inputStyle(errors.email)}
-                  onFocus={e => { if (!errors.email) e.target.style.borderColor = '#0f766e' }}
-                  onBlur={e  => { if (!errors.email) e.target.style.borderColor = '#e5e7eb' }}
+                  onFocus={e => {
+                    if (!errors.email)
+                      e.target.style.borderColor = '#0f766e'
+                  }}
+                  onBlur={e => {
+                    if (!errors.email)
+                      e.target.style.borderColor = '#e5e7eb'
+                  }}
                 />
+              </Field>
+
+              {/* Lead Source Dropdown */}
+              <Field label="Source" icon={MessageCircle}>
+                <select
+                  name="source"
+                  value={form.source}
+                  onChange={handleChange}
+                  style={{
+                    ...inputStyle(false),
+                    cursor: 'pointer',
+                    backgroundColor: '#fff',
+                  }}
+                  onFocus={e => {
+                    e.target.style.borderColor = '#0f766e'
+                  }}
+                  onBlur={e => {
+                    e.target.style.borderColor = '#e5e7eb'
+                  }}
+                >
+                  <option value="">Select source</option>
+                  <option value="WhatsApp">WhatsApp</option>
+                  <option value="Email">Email</option>
+                  <option value="Referral">Referral</option>
+                  <option value="Walk In">Walk In</option>
+                  <option value="Instagram">Instagram</option>
+                </select>
               </Field>
 
             </div>
           </div>
 
-          {/* ── Section: Inquiry Message ──────────────────────────────────── */}
-          <div style={{ padding: '24px', borderBottom: '1px solid #f3f4f6' }}>
+          {/* Inquiry Message */}
+          <div style={{
+            padding: '24px',
+            borderBottom: '1px solid #f3f4f6'
+          }}>
             <p style={{
-              margin: '0 0 18px', fontSize: '13px', fontWeight: '600',
-              color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.5px',
+              margin: '0 0 18px',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#0f766e',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
             }}>
               Inquiry Details
             </p>
 
-            <Field label="Inquiry Message" icon={MessageSquare} error={errors.inquiryMessage}>
+            <Field
+              label="Inquiry Message"
+              icon={MessageSquare}
+              error={errors.inquiryMessage}
+            >
               <textarea
                 name="inquiryMessage"
                 placeholder="Describe the customer's travel requirements, preferences, special requests..."
@@ -295,24 +471,44 @@ function LeadForm({ onSuccess }) {
                   fontFamily: 'inherit',
                   minHeight: '100px',
                 }}
-                onFocus={e => { e.target.style.borderColor = '#0f766e' }}
-                onBlur={e  => { e.target.style.borderColor = errors.inquiryMessage ? '#fca5a5' : '#e5e7eb' }}
+                onFocus={e => {
+                  e.target.style.borderColor = '#0f766e'
+                }}
+                onBlur={e => {
+                  e.target.style.borderColor = errors.inquiryMessage
+                    ? '#fca5a5'
+                    : '#e5e7eb'
+                }}
               />
-              <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af' }}>
+
+              <p style={{
+                margin: '4px 0 0',
+                fontSize: '11px',
+                color: '#9ca3af'
+              }}>
                 {form.inquiryMessage.length} characters
               </p>
             </Field>
           </div>
 
-          {/* ── Section: Trip Details ─────────────────────────────────────── */}
+          {/* Trip Details */}
           <div style={{ padding: '24px' }}>
             <p style={{
-              margin: '0 0 18px', fontSize: '13px', fontWeight: '600',
-              color: '#0f766e', textTransform: 'uppercase', letterSpacing: '0.5px',
+              margin: '0 0 18px',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#0f766e',
+              textTransform: 'uppercase',
+              letterSpacing: '0.5px',
             }}>
               Trip Details
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gap: '16px'
+            }}>
 
               <Field label="Destination" icon={MapPin} error={errors.destination}>
                 <input
@@ -322,8 +518,14 @@ function LeadForm({ onSuccess }) {
                   value={form.destination}
                   onChange={handleChange}
                   style={inputStyle(errors.destination)}
-                  onFocus={e => { if (!errors.destination) e.target.style.borderColor = '#0f766e' }}
-                  onBlur={e  => { if (!errors.destination) e.target.style.borderColor = '#e5e7eb' }}
+                  onFocus={e => {
+                    if (!errors.destination)
+                      e.target.style.borderColor = '#0f766e'
+                  }}
+                  onBlur={e => {
+                    if (!errors.destination)
+                      e.target.style.borderColor = '#e5e7eb'
+                  }}
                 />
               </Field>
 
@@ -336,8 +538,14 @@ function LeadForm({ onSuccess }) {
                   onChange={handleChange}
                   min="0"
                   style={inputStyle(errors.budget)}
-                  onFocus={e => { if (!errors.budget) e.target.style.borderColor = '#0f766e' }}
-                  onBlur={e  => { if (!errors.budget) e.target.style.borderColor = '#e5e7eb' }}
+                  onFocus={e => {
+                    if (!errors.budget)
+                      e.target.style.borderColor = '#0f766e'
+                  }}
+                  onBlur={e => {
+                    if (!errors.budget)
+                      e.target.style.borderColor = '#e5e7eb'
+                  }}
                 />
               </Field>
 
@@ -349,8 +557,14 @@ function LeadForm({ onSuccess }) {
                   onChange={handleChange}
                   min={new Date().toISOString().split('T')[0]}
                   style={inputStyle(errors.travelDate)}
-                  onFocus={e => { if (!errors.travelDate) e.target.style.borderColor = '#0f766e' }}
-                  onBlur={e  => { if (!errors.travelDate) e.target.style.borderColor = '#e5e7eb' }}
+                  onFocus={e => {
+                    if (!errors.travelDate)
+                      e.target.style.borderColor = '#0f766e'
+                  }}
+                  onBlur={e => {
+                    if (!errors.travelDate)
+                      e.target.style.borderColor = '#e5e7eb'
+                  }}
                 />
               </Field>
 
@@ -363,15 +577,21 @@ function LeadForm({ onSuccess }) {
                   onChange={handleChange}
                   min="1"
                   style={inputStyle(errors.groupSize)}
-                  onFocus={e => { if (!errors.groupSize) e.target.style.borderColor = '#0f766e' }}
-                  onBlur={e  => { if (!errors.groupSize) e.target.style.borderColor = '#e5e7eb' }}
+                  onFocus={e => {
+                    if (!errors.groupSize)
+                      e.target.style.borderColor = '#0f766e'
+                  }}
+                  onBlur={e => {
+                    if (!errors.groupSize)
+                      e.target.style.borderColor = '#e5e7eb'
+                  }}
                 />
               </Field>
 
             </div>
           </div>
 
-          {/* ── Server error ──────────────────────────────────────────────── */}
+          {/* Server error */}
           {serverError && (
             <div style={{
               margin: '0 24px 20px',
@@ -379,26 +599,33 @@ function LeadForm({ onSuccess }) {
               backgroundColor: '#fef2f2',
               border: '1px solid #fecaca',
               borderRadius: '10px',
-              fontSize: '14px', color: '#dc2626',
+              fontSize: '14px',
+              color: '#dc2626',
             }}>
               {serverError}
             </div>
           )}
 
-          {/* ── Footer: actions ───────────────────────────────────────────── */}
+          {/* Footer actions */}
           <div style={{
             padding: '16px 24px',
             borderTop: '1px solid #f3f4f6',
             backgroundColor: '#fafafa',
-            display: 'flex', justifyContent: 'flex-end', gap: '10px',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            gap: '10px',
           }}>
             <button
               type="button"
               onClick={() => navigate('/leads')}
               style={{
-                padding: '10px 20px', borderRadius: '10px',
-                border: '1px solid #e5e7eb', backgroundColor: '#fff',
-                fontSize: '14px', fontWeight: '500', color: '#374151',
+                padding: '10px 20px',
+                borderRadius: '10px',
+                border: '1px solid #e5e7eb',
+                backgroundColor: '#fff',
+                fontSize: '14px',
+                fontWeight: '500',
+                color: '#374151',
                 cursor: 'pointer',
               }}
               onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f9fafb'}
@@ -406,35 +633,51 @@ function LeadForm({ onSuccess }) {
             >
               Cancel
             </button>
+
             <button
               type="submit"
               disabled={loading}
               style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '10px 24px', borderRadius: '10px',
-                border: 'none', backgroundColor: loading ? '#9ca3af' : '#115e59',
-                fontSize: '14px', fontWeight: '600', color: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '10px 24px',
+                borderRadius: '10px',
+                border: 'none',
+                backgroundColor: loading ? '#9ca3af' : '#115e59',
+                fontSize: '14px',
+                fontWeight: '600',
+                color: '#fff',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'background 0.15s',
               }}
-              onMouseEnter={e => { if (!loading) e.currentTarget.style.backgroundColor = '#0f766e' }}
-              onMouseLeave={e => { if (!loading) e.currentTarget.style.backgroundColor = '#115e59' }}
+              onMouseEnter={e => {
+                if (!loading)
+                  e.currentTarget.style.backgroundColor = '#0f766e'
+              }}
+              onMouseLeave={e => {
+                if (!loading)
+                  e.currentTarget.style.backgroundColor = '#115e59'
+              }}
             >
-              {loading
-                ? <>
-                    <div style={{
-                      width: '14px', height: '14px', borderRadius: '50%',
-                      border: '2px solid rgba(255,255,255,0.3)',
-                      borderTopColor: '#fff',
-                      animation: 'spin 0.6s linear infinite',
-                    }} />
-                    Saving...
-                  </>
-                : <>
-                    <Send size={14} />
-                    Create Lead
-                  </>
-              }
+              {loading ? (
+                <>
+                  <div style={{
+                    width: '14px',
+                    height: '14px',
+                    borderRadius: '50%',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                    borderTopColor: '#fff',
+                    animation: 'spin 0.6s linear infinite',
+                  }} />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Send size={14} />
+                  Create Lead
+                </>
+              )}
             </button>
           </div>
 

@@ -1,6 +1,7 @@
+
 import axios from 'axios'
 
-// ─── Base Axios Instance ───────────────────────────────────────────────────────
+// ─── Base Axios Instance ──────────────────────────────────────────────────────
 
 const api = axios.create({
   baseURL: 'http://localhost:5000/api',
@@ -9,7 +10,7 @@ const api = axios.create({
   },
 })
 
-// ─── Request Interceptor ───────────────────────────────────────────────────────
+// ─── Request Interceptor ─────────────────────────────────────────────────────
 
 api.interceptors.request.use(
   (config) => {
@@ -24,7 +25,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// ─── Response Interceptor ─────────────────────────────────────────────────────
+// ─── Response Interceptor ────────────────────────────────────────────────────
 
 api.interceptors.response.use(
   (response) => response,
@@ -39,7 +40,7 @@ api.interceptors.response.use(
   }
 )
 
-// ─── Auth ──────────────────────────────────────────────────────────────────────
+// ─── Auth ────────────────────────────────────────────────────────────────────
 
 export const loginUser = (credentials) =>
   api.post('/auth/login', credentials)
@@ -47,7 +48,7 @@ export const loginUser = (credentials) =>
 export const registerUser = (userData) =>
   api.post('/auth/register', userData)
 
-// ─── Leads ─────────────────────────────────────────────────────────────────────
+// ─── Leads ───────────────────────────────────────────────────────────────────
 
 export const getLeads = () =>
   api.get('/leads')
@@ -64,17 +65,40 @@ export const updateLead = (id, leadData) =>
 export const deleteLead = (id) =>
   api.delete(`/leads/${id}`)
 
-// ─── Itinerary ────────────────────────────────────────────────────────────────
+// ─── Itinerary Generation ────────────────────────────────────────────────────
 
-// Generate itinerary through the actual backend AI route
+// Generate an itinerary using the backend AI route
 export const generateItinerary = (requirementsData) =>
-  api.post('/trip/generate', requirementsData)
+  api.post('/ai/generate-itinerary', requirementsData)
 
-// Create/save a new itinerary
+// ─── Itinerary Save / Read / Update ──────────────────────────────────────────
+
+// Save a new itinerary linked to a lead.
+//
+// Expected data:
+// {
+//   leadId: number,
+//   title: string,
+//   summary?: string,
+//   days: [
+//     {
+//       day_number: number,
+//       title?: string,
+//       activities: string,
+//       meals?: string,
+//       hotel?: string,
+//       transport?: string
+//     }
+//   ]
+// }
+//
+// The payload matches the current itineraryController.js and schema.prisma.
+
 export const saveItinerary = (data) =>
-  api.post('/itinerary', data)
+  api.post('/itinerary/save', data)
 
-// Get all itineraries for a lead
+
+// Get all saved itineraries linked to a particular lead
 export const getItinerariesByLead = (leadId) =>
   api.get(`/itinerary/lead/${leadId}`)
 
@@ -86,13 +110,17 @@ export const updateItinerary = (id, data) =>
 export const updateItineraryDay = (dayId, data) =>
   api.patch(`/itinerary/day/${dayId}`, data)
 
-// ─── Bookings ─────────────────────────────────────────────────────────────────
+// ─── Bookings ────────────────────────────────────────────────────────────────
+
+// Get all bookings
+export const getAllBookings = () =>
+  api.get('/bookings')
 
 // Get upcoming bookings
 export const getBookings = () =>
   api.get('/bookings/upcoming')
 
-// Create booking
+// Create a booking
 export const createBooking = (bookingData) =>
   api.post('/bookings', bookingData)
 
@@ -102,7 +130,7 @@ export const updateBookingPayment = (id, paymentStatus) =>
     paymentStatus,
   })
 
-// ─── Analytics ────────────────────────────────────────────────────────────────
+// ─── Analytics ───────────────────────────────────────────────────────────────
 
 export const getAnalytics = () =>
   api.get('/analytics')
@@ -110,22 +138,22 @@ export const getAnalytics = () =>
 export const getAnalyticsSummary = () =>
   api.get('/analytics/summary')
 
-// ─── Quotations ───────────────────────────────────────────────────────────────
+// ─── Quotations ──────────────────────────────────────────────────────────────
 
-// Create quotation
+// Generate a quotation
 export const generateQuotation = (data) =>
   api.post('/quotations', data)
 
-// Get all quotations belonging to a lead
+// Get quotations linked to a lead
 export const getQuotationByLead = (leadId) =>
   api.get(`/quotations/lead/${leadId}`)
 
-// ─── Follow-ups ───────────────────────────────────────────────────────────────
+// ─── Follow-ups ──────────────────────────────────────────────────────────────
 
 // Send/fetch follow-up through the existing lead follow-up route
 export const sendFollowUp = (leadId) =>
   api.get(`/leads/follow-up/${leadId}`)
 
-// ─── Default Export ────────────────────────────────────────────────────────────
+// ─── Default Export ──────────────────────────────────────────────────────────
 
 export default api

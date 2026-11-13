@@ -2,10 +2,21 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   Users, Plus, Search, Filter,
-  Eye, Trash2, Phone, Mail,
+  Eye, Trash2, Mail,
   ChevronUp, ChevronDown, RefreshCw
 } from 'lucide-react'
-import { getLeads } from '../services/api'
+import api, { getLeads } from '../services/api'
+
+const LOCAL_LEADS_KEY = 'localtrip_leads'
+
+const publishLocalLeads = (items) => {
+  try {
+    localStorage.setItem(LOCAL_LEADS_KEY, JSON.stringify(items))
+    window.dispatchEvent(new Event('localtrip:leads-updated'))
+  } catch (error) {
+    console.error('Unable to sync leads with dashboard:', error)
+  }
+}
 
 // ── Mock fallback data ────────────────────────────────────────────────────────
 
@@ -85,6 +96,7 @@ function Leads() {
   const [statusFilter, setStatusFilter] = useState('All')
   const [sortField, setSortField]   = useState(null)
   const [sortDir, setSortDir]       = useState('asc')
+  const [deletingId, setDeletingId] = useState(null)
 
   // ── Fetch leads ─────────────────────────────────────────────────────────────
   const fetchLeads = async () => {
@@ -92,7 +104,9 @@ function Leads() {
       setLoading(true)
       setError(null)
       const res = await getLeads()
-      setLeads(res.data || [])
+      const fetchedLeads = Array.isArray(res.data) ? res.data : []
+      setLeads(fetchedLeads)
+      publishLocalLeads(fetchedLeads)
     } catch {
       setLeads(mockLeads)
     } finally {
@@ -101,6 +115,37 @@ function Leads() {
   }
 
   useEffect(() => { fetchLeads() }, [])
+
+  // Permanently delete a lead through the backend API
+  const handleDeleteLead = async (lead) => {
+    const leadName = lead.customer_name || lead.name || 'this lead'
+
+    if (!window.confirm(
+      `Delete ${leadName}? This will permanently delete the lead and its associated bookings and itineraries.`
+    )) {
+      return
+    }
+
+    try {
+      setDeletingId(lead.id)
+
+      await api.delete(`/leads/${lead.id}`)
+
+      setLeads((prev) => {
+        const updated = prev.filter((item) => item.id !== lead.id)
+        publishLocalLeads(updated)
+        return updated
+      })
+    } catch (error) {
+      console.error('Delete lead error:', error)
+      window.alert(
+        error.response?.data?.message ||
+        'Could not delete this lead. Please try again.'
+      )
+    } finally {
+      setDeletingId(null)
+    }
+  }
 
   // ── Sort handler ─────────────────────────────────────────────────────────────
   const handleSort = (field) => {
@@ -433,22 +478,6 @@ function Leads() {
                           <Eye size={14} color="#0f766e" />
                         </button>
 
-                        {/* Call */}
-                        <button
-                          onClick={() => window.open(`tel:${lead.phone}`)}
-                          title="Call lead"
-                          style={{
-                            width: '30px', height: '30px', borderRadius: '8px',
-                            border: '1px solid #e5e7eb', backgroundColor: '#fff',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer',
-                          }}
-                          onMouseEnter={e => e.currentTarget.style.backgroundColor = '#eff6ff'}
-                          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}
-                        >
-                          <Phone size={14} color="#2563eb" />
-                        </button>
-
                         {/* Email */}
                         <button
                           onClick={() => window.open(`mailto:${lead.email}`)}
@@ -467,17 +496,15 @@ function Leads() {
 
                         {/* Delete */}
                         <button
-                          onClick={() => {
-                            if (window.confirm(`Delete lead for ${lead.name}?`)) {
-                              setLeads(prev => prev.filter(l => l.id !== lead.id))
-                            }
-                          }}
+                          onClick={() => handleDeleteLead(lead)}
+                          disabled={deletingId === lead.id}
                           title="Delete lead"
                           style={{
                             width: '30px', height: '30px', borderRadius: '8px',
                             border: '1px solid #e5e7eb', backgroundColor: '#fff',
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            cursor: 'pointer',
+                            cursor: deletingId === lead.id ? 'not-allowed' : 'pointer',
+                            opacity: deletingId === lead.id ? 0.5 : 1,
                           }}
                           onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fef2f2'}
                           onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fff'}

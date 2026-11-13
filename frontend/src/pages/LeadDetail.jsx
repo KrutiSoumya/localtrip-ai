@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft, User, Phone, Mail, MapPin, DollarSign,
-  Calendar, Users, CheckCircle, Clock, FileText,
-  Map, Bell, ThumbsUp, Sparkles, ChevronRight, X
+  Calendar, Users, CheckCircle, FileText,
+  Map, ThumbsUp, Sparkles, ChevronRight, X, Download
 } from 'lucide-react'
-import { getLeadById } from '../services/api'
+import { getLeadById, getItinerariesByLead } from '../services/api'
 import api from '../services/api'
 
 // ── Mock fallback ─────────────────────────────────────────────────────────────
@@ -117,7 +117,13 @@ const categoryMeta = {
   'Visa & Misc':   { color: '#6b7280', bg: '#f9fafb' },
 }
 
-function QuotationGenerator({ leadId, itineraryId }) {
+const selectStyle = {
+  display: 'block', width: '100%', marginTop: '6px', padding: '9px 10px',
+  border: '1px solid #d1d5db', borderRadius: '8px', backgroundColor: '#fff',
+  color: '#111827', fontSize: '13px', boxSizing: 'border-box',
+}
+
+function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
   const [quote, setQuote]         = useState(null)
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState(null)
@@ -125,6 +131,12 @@ function QuotationGenerator({ leadId, itineraryId }) {
   const [dismissed, setDismissed] = useState([])
   const [sent, setSent]           = useState(false)
   const [sending, setSending]     = useState(false)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
+  const [accommodationType, setAccommodationType] = useState('standard')
+  const [transportType, setTransportType] = useState('private_sedan')
+  const [airportTransferType, setAirportTransferType] = useState('airport_transfer_sedan')
+  const [airportTransfers, setAirportTransfers] = useState(2)
+  const [vehicleCount, setVehicleCount] = useState(1)
 
   const recalc = (items, pct) => {
     const sub  = items.reduce((sum, i) => sum + i.total, 0)
@@ -132,16 +144,167 @@ function QuotationGenerator({ leadId, itineraryId }) {
     return { subtotal: sub, marginAmount: mAmt, finalPrice: sub + mAmt }
   }
 
+  
   const handleGenerate = async () => {
     try {
-      setLoading(true); setError(null); setQuote(null); setSent(false)
-      const res = await api.post('/quotation/generate', { leadId, itineraryId })
-      setQuote(res.data)
-      setMargin(res.data.marginPct || 15)
-    } catch {
-      setQuote(mockQuotation)
-      setMargin(mockQuotation.marginPct)
-    } finally { setLoading(false) }
+      setLoading(true)
+      setError(null)
+      setQuote(null)
+      setSent(false)
+      setDismissed([])
+
+      const numericLeadId = Number(leadId)
+      const numericItineraryId = Number(itineraryId)
+
+      if (!Number.isInteger(numericLeadId) || numericLeadId <= 0) {
+        throw new Error('A valid lead ID is required.')
+      }
+
+      if (!Number.isInteger(numericItineraryId) || numericItineraryId <= 0) {
+        throw new Error('No saved itinerary is linked to this lead. Save an itinerary first.')
+      }
+
+      // Load the saved itinerary so the quote is based on its actual days and costs.
+      const itineraryRes = await api.get(`/itinerary/${numericItineraryId}`)
+      const saved = itineraryRes.data?.itinerary || itineraryRes.data?.data || itineraryRes.data
+
+      if (!saved || !Array.isArray(saved.days) || saved.days.length === 0) {
+        throw new Error('The saved itinerary has no days to quote.')
+      }
+
+      // The backend quotation router is mounted at POST /api/quotations.
+      const res = await api.post('/quotations', {
+        lead_id: numericLeadId,
+        itineraryId: numericItineraryId,
+        itinerary: {
+          destination: (
+              saved.destination ||
+              saved.destination_name ||
+              saved.lead?.destination ||
+              ''
+          ).trim().replace(/^kerela$/i, 'Kerala'),
+          duration_days: saved.days.length,
+          nights: Math.max(saved.days.length - 1, 0),
+          days: saved.days,
+          accommodation_type: accommodationType,
+          transport_type: transportType,
+          airport_transfer_type: airportTransferType,
+          airport_transfers: Number(airportTransfers),
+          vehicle_count: Number(vehicleCount),
+        },
+        margin: Number(margin),
+        group_size: Number(groupSize) > 0
+          ? Number(groupSize)
+          : Number(saved.lead?.group_size || saved.lead?.groupSize || 1),
+        currency: 'INR',
+      })
+
+      const pricing = res.data?.pricing
+      const breakdown = pricing?.breakdown
+
+      if (!pricing || !breakdown) {
+        throw new Error('The server response did not include quotation pricing details.')
+      }
+
+      // Build itemised rows from the dataset-backed pricing_details returned by quotationService.
+      // Do not silently replace missing prices with zero: a missing detail is an integration error.
+      const details = pricing.pricing_details || pricing.pricingDetails
+      if (!details) {
+        throw new Error('The server returned category totals but no itemised pricing_details. Check quotationController response mapping.')
+      }
+
+      const items = []
+      const activityRows = Array.isArray(details.activities) ? details.activities : []
+      activityRows.forEach((activity) => {
+        items.push({
+          category: 'Activities',
+          description: `Day ${activity.day}: ${activity.name}`,
+          unitCost: Number(activity.unit_price ?? activity.unit_cost ?? 0),
+          units: Number(activity.quantity ?? 1),
+          total: Number(activity.total ?? 0),
+        })
+      })
+
+      const accommodation = details.accommodation
+      if (accommodation) {
+        items.push({
+          category: 'Accommodation',
+          description: `${accommodation.label || accommodation.type} — ${accommodation.rooms} room(s) × ${accommodation.nights} night(s)`,
+          unitCost: Number(accommodation.unit_price ?? accommodation.rate ?? 0),
+          units: Number(accommodation.rooms ?? 1) * Number(accommodation.nights ?? 0),
+          total: Number(accommodation.total ?? 0),
+        })
+      }
+
+      const transport = details.transport
+      if (transport) {
+        const transportUnits = Number(transport.quantity ?? 1) * Number(transport.days ?? 1)
+        items.push({
+          category: 'Transport',
+          description: `${transport.label || transport.type} — ${transport.quantity ?? 1} × ${transport.days ?? 1} day(s)`,
+          unitCost: Number(transport.unit_price ?? transport.rate ?? 0),
+          units: transportUnits,
+          total: Number(transport.total ?? 0),
+        })
+      }
+
+      const transfers = details.airport_transfers
+      if (transfers && Number(transfers.total) > 0) {
+        items.push({
+          category: 'Transport',
+          description: `Airport transfer: ${transfers.label || transfers.type} — ${transfers.quantity} transfer(s)`,
+          unitCost: Number(transfers.unit_price ?? 0),
+          units: Number(transfers.quantity ?? 0),
+          total: Number(transfers.total ?? 0),
+        })
+      }
+
+      if (items.length === 0) {
+        throw new Error('The quotation contains no priced activities, accommodation, transport or transfers. Check the itinerary and destination dataset.')
+      }
+
+      const anomalyCheck = res.data?.anomaly_check
+      const anomalies = (anomalyCheck?.is_anomaly || anomalyCheck?.detected)
+        ? (anomalyCheck.anomalies || []).map((item) => ({
+            type: 'warning',
+            field: item.component === 'total' ? 'Total itinerary cost' : item.component,
+            message: anomalyCheck.message,
+          }))
+        : (anomalyCheck?.message
+            ? [{ type: 'info', field: 'Pricing', message: anomalyCheck.message }]
+            : [])
+
+      const subtotal = Number(breakdown.base_total ?? items.reduce((sum, item) => sum + item.total, 0))
+      const marginAmount = Number(breakdown.margin_amount ?? pricing.margin_applied ?? 0)
+      const appliedMargin = Number(pricing.margin_applied ?? margin)
+      const finalPrice = Number(pricing.group_total ?? subtotal + marginAmount)
+      const destination = saved.destination || saved.destination_name || saved.lead?.destination || 'Destination not set'
+
+      setQuote({
+        id: res.data?.quotation?.id ?? res.data?.quotation?.quotation_id ?? res.data?.id ?? res.data?.quotationId,
+        itineraryId: numericItineraryId,
+        destination,
+        duration: saved.days.length,
+        groupSize: Number(groupSize) > 0 ? Number(groupSize) : Number(saved.lead?.group_size || saved.lead?.groupSize || 1),
+        pricingDetails: details,
+        currency: '₹',
+        items,
+        subtotal,
+        marginPct: appliedMargin,
+        marginAmount,
+        finalPrice,
+        anomalies,
+      })
+      setMargin(appliedMargin)
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+        err.message ||
+        'Failed to generate quotation.'
+      )
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleMarginChange = (val) => {
@@ -152,13 +315,6 @@ function QuotationGenerator({ leadId, itineraryId }) {
     setQuote(prev => ({ ...prev, marginPct: pct, ...updated }))
   }
 
-  const handleItemChange = (idx, field, val) => {
-    const items = [...quote.items]
-    items[idx] = { ...items[idx], [field]: Number(val) }
-    items[idx].total = items[idx].unitCost * items[idx].units
-    const updated = recalc(items, margin)
-    setQuote(prev => ({ ...prev, items, ...updated }))
-  }
 
   const handleSend = async () => {
     try {
@@ -167,6 +323,46 @@ function QuotationGenerator({ leadId, itineraryId }) {
       setSent(true)
     } catch { setSent(true) }
     finally { setSending(false) }
+  }
+
+  // Download the saved quotation as a PDF from the backend.
+  const handleDownloadPDF = async () => {
+    const quotationId = Number(quote?.id)
+
+    if (!Number.isInteger(quotationId) || quotationId <= 0) {
+      setError('The quotation was generated, but the server did not return its saved quotation ID. Please regenerate the quotation and try again.')
+      return
+    }
+
+    try {
+      setDownloadingPdf(true)
+      setError(null)
+
+      const response = await api.post(
+        '/pdf/quotation',
+        { quotation_id: quotationId },
+        { responseType: 'arraybuffer' }
+      )
+
+      const blob = new Blob([response.data], { type: 'application/pdf' })
+      const url = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `quotation-${quotationId}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => window.URL.revokeObjectURL(url), 1000)
+    } catch (err) {
+      setError(
+        err.response?.status === 404
+          ? 'Quotation PDF endpoint was not found. Check that POST /api/pdf/quotation is registered in the backend.'
+          : 'Could not download the quotation PDF. Check the backend terminal and try again.'
+      )
+      console.error('Quotation PDF download failed:', err)
+    } finally {
+      setDownloadingPdf(false)
+    }
   }
 
   const warnings = (quote?.anomalies || []).filter(a => !dismissed.includes(a.field) && a.type === 'warning')
@@ -199,7 +395,25 @@ function QuotationGenerator({ leadId, itineraryId }) {
           )}
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {quote && (
+            <button
+              onClick={handleDownloadPDF}
+              disabled={downloadingPdf}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '6px',
+                padding: '9px 14px', borderRadius: '10px', border: 'none',
+                backgroundColor: downloadingPdf ? '#9ca3af' : '#1d4ed8',
+                color: '#fff', fontSize: '13px', fontWeight: '600',
+                cursor: downloadingPdf ? 'not-allowed' : 'pointer',
+                opacity: downloadingPdf ? 0.8 : 1,
+              }}
+            >
+              <Download size={14} />
+              {downloadingPdf ? 'Preparing PDF...' : 'Download Quotation PDF'}
+            </button>
+          )}
+
           {quote && !sent && (
             <button
               onClick={handleSend} disabled={sending}
@@ -257,6 +471,35 @@ function QuotationGenerator({ leadId, itineraryId }) {
           <p style={{ margin: 0, fontSize: '13px', color: '#dc2626' }}>{error}</p>
         </div>
       )}
+          {/* Quotation preferences: these selections are sent to the pricing service. */}
+          <div style={{ padding: '16px', border: '1px solid #e5e7eb', borderRadius: '12px', backgroundColor: '#fafafa' }}>
+            <p style={{ margin: '0 0 5px', fontSize: '13px', fontWeight: '600', color: '#111827' }}>Quotation Preferences</p>
+            <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#6b7280' }}>Choose the dataset rates used to calculate this quotation.</p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+              <label style={{ fontSize: '12px', color: '#4b5563' }}>Accommodation
+                <select value={accommodationType} onChange={e => setAccommodationType(e.target.value)} style={selectStyle}>
+                  <option value="budget">Budget</option><option value="standard">Standard</option><option value="premium">Premium</option><option value="luxury">Luxury</option>
+                </select>
+              </label>
+              <label style={{ fontSize: '12px', color: '#4b5563' }}>Daily transport
+                <select value={transportType} onChange={e => setTransportType(e.target.value)} style={selectStyle}>
+                  <option value="public_transport">Public transport</option><option value="shared_transfer">Shared transfer</option><option value="private_sedan">Private sedan</option><option value="private_suv">Private SUV</option><option value="tempo_traveller">Tempo traveller</option>
+                </select>
+              </label>
+              <label style={{ fontSize: '12px', color: '#4b5563' }}>Airport transfer
+                <select value={airportTransferType} onChange={e => setAirportTransferType(e.target.value)} style={selectStyle}>
+                  <option value="airport_transfer_sedan">Sedan</option><option value="airport_transfer_suv">SUV</option>
+                </select>
+              </label>
+              <label style={{ fontSize: '12px', color: '#4b5563' }}>Airport transfers
+                <input type="number" min="0" value={airportTransfers} onChange={e => setAirportTransfers(Math.max(0, Number(e.target.value)))} style={selectStyle} />
+              </label>
+              <label style={{ fontSize: '12px', color: '#4b5563' }}>Number of vehicles
+                <input type="number" min="1" value={vehicleCount} onChange={e => setVehicleCount(Math.max(1, Number(e.target.value)))} style={selectStyle} />
+              </label>
+            </div>
+          </div>
+
 
       {/* Loading */}
       {loading && (
@@ -346,10 +589,10 @@ function QuotationGenerator({ leadId, itineraryId }) {
             border: '1px solid #f3f4f6', flexWrap: 'wrap',
           }}>
             {[
-              { label: 'Destination', value: quote.destination        },
-              { label: 'Duration',    value: `${quote.duration} days`  },
-              { label: 'Group Size',  value: `${quote.groupSize} pax`  },
-              { label: 'Itinerary',   value: quote.itineraryId         },
+              { label: 'Destination', value: quote.destination },
+              { label: 'Duration', value: `${quote.duration} days` },
+              { label: 'Group Size', value: `${quote.groupSize} pax` },
+              { label: 'Itinerary', value: quote.itineraryId },
             ].map(({ label, value }) => (
               <div key={label}>
                 <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>{label}</p>
@@ -397,34 +640,11 @@ function QuotationGenerator({ leadId, itineraryId }) {
                         <td style={{ padding: '12px 14px', fontSize: '13px', color: '#374151' }}>
                           {item.description}
                         </td>
-                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
-                            <span style={{ fontSize: '12px', color: '#9ca3af' }}>₹</span>
-                            <input
-                              type="number" value={item.unitCost}
-                              onChange={e => handleItemChange(idx, 'unitCost', e.target.value)}
-                              style={{
-                                width: '80px', padding: '4px 8px', borderRadius: '6px',
-                                border: '1px solid #e5e7eb', fontSize: '13px',
-                                color: '#111827', textAlign: 'right', outline: 'none',
-                              }}
-                              onFocus={e => e.target.style.borderColor = '#2563eb'}
-                              onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                            />
-                          </div>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                          {fmt(item.unitCost)}
                         </td>
-                        <td style={{ padding: '12px 14px', textAlign: 'right' }}>
-                          <input
-                            type="number" value={item.units}
-                            onChange={e => handleItemChange(idx, 'units', e.target.value)}
-                            style={{
-                              width: '50px', padding: '4px 8px', borderRadius: '6px',
-                              border: '1px solid #e5e7eb', fontSize: '13px',
-                              color: '#111827', textAlign: 'right', outline: 'none',
-                            }}
-                            onFocus={e => e.target.style.borderColor = '#2563eb'}
-                            onBlur={e => e.target.style.borderColor = '#e5e7eb'}
-                          />
+                        <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: '13px', color: '#374151' }}>
+                          {Number(item.units).toLocaleString('en-IN')}
                         </td>
                         <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: '13px', fontWeight: '600', color: '#111827', whiteSpace: 'nowrap' }}>
                           {fmt(item.total)}
@@ -496,28 +716,64 @@ function QuotationGenerator({ leadId, itineraryId }) {
     </div>
   )
 }
-
 // ── Main LeadDetail Page ──────────────────────────────────────────────────────
 
 function LeadDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [lead, setLead]         = useState(null)
-  const [loading, setLoading]   = useState(true)
+  const location = useLocation()
+  const [lead, setLead] = useState(null)
+  const [loading, setLoading] = useState(true)
   const [approved, setApproved] = useState(false)
 
   useEffect(() => {
+    let cancelled = false
+
     const fetch = async () => {
       try {
         const res = await getLeadById(id)
-        setLead(res.data)
-      } catch {
-        setLead(mockLead)
+        let leadData = res.data
+
+        // Fetch itineraries separately so the newest saved itinerary is shown
+        // even if the lead endpoint does not include the relation.
+        try {
+          const itineraryRes = await getItinerariesByLead(id)
+          const itineraries = Array.isArray(itineraryRes.data)
+            ? itineraryRes.data
+            : (itineraryRes.data?.itineraries || itineraryRes.data?.data || [])
+          const latest = Array.isArray(itineraries) ? itineraries[0] : null
+
+          leadData = {
+            ...leadData,
+            itinerary: latest
+              ? {
+                  ...latest,
+                  days: Array.isArray(latest.days) ? latest.days.length : (latest.days || 0),
+                  createdAt: latest.createdAt
+                    ? new Date(latest.createdAt).toLocaleDateString()
+                    : '',
+                  status: latest.status || 'approved',
+                }
+              : null,
+          }
+        } catch (itineraryError) {
+          console.error('Could not load linked itineraries:', itineraryError)
+        }
+
+        if (!cancelled) setLead(leadData)
+      } catch (error) {
+        if (!cancelled) setLead(mockLead)
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
+
+    setLoading(true)
     fetch()
+
+    return () => {
+      cancelled = true
+    }
   }, [id])
 
   if (loading) return (
@@ -537,11 +793,32 @@ function LeadDetail() {
     </div>
   )
 
-  const score       = scoreMeta[lead.score]       || scoreMeta.Cold
-  const statusColor = statusColors[lead.status]   || statusColors.New
+  const score = scoreMeta[lead.score] || scoreMeta.Cold
+  const statusColor = statusColors[lead.status] || statusColors.New
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+      {location.state?.saved && (
+        <div
+          role="status"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '10px',
+            padding: '13px 16px',
+            borderRadius: '10px',
+            border: '1px solid #99f6e4',
+            backgroundColor: '#f0fdfa',
+            color: '#0f766e',
+            fontSize: '14px',
+            fontWeight: '500',
+          }}
+        >
+          <CheckCircle size={18} />
+          Itinerary saved successfully for this lead.
+        </div>
+      )}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -602,12 +879,12 @@ function LeadDetail() {
           <SectionTitle icon={User} title="Customer Information" />
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[
-              { icon: Phone,      label: 'Phone',       value: lead.phone                                                        },
-              { icon: Mail,       label: 'Email',       value: lead.email                                                        },
-              { icon: MapPin,     label: 'Destination', value: lead.destination                                                  },
-              { icon: DollarSign, label: 'Budget',      value: lead.budget                                                       },
-              { icon: Calendar,   label: 'Travel Date', value: lead.travelDate                                                   },
-              { icon: Users,      label: 'Group Size',  value: `${lead.groupSize} ${lead.groupSize === 1 ? 'person' : 'people'}` },
+              { icon: Phone, label: 'Phone', value: lead.phone },
+              { icon: Mail, label: 'Email', value: lead.email },
+              { icon: MapPin, label: 'Destination', value: lead.destination },
+              { icon: DollarSign, label: 'Budget', value: lead.budget },
+              { icon: Calendar, label: 'Travel Date', value: lead.travelDate },
+              { icon: Users, label: 'Group Size', value: `${lead.groupSize} ${lead.groupSize === 1 ? 'person' : 'people'}` },
             ].map(({ icon: Icon, label, value }) => (
               <div key={label} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                 <div style={{
@@ -646,7 +923,7 @@ function LeadDetail() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {[
                 { label: 'Response Speed', value: 85 },
-                { label: 'Budget Match',   value: 92 },
+                { label: 'Budget Match', value: 92 },
                 { label: 'Intent Clarity', value: 78 },
               ].map(({ label, value }) => (
                 <div key={label}>
@@ -694,72 +971,6 @@ function LeadDetail() {
           </Card>
         </div>
       </div>
-
-      {/* ── Row 2: Status History + Follow-up Schedule ───────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-        <Card>
-          <SectionTitle icon={Clock} title="Status History" />
-          <div style={{ position: 'relative', paddingLeft: '16px' }}>
-            <div style={{ position: 'absolute', left: '7px', top: '8px', bottom: '8px', width: '2px', backgroundColor: '#f3f4f6' }} />
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {(lead.statusHistory || []).map((item, i) => (
-                <div key={i} style={{ display: 'flex', gap: '12px', position: 'relative' }}>
-                  <div style={{
-                    width: '12px', height: '12px', borderRadius: '50%',
-                    backgroundColor: i === lead.statusHistory.length - 1 ? '#0f766e' : '#d1d5db',
-                    border: '2px solid #fff',
-                    outline: `2px solid ${i === lead.statusHistory.length - 1 ? '#0f766e' : '#e5e7eb'}`,
-                    flexShrink: 0, marginTop: '3px', position: 'absolute', left: '-20px',
-                  }} />
-                  <div style={{ paddingLeft: '4px' }}>
-                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                      <span style={{
-                        fontSize: '12px', fontWeight: '600', padding: '2px 8px', borderRadius: '999px',
-                        backgroundColor: statusColors[item.status]?.bg || '#f3f4f6',
-                        color: statusColors[item.status]?.color || '#6b7280',
-                      }}>{item.status}</span>
-                      <span style={{ fontSize: '11px', color: '#9ca3af' }}>{item.date}</span>
-                    </div>
-                    <p style={{ margin: '5px 0 0', fontSize: '13px', color: '#374151' }}>{item.note}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        <Card>
-          <SectionTitle icon={Bell} title="Follow-up Schedule" color="#d97706" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {(lead.followUps || []).map((f, i) => (
-              <div key={i} style={{
-                display: 'flex', alignItems: 'flex-start', gap: '10px',
-                padding: '10px 12px', borderRadius: '10px',
-                backgroundColor: f.status === 'Done' ? '#f9fafb' : '#fffbeb',
-                border: `1px solid ${f.status === 'Done' ? '#f3f4f6' : '#fde68a'}`,
-              }}>
-                <div style={{
-                  width: '26px', height: '26px', borderRadius: '8px', flexShrink: 0,
-                  backgroundColor: f.status === 'Done' ? '#f3f4f6' : '#fef3c7',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {f.status === 'Done'
-                    ? <CheckCircle size={13} color="#9ca3af" />
-                    : <Clock size={13} color="#d97706" />}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>{f.type}</span>
-                    <span style={{ fontSize: '11px', color: '#9ca3af' }}>{f.date}</span>
-                  </div>
-                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#6b7280' }}>{f.note}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
       {/* ── Row 3: Linked Itinerary + Linked Quotation ───────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
         <Card>
@@ -778,7 +989,7 @@ function LeadDetail() {
                 </span>
               </div>
               <button
-                onClick={() => navigate(`/itinerary?leadId=${lead.id}`)}
+                onClick={() => navigate(`/itinerary?itineraryId=${lead.itinerary.id}`)}
                 style={{
                   marginTop: '12px', width: '100%', padding: '8px', borderRadius: '8px',
                   border: '1px solid #e5e7eb', backgroundColor: '#fff', fontSize: '13px',
@@ -791,7 +1002,7 @@ function LeadDetail() {
           ) : (
             <div style={{ textAlign: 'center', padding: '24px', color: '#9ca3af' }}>
               <Map size={28} style={{ margin: '0 auto 8px', display: 'block', opacity: 0.4 }} />
-              <p style={{ margin: 0, fontSize: '13px' }}>No itinerary linked yet</p>
+              <p style={{ margin: 0, fontSize: '13px' }}>No itinerary yet</p>
               <button
                 onClick={() => navigate(`/itinerary?leadId=${lead.id}`)}
                 style={{
@@ -837,7 +1048,7 @@ function LeadDetail() {
       </div>
 
       {/* ── Row 4: Quotation Generator ────────────────────────────────────── */}
-      <QuotationGenerator leadId={lead.id} itineraryId={lead.itinerary?.id} />
+      <QuotationGenerator leadId={lead.id} itineraryId={lead.itinerary?.id} groupSize={lead.group_size ?? lead.groupSize ?? 1} />
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

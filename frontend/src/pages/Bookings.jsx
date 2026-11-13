@@ -13,80 +13,9 @@ import {
 } from 'lucide-react'
 
 import {
-  getBookings,
+  getAllBookings,
   updateBookingPayment
 } from '../services/api'
-
-// ── Mock fallback data ────────────────────────────────────────────────────────
-
-const mockBookings = [
-  {
-    id: 1,
-    customer: 'Rohit Kumar',
-    destination: 'Goa, India',
-    travelDate: '2025-07-14',
-    totalCost: 48500,
-    paymentStatus: 'Paid',
-    status: 'Confirmed',
-    pax: 2,
-    bookingRef: 'BK-20250601-001',
-  },
-  {
-    id: 2,
-    customer: 'Priya Sharma',
-    destination: 'Manali, Himachal',
-    travelDate: '2025-07-20',
-    totalCost: 32000,
-    paymentStatus: 'Pending',
-    status: 'Confirmed',
-    pax: 3,
-    bookingRef: 'BK-20250602-002',
-  },
-  {
-    id: 3,
-    customer: 'Anil Mehta',
-    destination: 'Kerala Backwaters',
-    travelDate: '2025-06-30',
-    totalCost: 61000,
-    paymentStatus: 'Paid',
-    status: 'Completed',
-    pax: 4,
-    bookingRef: 'BK-20250520-003',
-  },
-  {
-    id: 4,
-    customer: 'Sunita Rao',
-    destination: 'Rajasthan Circuit',
-    travelDate: '2025-08-05',
-    totalCost: 75000,
-    paymentStatus: 'Pending',
-    status: 'Confirmed',
-    pax: 5,
-    bookingRef: 'BK-20250603-004',
-  },
-  {
-    id: 5,
-    customer: 'Deepak Nair',
-    destination: 'Bali, Indonesia',
-    travelDate: '2025-07-01',
-    totalCost: 95000,
-    paymentStatus: 'Paid',
-    status: 'Completed',
-    pax: 2,
-    bookingRef: 'BK-20250515-005',
-  },
-  {
-    id: 6,
-    customer: 'Meena Iyer',
-    destination: 'Dubai, UAE',
-    travelDate: '2025-09-10',
-    totalCost: 120000,
-    paymentStatus: 'Pending',
-    status: 'Confirmed',
-    pax: 4,
-    bookingRef: 'BK-20250604-006',
-  },
-]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -110,7 +39,7 @@ const formatDate = (dateStr) => {
 }
 
 const daysUntil = (dateStr) => {
-  if (!dateStr) return 0
+  if (!dateStr) return null
 
   const diff = new Date(dateStr) - new Date()
 
@@ -458,24 +387,26 @@ function BookingRow({
     booking.travelDate
   )
 
-  const isPast = days < 0
+  const isPast = days !== null && days < 0
   const isSoon =
-    days >= 0 && days <= 7
+    days !== null && days >= 0 && days <= 7
 
   const customer =
+    booking.lead?.customer_name ||
     booking.customer ||
     booking.customer_name ||
     'Unknown customer'
 
   const destination =
+    booking.lead?.destination ||
     booking.destination ||
     booking.itinerary?.lead?.destination ||
     '—'
 
   const pax =
-    booking.pax ||
-    booking.lead?.group_size ||
-    booking.group_size ||
+    booking.lead?.group_size ??
+    booking.pax ??
+    booking.group_size ??
     1
 
   const bookingRef =
@@ -656,15 +587,13 @@ function BookingRow({
                   : '#9ca3af',
             }}
           >
-            {isPast
-              ? 'Completed'
-              : isSoon
-                ? `In ${days} day${
-                    days === 1
-                      ? ''
-                      : 's'
-                  } ⚠️`
-                : `In ${days} days`}
+            {days === null
+              ? 'Date not set'
+              : isPast
+                ? 'Past travel date'
+                : isSoon
+                  ? `In ${days} day${days === 1 ? '' : 's'} ⚠️`
+                  : `In ${days} days`}
           </p>
         </div>
       </td>
@@ -777,7 +706,7 @@ function Bookings() {
       async () => {
         try {
           const res =
-            await getBookings()
+            await getAllBookings()
 
           const data =
             Array.isArray(res.data)
@@ -792,8 +721,10 @@ function Bookings() {
               error.message
           )
 
-          setBookings(
-            mockBookings
+          setBookings([])
+          showToast(
+            'Could not load bookings. Please check the backend and try again.',
+            'error'
           )
         } finally {
           setLoading(false)
@@ -858,11 +789,13 @@ function Bookings() {
   const filtered =
     bookings.filter((booking) => {
       const customer =
+        booking.lead?.customer_name ||
         booking.customer ||
         booking.customer_name ||
         ''
 
       const destination =
+        booking.lead?.destination ||
         booking.destination ||
         booking.itinerary?.lead
           ?.destination ||
