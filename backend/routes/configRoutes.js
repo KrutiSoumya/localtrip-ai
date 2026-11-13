@@ -1,3 +1,4 @@
+
 const express = require("express");
 const router = express.Router();
 
@@ -7,12 +8,26 @@ const {
   saveAgentConfig,
   getDestinations,
   addDestination,
-  deleteDestination,
+  updateDestinationStatus,
+  deleteDestination
 } = require("../controllers/configController");
 
 router.post("/agent", authMiddleware, saveAgentConfig);
+
 router.get("/destinations", authMiddleware, getDestinations);
+
 router.post("/destinations", authMiddleware, addDestination);
-router.delete("/destinations/:name", authMiddleware, deleteDestination);
+
+router.patch(
+  "/destinations/:name/status",
+  authMiddleware,
+  updateDestinationStatus
+);
+
+router.delete(
+  "/destinations/:name",
+  authMiddleware,
+  deleteDestination
+);
 
 module.exports = router;

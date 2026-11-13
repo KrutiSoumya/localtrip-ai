@@ -1,233 +1,479 @@
+
 const prisma = require("../services/db");
 
 const {
-  buildQuote,
-  detectPricingAnomalies,
+    buildQuote,
+    detectPricingAnomalies,
 } = require("../services/quotationService");
 
-// ===== CREATE QUOTATION =====
+console.log("QUOTATION CONTROLLER VERSION: PRICING INTEGRATION - SCHEMA FIXED");
+
+// --------------------------------------------------
+// CREATE QUOTATION
+// --------------------------------------------------
+
 const createQuotation = async (req, res) => {
-  try {
-    const {
-      lead_id,
-      itineraryId,
-      itinerary,
-      margin = 0,
-      group_size = 1,
-      currency = "INR",
-      notes,
-    } = req.body;
+    try {
+        const {
+            lead_id,
+            itineraryId,
+            itinerary,
+            margin = 0,
+            group_size,
+            currency = "INR",
+            notes,
+        } = req.body;
 
-    const userId = req.user.id;
+        // ------------------------------------------
+        // 1. VALIDATE AUTHENTICATED USER
+        // ------------------------------------------
 
-    let finalItineraryId = itineraryId
-      ? Number(itineraryId)
-      : null;
+        const userId = req.user?.id;
 
-    // If lead_id is supplied, verify that the lead belongs
-    // to the logged-in user.
-    if (lead_id) {
-      const lead = await prisma.lead.findFirst({
-        where: {
-          id: Number(lead_id),
-          userId,
-        },
-      });
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required.",
+            });
+        }
 
-      if (!lead) {
-        return res.status(404).json({
-          message: "Lead not found",
-        });
-      }
-    }
+        // ------------------------------------------
+        // 2. VALIDATE LEAD ID
+        // ------------------------------------------
 
-    // If itineraryId is supplied, verify ownership through
-    // the associated lead.
-    if (finalItineraryId) {
-      const existingItinerary = await prisma.itinerary.findFirst({
-        where: {
-          id: finalItineraryId,
-          lead: {
-            userId,
-          },
-        },
-      });
+        const parsedLeadId = Number(lead_id);
 
-      if (!existingItinerary) {
-        return res.status(404).json({
-          message: "Itinerary not found",
-        });
-      }
+        if (!Number.isInteger(parsedLeadId) || parsedLeadId <= 0) {
+            return res.status(400).json({
+                success: false,
+                message: "A valid lead ID is required.",
+            });
+        }
 
-      // If both lead_id and itineraryId are supplied,
-      // make sure they belong together.
-      if (
-        lead_id &&
-        existingItinerary.leadId !== Number(lead_id)
-      ) {
-        return res.status(400).json({
-          message: "Itinerary does not belong to the specified lead",
-        });
-      }
-    }
+        // ------------------------------------------
+        // 3. VERIFY LEAD OWNERSHIP
+        // ------------------------------------------
 
-    // If no itineraryId was supplied, find the latest
-    // itinerary belonging to the verified lead.
-    if (!finalItineraryId && lead_id) {
-      const existingItinerary =
-        await prisma.itinerary.findFirst({
-          where: {
-            leadId: Number(lead_id),
-            lead: {
-              userId,
+        const lead = await prisma.lead.findFirst({
+            where: {
+                id: parsedLeadId,
+                userId,
             },
-          },
-          orderBy: {
-            createdAt: "desc",
-          },
         });
 
-      if (existingItinerary) {
-        finalItineraryId = existingItinerary.id;
-      }
-    }
+        if (!lead) {
+            return res.status(404).json({
+                success: false,
+                message: "Lead not found or access denied.",
+            });
+        }
 
-    if (!finalItineraryId) {
-      return res.status(400).json({
-        message: "itineraryId or lead_id is required",
-      });
-    }
+        // ------------------------------------------
+        // 4. VALIDATE GROUP SIZE
+        // ------------------------------------------
 
-    if (!itinerary || !Array.isArray(itinerary.days)) {
-      return res.status(400).json({
-        message: "Valid itinerary with days is required",
-      });
-    }
+        const parsedGroupSize = Number(
+            group_size ?? lead.group_size ?? 1
+        );
 
-    const quote = buildQuote(
-      itinerary,
-      Number(margin),
-      Number(group_size)
-    );
+        if (
+            !Number.isInteger(parsedGroupSize) ||
+            parsedGroupSize < 1
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Group size must be a positive whole number.",
+            });
+        }
 
-    const destination =
-      itinerary.destination ||
-      itinerary.destination_name ||
-      null;
+        // ------------------------------------------
+        // 5. VALIDATE MARGIN
+        // ------------------------------------------
 
-    const durationDays =
-      itinerary.duration_days ||
-      itinerary.days.length ||
-      1;
+        const parsedMargin = Number(margin);
 
-    const anomalyCheck = destination
-      ? detectPricingAnomalies(
-          quote.breakdown,
-          destination,
-          durationDays
-        )
-      : {
-          anomalies: [],
-          detected: false,
-          message:
-            "Destination not available for pricing anomaly detection.",
+        if (
+            !Number.isFinite(parsedMargin) ||
+            parsedMargin < 0
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Margin must be a valid non-negative number.",
+            });
+        }
+
+        // ------------------------------------------
+        // 6. GET AND VERIFY ITINERARY
+        // ------------------------------------------
+
+        let selectedItinerary = itinerary || null;
+        let resolvedItineraryId = itineraryId
+            ? Number(itineraryId)
+            : null;
+
+        if (
+            resolvedItineraryId !== null &&
+            (!Number.isInteger(resolvedItineraryId) ||
+                resolvedItineraryId <= 0)
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid itinerary ID.",
+            });
+        }
+
+        // Fetch the saved itinerary and verify ownership.
+        if (resolvedItineraryId !== null) {
+            const savedItinerary = await prisma.itinerary.findFirst({
+                where: {
+                    id: resolvedItineraryId,
+                    leadId: parsedLeadId,
+                    lead: {
+                        userId,
+                    },
+                },
+                include: {
+                    days: true,
+                },
+            });
+
+            if (!savedItinerary) {
+                return res.status(404).json({
+                    success: false,
+                    message: "Itinerary not found or access denied.",
+                });
+            }
+
+            // Merge the supplied itinerary with the saved itinerary.
+            // Saved fields remain available when the frontend sends
+            // only destination and days.
+            selectedItinerary = {
+                ...savedItinerary,
+                ...(itinerary || {}),
+                id: savedItinerary.id,
+                days:
+                    itinerary?.days?.length > 0
+                        ? itinerary.days
+                        : savedItinerary.days,
+            };
+        }
+
+        // If no itinerary ID was supplied, find the latest saved one.
+        if (!selectedItinerary) {
+            const latestItinerary = await prisma.itinerary.findFirst({
+                where: {
+                    leadId: parsedLeadId,
+                    lead: {
+                        userId,
+                    },
+                },
+                orderBy: {
+                    createdAt: "desc",
+                },
+                include: {
+                    days: true,
+                },
+            });
+
+            if (latestItinerary) {
+                selectedItinerary = latestItinerary;
+                resolvedItineraryId = latestItinerary.id;
+            }
+        }
+
+        // ------------------------------------------
+        // 7. VALIDATE ITINERARY
+        // ------------------------------------------
+
+        if (
+            !selectedItinerary ||
+            !Array.isArray(selectedItinerary.days) ||
+            selectedItinerary.days.length === 0
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "A valid saved itinerary with at least one day is required.",
+            });
+        }
+
+        // Quotation requires an itineraryId because the Prisma
+        // Quotation model has a mandatory itinerary relationship.
+        if (!resolvedItineraryId) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Save the itinerary before generating a quotation.",
+            });
+        }
+
+        // ------------------------------------------
+        // 8. RESOLVE DESTINATION
+        // ------------------------------------------
+
+        const destination =
+            selectedItinerary.destination ||
+            selectedItinerary.destination_name ||
+            lead.destination;
+
+        if (!destination) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Destination is required to generate a quotation.",
+            });
+        }
+
+        // ------------------------------------------
+        // 9. BUILD FINAL ITINERARY INPUT
+        // ------------------------------------------
+
+        const itineraryForPricing = {
+            ...selectedItinerary,
+
+            destination,
+
+            accommodation_type:
+                selectedItinerary.accommodation_type,
+
+            transport_type:
+                selectedItinerary.transport_type,
+
+            airport_transfer_type:
+                selectedItinerary.airport_transfer_type,
+
+            airport_transfers:
+                selectedItinerary.airport_transfers,
+
+            vehicle_count:
+                selectedItinerary.vehicle_count,
+
+            nights:
+                selectedItinerary.nights,
         };
 
-    const storedBreakdown = {
-      ...quote.breakdown,
-      anomaly_check: anomalyCheck,
-    };
+        // ------------------------------------------
+        // 10. BUILD QUOTATION
+        // ------------------------------------------
 
-    const quotation = await prisma.quotation.create({
-      data: {
-        itineraryId: finalItineraryId,
-        total_price: Math.round(quote.group_total),
-        currency: currency || "INR",
-        notes: notes || null,
-        breakdown: storedBreakdown,
-      },
-    });
+        let quote;
 
-    res.status(201).json({
-      message: "Quotation created successfully",
-      quotation,
-      pricing: {
-        per_person: quote.per_person,
-        group_total: quote.group_total,
-        margin_applied: quote.margin_applied,
-        breakdown: quote.breakdown,
-      },
-      anomaly_check: anomalyCheck,
-    });
+        try {
+            quote = buildQuote(
+                itineraryForPricing,
+                parsedMargin,
+                parsedGroupSize
+            );
+        } catch (pricingError) {
+            console.error(
+                "QUOTATION PRICING ERROR:",
+                pricingError
+            );
 
-  } catch (error) {
-    console.error("Quotation creation error:", error);
+            return res.status(400).json({
+                success: false,
+                message:
+                    pricingError.message ||
+                    "Unable to calculate quotation. Check the itinerary and pricing selections.",
+            });
+        }
 
-    res.status(500).json({
-      message: "Error creating quotation",
-      error: error.message,
-    });
-  }
+        // Validate calculated totals.
+        if (
+            !quote ||
+            !Number.isFinite(Number(quote.group_total)) ||
+            !Number.isFinite(Number(quote.per_person))
+        ) {
+            return res.status(400).json({
+                success: false,
+                message:
+                    "Quotation calculation returned an invalid total.",
+            });
+        }
+
+        if (Number(quote.group_total) < 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Quotation total cannot be negative.",
+            });
+        }
+
+        // ------------------------------------------
+        // 11. CHECK PRICING ANOMALIES
+        // ------------------------------------------
+
+        const durationDays = itineraryForPricing.days.length;
+
+        const anomalyCheck = detectPricingAnomalies(
+            quote.breakdown,
+            destination,
+            durationDays,
+            parsedGroupSize
+        );
+
+        // ------------------------------------------
+        // 12. SAVE QUOTATION
+        // ------------------------------------------
+
+        // IMPORTANT:
+        // Quotation has no leadId field in schema.prisma.
+        // The lead relationship is available through itineraryId.
+
+        const quotation = await prisma.quotation.create({
+            data: {
+                itineraryId: resolvedItineraryId,
+
+                total_price: Math.round(quote.group_total),
+
+                currency,
+
+                notes: notes || null,
+
+                breakdown: {
+                    ...quote.breakdown,
+                    pricing_details: quote.pricing_details,
+                    anomaly_check: anomalyCheck,
+                },
+            },
+        });
+
+        // ------------------------------------------
+        // 13. RETURN COMPLETE QUOTATION RESPONSE
+        // ------------------------------------------
+
+        return res.status(201).json({
+            success: true,
+
+            message: "Quotation generated successfully.",
+
+            quotation,
+
+            pricing: {
+                destination,
+
+                duration_days: durationDays,
+
+                group_size: parsedGroupSize,
+
+                per_person: quote.per_person,
+
+                group_total: quote.group_total,
+
+                margin_applied: quote.margin_applied,
+
+                breakdown: quote.breakdown,
+
+                pricing_details: quote.pricing_details,
+            },
+
+            anomaly_check: anomalyCheck,
+        });
+
+    } catch (error) {
+        console.error("CREATE QUOTATION ERROR:", error);
+
+        return res.status(500).json({
+            success: false,
+            message:
+                error.message ||
+                "Failed to generate quotation.",
+        });
+    }
 };
 
+// --------------------------------------------------
+// GET QUOTATIONS BY LEAD ID
+// --------------------------------------------------
 
-// ===== GET QUOTATIONS BY LEAD =====
 const getQuotationByLeadId = async (req, res) => {
-  try {
-    const leadId = Number(req.params.leadId);
-    const userId = req.user.id;
+    try {
+        const parsedLeadId = Number(req.params.leadId);
 
-    if (!leadId) {
-      return res.status(400).json({
-        message: "Invalid lead ID",
-      });
+        const userId = req.user?.id;
+
+        if (!userId) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required.",
+            });
+        }
+
+        if (
+            !Number.isInteger(parsedLeadId) ||
+            parsedLeadId <= 0
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid lead ID.",
+            });
+        }
+
+        // ------------------------------------------
+        // 1. VERIFY LEAD OWNERSHIP
+        // ------------------------------------------
+
+        const lead = await prisma.lead.findFirst({
+            where: {
+                id: parsedLeadId,
+                userId,
+            },
+        });
+
+        if (!lead) {
+            return res.status(404).json({
+                success: false,
+                message: "Lead not found or access denied.",
+            });
+        }
+
+        // ------------------------------------------
+        // 2. FETCH QUOTATIONS THROUGH ITINERARY
+        // ------------------------------------------
+
+        // Quotation does not have a direct leadId.
+        // Filter through its related itinerary instead.
+
+        const quotations = await prisma.quotation.findMany({
+            where: {
+                itinerary: {
+                    leadId: parsedLeadId,
+                    lead: {
+                        userId,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        // ------------------------------------------
+        // 3. RETURN QUOTATIONS
+        // ------------------------------------------
+
+        return res.status(200).json({
+            success: true,
+            count: quotations.length,
+            quotations,
+        });
+
+    } catch (error) {
+        console.error("GET QUOTATIONS ERROR:", error);
+
+        return res.status(500).json({
+            success: false,
+            message:
+                error.message ||
+                "Failed to retrieve quotations.",
+        });
     }
-
-    // Verify the lead belongs to the logged-in user.
-    const lead = await prisma.lead.findFirst({
-      where: {
-        id: leadId,
-        userId,
-      },
-    });
-
-    if (!lead) {
-      return res.status(404).json({
-        message: "Lead not found",
-      });
-    }
-
-    const quotations = await prisma.quotation.findMany({
-      where: {
-        itinerary: {
-          leadId,
-          lead: {
-            userId,
-          },
-        },
-      },
-      include: {
-        itinerary: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    });
-
-    res.json(quotations);
-
-  } catch (error) {
-    console.error("Quotation fetch error:", error);
-
-    res.status(500).json({
-      message: "Error fetching quotation",
-      error: error.message,
-    });
-  }
 };
 
+// --------------------------------------------------
+// EXPORT CONTROLLERS
+// --------------------------------------------------
 
 module.exports = {
-  createQuotation,
-  getQuotationByLeadId,
+    createQuotation,
+    getQuotationByLeadId,
 };

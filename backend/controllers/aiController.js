@@ -1,3 +1,4 @@
+
 const { generateTrip } = require('../services/aiService');
 const prisma = require('../services/db');
 
@@ -9,7 +10,10 @@ const {
 } = require('../services/utils');
 
 const { generateVariations } = require('../services/itineraryService');
-const { rankItineraries, generateExplanation } = require('../services/rankingService');
+const {
+    rankItineraries,
+    generateExplanation
+} = require('../services/rankingService');
 
 // ==============================
 // 🔹 PARSE QUERY
@@ -19,10 +23,12 @@ exports.handleParseQuery = async (req, res) => {
         let { message } = req.body;
 
         if (!message) {
-            return res.status(400).json({ error: "Message required" });
+            return res.status(400).json({
+                error: "Message required"
+            });
         }
 
-        // 🔹 Normalize Hinglish → English
+        // Normalize Hinglish → English
         message = replaceHinglish(message.toLowerCase());
 
         const prompt = `
@@ -53,7 +59,9 @@ Message: "${message}"
         const raw = await generateTrip(prompt);
 
         if (!raw) {
-            return res.status(500).json({ error: "AI failed" });
+            return res.status(500).json({
+                error: "AI failed"
+            });
         }
 
         let parsed;
@@ -62,6 +70,7 @@ Message: "${message}"
             parsed = JSON.parse(raw);
         } catch (err) {
             console.error("Invalid JSON:", raw);
+
             return res.status(500).json({
                 error: "AI returned invalid JSON",
                 raw
@@ -69,45 +78,55 @@ Message: "${message}"
         }
 
         // =========================
-        // 🔹 POST-PROCESS FIXES
+        // 🔹 RULE-BASED FALLBACKS
         // =========================
 
-// =========================
-// 🔹 RULE-BASED FALLBACKS
-// =========================
+        if (!parsed.duration_days) {
+            const dayMatch = message.match(/(\d+)\s*(day|days|din)/);
 
-if (!parsed.duration_days) {
-    const dayMatch = message.match(/(\d+)\s*(day|days|din)/);
-    if (dayMatch) {
-        parsed.duration_days = Number(dayMatch[1]);
-    }
-}
+            if (dayMatch) {
+                parsed.duration_days = Number(dayMatch[1]);
+            }
+        }
 
-if (!parsed.budget_total) {
-    const budgetMatch = message.match(/(\d+)\s*k/);
-    if (budgetMatch) {
-        parsed.budget_total = Number(budgetMatch[1]) * 1000;
-    }
-}
+        if (!parsed.budget_total) {
+            const budgetMatch = message.match(/(\d+)\s*k/);
 
-if (!parsed.group_size) {
-    const groupMatch = message.match(/(\d+)\s*(people|persons|log|guys)/);
-    if (groupMatch) {
-        parsed.group_size = Number(groupMatch[1]);
-    }
-}
+            if (budgetMatch) {
+                parsed.budget_total = Number(budgetMatch[1]) * 1000;
+            }
+        }
+
+        if (!parsed.group_size) {
+            const groupMatch = message.match(
+                /(\d+)\s*(people|persons|log|guys)/
+            );
+
+            if (groupMatch) {
+                parsed.group_size = Number(groupMatch[1]);
+            }
+        }
+
         if (parsed.budget_total) {
             parsed.budget_total = Number(
                 normalise(parsed.budget_total.toString())
             );
         }
 
-        const groupMatch = message.match(/(\d+)\s*(people|persons|log|guys)/);
+        const groupMatch = message.match(
+            /(\d+)\s*(people|persons|log|guys)/
+        );
+
         if (groupMatch) {
             parsed.group_size = Number(groupMatch[1]);
         }
 
-        const validInterests = ["beach", "food", "adventure", "culture"];
+        const validInterests = [
+            "beach",
+            "food",
+            "adventure",
+            "culture"
+        ];
 
         if (parsed.interests && Array.isArray(parsed.interests)) {
             parsed.interests = parsed.interests.filter(i =>
@@ -116,24 +135,31 @@ if (!parsed.group_size) {
         }
 
         if (!parsed.interests || parsed.interests.length === 0) {
-            parsed.interests = ["beach"]; 
+            parsed.interests = ["beach"];
         }
 
         const date = resolveDate(message);
-        if (date) parsed.start_date = date;
+
+        if (date) {
+            parsed.start_date = date;
+        }
 
         const clarification = checkMissingFields(parsed);
+
         if (clarification) {
-    if (!parsed.destination || !parsed.duration_days) {
-        return res.json(clarification);
-    }
-}
+            if (!parsed.destination || !parsed.duration_days) {
+                return res.json(clarification);
+            }
+        }
 
         res.json(parsed);
 
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Parsing failed" });
+        console.error("QUERY PARSING ERROR:", err);
+
+        res.status(500).json({
+            error: "Parsing failed"
+        });
     }
 };
 
@@ -142,45 +168,106 @@ if (!parsed.group_size) {
 // 🔹 GENERATE ITINERARY
 // ==============================
 exports.handleGenerateItinerary = async (req, res) => {
+
+    console.log("\n========================================");
+    console.log("AI GENERATE CONTROLLER HIT");
+    console.log("========================================");
+
+    console.log(
+        "Request body:",
+        JSON.stringify(req.body, null, 2)
+    );
+
     try {
         const query = req.body;
 
-        if (!query.destination || !query.duration_days || !query.budget_total) {
+        console.log("\n[1] Validating itinerary query...");
+
+        if (
+            !query.destination ||
+            !query.duration_days ||
+            !query.budget_total
+        ) {
+            console.error("Missing required itinerary fields:", {
+                destination: query.destination,
+                duration_days: query.duration_days,
+                budget_total: query.budget_total
+            });
+
             return res.status(400).json({
                 error: "destination, duration_days and budget_total are required"
             });
         }
 
+        console.log("Query validation passed.");
+        console.log("\n[2] Calling generateVariations...");
+
         const result = await generateVariations(query);
-        const variations = result.variations;
+
+        console.log("\n[3] generateVariations returned:");
+
+        console.dir(result, {
+            depth: null
+        });
+
+        const variations = result?.variations;
 
         if (!variations || variations.length === 0) {
+            console.error(
+                "No valid itinerary variations were returned."
+            );
+
             return res.status(500).json({
                 error: "Failed to generate itinerary variations"
             });
         }
 
+        console.log(
+            `Successfully received ${variations.length} variation(s).`
+        );
+
+        console.log("\n[4] Ranking itineraries...");
+
         const ranked = rankItineraries(variations, query);
+
+        console.log("Ranking completed.");
+
         const best = ranked[0];
+
+        if (!best) {
+            throw new Error("Ranking returned no best itinerary.");
+        }
+
+        console.log("\n[5] Generating explanation...");
 
         const explanation = generateExplanation(best, query);
 
-        // Prepare the complete AI output
+        console.log("Explanation generated.");
+
         const aiOutput = {
             variations,
             ranked,
             explanation
         };
 
-        // Log AI input and output in the database
+        console.log("\n[6] Saving AI output to database...");
+
         const aiLog = await prisma.aILog.create({
             data: {
-                input: JSON.stringify(query),
-                output: JSON.stringify(aiOutput)
+                userId: req.user.id,
+                type: "itinerary_generation",
+                input: query,
+                output: aiOutput
             }
         });
 
-        res.json({
+        console.log("AI output saved. Log ID:", aiLog.id);
+
+        console.log("\n========================================");
+        console.log("ITINERARY GENERATION SUCCESSFUL");
+        console.log("========================================\n");
+
+        return res.json({
             output_id: aiLog.id,
             variations,
             ranked,
@@ -188,13 +275,19 @@ exports.handleGenerateItinerary = async (req, res) => {
         });
 
     } catch (err) {
+        console.error("\n========================================");
+        console.error("ITINERARY GENERATION ERROR");
+        console.error("========================================");
         console.error(err);
 
-        res.status(500).json({
-            error: "Failed to generate itinerary"
+        return res.status(500).json({
+            error: "Failed to generate itinerary",
+            details: err.message
         });
     }
 };
+
+
 // ==============================
 // 🔹 AI FEEDBACK
 // ==============================
@@ -206,7 +299,11 @@ exports.handleAIFeedback = async (req, res) => {
             reason
         } = req.body;
 
-        const validActions = ["accept", "edit", "reject"];
+        const validActions = [
+            "accept",
+            "edit",
+            "reject"
+        ];
 
         if (!output_id) {
             return res.status(400).json({
@@ -250,7 +347,7 @@ exports.handleAIFeedback = async (req, res) => {
         });
 
     } catch (err) {
-        console.error(err);
+        console.error("AI FEEDBACK ERROR:", err);
 
         res.status(500).json({
             error: "Failed to record AI feedback"
@@ -258,6 +355,10 @@ exports.handleAIFeedback = async (req, res) => {
     }
 };
 
+
+// ==============================
+// 🔹 AI FEEDBACK STATISTICS
+// ==============================
 exports.getAIFeedbackStats = async (req, res) => {
     try {
         const total = await prisma.aILog.count({
@@ -299,7 +400,7 @@ exports.getAIFeedbackStats = async (req, res) => {
         });
 
     } catch (err) {
-        console.error(err);
+        console.error("AI FEEDBACK STATS ERROR:", err);
 
         res.status(500).json({
             error: "Failed to fetch AI feedback statistics"

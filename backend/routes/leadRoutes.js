@@ -1,3 +1,4 @@
+
 const express = require("express");
 const { body, param } = require("express-validator");
 const validateRequest = require("../middleware/validation");
@@ -10,13 +11,17 @@ const {
     getLeads,
     getLeadById,
     updateLeadStatus,
-    getPriorityLeads
+    getPriorityLeads,
+    deleteLead
 } = require("../controllers/leadController");
 
 const {
     generateFollowUpMessages
 } = require("../services/followUpService");
 
+const prisma = require("../services/db");
+
+// Authentication applies to all lead routes
 router.use(authMiddleware);
 
 /*
@@ -24,6 +29,7 @@ router.use(authMiddleware);
  * /priority and /follow-up/:id must come before /:id
  */
 
+// Get priority leads
 router.get("/priority", getPriorityLeads);
 
 // Generate all 3 follow-up drafts for a lead
@@ -31,8 +37,6 @@ router.get("/follow-up/:id", async (req, res) => {
     try {
         const userId = req.user.id;
         const id = Number(req.params.id);
-
-        const prisma = require("../services/db");
 
         const lead = await prisma.lead.findFirst({
             where: {
@@ -49,21 +53,30 @@ router.get("/follow-up/:id", async (req, res) => {
 
         const messages = generateFollowUpMessages(lead);
 
-        res.json({
+        return res.json({
             lead_id: lead.id,
             customer_name: lead.customer_name,
             messages,
         });
     } catch (error) {
-        res.status(500).json({
+        console.error("Follow-up generation error:", error);
+
+        return res.status(500).json({
             message: "Error generating follow-up messages",
             error: error.message,
         });
     }
 });
 
+// Create a new lead
 router.post(
     "/",
+    (req, res, next) => {
+        console.log("POST /api/leads ROUTE HIT");
+        console.log("Request body:", req.body);
+        console.log("Authenticated user:", req.user?.id);
+        next();
+    },
     [
         body("customer_name")
             .trim()
@@ -98,8 +111,26 @@ router.post(
     validateRequest,
     createLead
 );
+
+// Get all leads
 router.get("/", getLeads);
+
+// Delete a lead
+router.delete(
+    "/:id",
+    [
+        param("id")
+            .isInt({ min: 1 })
+            .withMessage("Lead ID must be a valid positive integer")
+    ],
+    validateRequest,
+    deleteLead
+);
+
+// Get a specific lead
 router.get("/:id", getLeadById);
+
+// Update lead status
 router.patch(
     "/:id/status",
     [

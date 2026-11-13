@@ -1,8 +1,8 @@
+
 /**
  * Get activities for each day from a structured itinerary.
  */
 function getActivitiesPerDay(itinerary) {
-
     if (
         !itinerary ||
         !Array.isArray(itinerary.days)
@@ -21,53 +21,51 @@ function getActivitiesPerDay(itinerary) {
 /**
  * ============================================================
  * BUDGET CHECK
+ *
+ * estimated_cost already includes:
+ * average daily destination cost + activity costs.
+ *
+ * Therefore, do NOT add activity costs again.
  * ============================================================
  */
 function checkBudget(itinerary, budget) {
-
     if (
         !itinerary ||
         !Array.isArray(itinerary.days) ||
-        !budget ||
-        budget <= 0
+        !Number.isFinite(Number(budget)) ||
+        Number(budget) <= 0
     ) {
         return false;
     }
 
     const totalCost = itinerary.days.reduce(
         (sum, day) => {
-            const accommodation =
-                Number(day.estimated_cost || 0);
+            const dailyCost = Number(day.estimated_cost);
 
-            const activities =
-                Array.isArray(day.activities)
-                    ? day.activities.reduce(
-                        (activitySum, activity) =>
-                            activitySum +
-                            Number(activity.cost || 0),
-                        0
-                    )
-                    : 0;
+            if (
+                !Number.isFinite(dailyCost) ||
+                dailyCost < 0
+            ) {
+                return Infinity;
+            }
 
-            return sum + accommodation + activities;
+            return sum + dailyCost;
         },
         0
     );
 
-    return totalCost <= budget;
+    return totalCost <= Number(budget);
 }
 
 
 /**
  * ============================================================
  * DAILY ACTIVITY CHECK
- * Maximum 4 activities per day.
+ * Minimum 1 and maximum 4 activities per day.
  * ============================================================
  */
 function checkDailyActivities(itinerary) {
-
-    const days =
-        getActivitiesPerDay(itinerary);
+    const days = getActivitiesPerDay(itinerary);
 
     if (days.length === 0) {
         return false;
@@ -88,7 +86,6 @@ function checkDailyActivities(itinerary) {
  * ============================================================
  */
 function checkTravelTime(itinerary) {
-
     if (
         !itinerary ||
         !Array.isArray(itinerary.days)
@@ -97,11 +94,14 @@ function checkTravelTime(itinerary) {
     }
 
     return itinerary.days.every(day => {
-
         const travelHours =
-            Number(day.travel_time_hours || 0);
+            Number(day.travel_time_hours);
 
-        return travelHours <= 8;
+        return (
+            Number.isFinite(travelHours) &&
+            travelHours >= 0 &&
+            travelHours <= 8
+        );
     });
 }
 
@@ -111,11 +111,7 @@ function checkTravelTime(itinerary) {
  * ALL CONSTRAINTS
  * ============================================================
  */
-function checkAllConstraints(
-    itinerary,
-    budget
-) {
-
+function checkAllConstraints(itinerary, budget) {
     return (
         checkBudget(itinerary, budget) &&
         checkDailyActivities(itinerary) &&

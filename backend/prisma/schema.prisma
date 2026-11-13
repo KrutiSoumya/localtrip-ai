@@ -1,3 +1,4 @@
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -28,6 +29,7 @@ model Lead {
   budget            Int?
   group_size        Int?
   preferences       String?
+  source            String?
   status            String      @default("New")
   score             Int         @default(0)
   score_label       String      @default("Cold")
@@ -36,9 +38,17 @@ model Lead {
   userId            Int
   createdAt         DateTime    @default(now())
   travel_date       DateTime?
+  groupType         String?
+  phoneHash         String?
+  emailHash         String?
   bookings          Booking[]
   itineraries       Itinerary[]
   user              User        @relation(fields: [userId], references: [id])
+
+  @@index([phoneHash])
+  @@index([emailHash])
+  @@index([source])
+  @@index([userId, source])
 }
 
 model Itinerary {
@@ -46,6 +56,7 @@ model Itinerary {
   leadId     Int
   title      String
   summary    String?
+  status     String         @default("approved")
   createdAt  DateTime       @default(now())
   bookings   Booking[]
   lead       Lead           @relation(fields: [leadId], references: [id])
@@ -54,15 +65,19 @@ model Itinerary {
 }
 
 model ItineraryDay {
-  id          Int       @id @default(autoincrement())
-  itineraryId Int
-  day_number  Int
-  title       String?
-  activities  String
-  meals       String?
-  hotel       String?
-  transport   String?
-  itinerary   Itinerary @relation(fields: [itineraryId], references: [id])
+  id                 Int       @id @default(autoincrement())
+  itineraryId        Int
+  day_number         Int
+  title              String?
+  activities         Json
+  meals              String?
+  hotel              String?
+  transport          String?
+  accommodation      String?
+  accommodation_cost Int       @default(0)
+  transport_cost     Int       @default(0)
+  estimated_cost     Int       @default(0)
+  itinerary          Itinerary @relation(fields: [itineraryId], references: [id])
 }
 
 model Quotation {
@@ -78,26 +93,30 @@ model Quotation {
 }
 
 model Booking {
-  id            Int       @id @default(autoincrement())
+  id            Int        @id @default(autoincrement())
   leadId        Int
   itineraryId   Int
-  quotationId   Int
-  status        String    @default("Pending")
-  bookedAt      DateTime  @default(now())
-  paymentStatus String    @default("Pending")
+  quotationId   Int?
+  status        String     @default("Pending")
+  bookedAt      DateTime   @default(now())
+  paymentStatus String     @default("Pending")
   travelDate    DateTime?
-  itinerary     Itinerary @relation(fields: [itineraryId], references: [id])
-  lead          Lead      @relation(fields: [leadId], references: [id])
-  quotation     Quotation @relation(fields: [quotationId], references: [id])
+  itinerary     Itinerary  @relation(fields: [itineraryId], references: [id])
+  lead          Lead       @relation(fields: [leadId], references: [id])
+  quotation     Quotation? @relation(fields: [quotationId], references: [id])
 }
 
 model AILog {
   id        Int      @id @default(autoincrement())
-  input     String
-  output    String
+  userId    Int?
+  leadId    Int?
+  type      String   @default("itinerary_generation")
+  input     Json
+  output    Json
+  action    String?
+  reason    String?
   feedback  String?
   createdAt DateTime @default(now())
-  action    String?
 }
 
 model AgentConfig {
@@ -105,5 +124,6 @@ model AgentConfig {
   name                 String
   preferences          String?
   destinations_dataset String?
+  default_margin       Int      @default(15)
   createdAt            DateTime @default(now())
 }

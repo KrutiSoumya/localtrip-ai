@@ -55,7 +55,7 @@ async function main() {
           {
             day_number: 1,
             title: "Arrival and Eiffel Tower",
-            activities: "Airport pickup, hotel check-in, Eiffel Tower visit",
+            activities: ["Airport pickup", "hotel check-in", "Eiffel Tower visit"],
             meals: "Dinner included",
             hotel: "Paris Central Hotel",
             transport: "Private transfer",
@@ -63,7 +63,7 @@ async function main() {
           {
             day_number: 2,
             title: "City Tour",
-            activities: "Louvre Museum, Seine cruise, shopping",
+            activities: ["Louvre Museum", "Seine cruise", "shopping"],
             meals: "Breakfast included",
             hotel: "Paris Central Hotel",
             transport: "Coach",
@@ -83,7 +83,7 @@ async function main() {
           {
             day_number: 1,
             title: "Arrival",
-            activities: "Hotel check-in and Marina walk",
+            activities: ["Hotel check-in and Marina walk"],
             meals: "Breakfast included",
             hotel: "Dubai Marina Hotel",
             transport: "Private car",
@@ -103,7 +103,7 @@ async function main() {
           {
             day_number: 1,
             title: "Old City Tour",
-            activities: "Blue Mosque, Hagia Sophia, Grand Bazaar",
+            activities: ["Blue Mosque", "Hagia Sophia", "Grand Bazaar"],
             meals: "Lunch included",
             hotel: "Old City Hotel",
             transport: "Walking tour",

@@ -3,12 +3,12 @@ const axios = require("axios");
 const OLLAMA_URL = "http://localhost:11434/api/chat";
 const MODEL = "phi3:mini";
 
-
 /**
  * ============================================================
  * GENERIC LOCAL AI JSON GENERATOR
  * ============================================================
  */
+
 async function generateTrip(prompt) {
     try {
         const response = await axios.post(
@@ -47,7 +47,14 @@ Rules:
             }
         );
 
+        console.log(
+            "OLLAMA RAW RESPONSE:",
+            JSON.stringify(response.data, null, 2)
+        );
+
         let text = response.data?.message?.content?.trim();
+
+        console.log("EXTRACTED AI TEXT:", text);
 
         if (!text) {
             console.error("AI returned empty response");
@@ -67,9 +74,12 @@ Rules:
         return text;
 
     } catch (error) {
-        console.error("AI Error:", error.message);
+        console.error("AI ERROR DETAILS:", error);
+        console.error("Error message:", error.message);
+        console.error("Error stack:", error.stack);
 
-        if (error.response?.data) {
+        if (error.response) {
+            console.error("Ollama status:", error.response.status);
             console.error("Ollama response:", error.response.data);
         }
 
@@ -77,12 +87,12 @@ Rules:
     }
 }
 
-
 /**
  * ============================================================
  * CLEAN JSON
  * ============================================================
  */
+
 function cleanJson(text) {
     return text
         .replace(/```json/gi, "")
@@ -90,14 +100,13 @@ function cleanJson(text) {
         .trim();
 }
 
-
 /**
  * ============================================================
  * NORMALIZE AI ACTIVITY
  * ============================================================
  */
-function normalizeActivity(activity, destinationData) {
 
+function normalizeActivity(activity, destinationData) {
     if (!activity || typeof activity !== "object") {
         return null;
     }
@@ -115,129 +124,73 @@ function normalizeActivity(activity, destinationData) {
 
     let cost = activity.cost;
 
-    if (typeof name !== "string") {
+    if (typeof name !== "string" || !name.trim()) {
         return null;
     }
 
     name = name.trim();
 
-    const activities =
-        destinationData.activities || [];
+    const activities = Array.isArray(destinationData.activities)
+        ? destinationData.activities
+        : [];
 
-    /*
-     * First try exact activity-name matching.
-     */
-    let matchedActivity =
-        activities.find(
-            item =>
-                item.name.toLowerCase() ===
-                name.toLowerCase()
-        );
+    // Activity names must resolve to the supplied destination dataset.
+    // Do not accept invented activities or assign arbitrary costs.
+    const normalizedName = name.toLowerCase();
 
-    /*
-     * Then try partial matching.
-     */
+    const matchedActivity = activities.find(item =>
+        typeof item?.name === "string" &&
+        item.name.trim().toLowerCase() === normalizedName
+    );
+
     if (!matchedActivity) {
-        matchedActivity =
-            activities.find(
-                item =>
-                    name
-                        .toLowerCase()
-                        .includes(item.name.toLowerCase()) ||
-                    item.name
-                        .toLowerCase()
-                        .includes(name.toLowerCase())
-            );
+        return null;
     }
 
-    if (matchedActivity) {
-        cost = matchedActivity.cost;
-        name = matchedActivity.name;
+    name = matchedActivity.name;
+    cost = Number(matchedActivity.cost);
+
+    if (!Number.isFinite(cost) || cost < 0) {
+        return null;
     }
 
-    if (typeof cost === "string") {
-        cost = Number(
-            cost.replace(/[₹,\s]/g, "")
-        );
+    const attractions = Array.isArray(destinationData.attractions)
+        ? destinationData.attractions
+        : [];
+
+    const destinationName = String(destinationData.name || "").trim();
+
+    if (typeof location !== "string" || !location.trim()) {
+        return null;
     }
 
-    /*
-     * If the AI did not provide a valid cost,
-     * use the destination activity cost.
-     */
-    if (
-        typeof cost !== "number" ||
-        Number.isNaN(cost)
+    const requestedLocation = location.trim().toLowerCase();
+
+    // Only accept an exact attraction name, or the destination itself.
+    // Silently substituting attractions[0] was producing geographically
+    // misleading itineraries.
+    const matchedAttraction = attractions.find(attraction =>
+        typeof attraction === "string" &&
+        attraction.trim().toLowerCase() === requestedLocation
+    );
+
+    if (matchedAttraction) {
+        location = matchedAttraction;
+    } else if (
+        destinationName &&
+        requestedLocation === destinationName.toLowerCase()
     ) {
-        if (matchedActivity) {
-            cost = matchedActivity.cost;
-        } else {
-            return null;
-        }
-    }
-
-    /*
-     * Normalize location.
-     */
-    if (
-        typeof location !== "string" ||
-        !location.trim()
-    ) {
-        location =
-            destinationData.attractions?.[0] ||
-            destinationData.name;
-    }
-
-    const attractions =
-        destinationData.attractions || [];
-
-    const attractionMatch =
-        attractions.find(
-            attraction =>
-                attraction.toLowerCase() ===
-                location.trim().toLowerCase()
-        );
-
-    if (attractionMatch) {
-
-        location = attractionMatch;
-
+        location = destinationName;
     } else {
-
-        const partialAttraction =
-            attractions.find(
-                attraction =>
-                    location
-                        .toLowerCase()
-                        .includes(
-                            attraction.toLowerCase()
-                        ) ||
-                    attraction
-                        .toLowerCase()
-                        .includes(
-                            location.toLowerCase()
-                        )
-            );
-
-        if (partialAttraction) {
-
-            location = partialAttraction;
-
-        } else {
-
-            location =
-                attractions[0] ||
-                destinationData.name;
-        }
+        return null;
     }
 
     return {
         name,
         location,
-        cost: Number(cost) || 0
+        cost
     };
 }
-
 
 /**
  * ============================================================
@@ -253,155 +206,31 @@ function normalizeActivity(activity, destinationData) {
  *   more expensive activities first
  * ============================================================
  */
-function ensureActivityDiversity(
-    days,
-    destinationData,
-    mode
-) {
 
-    const availableActivities =
-        [...(destinationData.activities || [])];
-
-    if (availableActivities.length === 0) {
-        return days;
-    }
-
-    const sortedActivities =
-        availableActivities.sort(
-            (a, b) =>
-                mode === "budget"
-                    ? Number(a.cost || 0) -
-                      Number(b.cost || 0)
-                    : Number(b.cost || 0) -
-                      Number(a.cost || 0)
-        );
-
-    const usedActivities = new Set();
-
-    days.forEach(
-        (day, dayIndex) => {
-
-            if (
-                !Array.isArray(
-                    day.activities
-                )
-            ) {
-                return;
-            }
-
-            day.activities =
-                day.activities.map(
-                    (
-                        activity,
-                        activityIndex
-                    ) => {
-
-                        const activityKey =
-                            String(
-                                activity?.name || ""
-                            )
-                                .trim()
-                                .toLowerCase();
-
-                        /*
-                         * Keep the first occurrence.
-                         */
-                        if (
-                            activityKey &&
-                            !usedActivities.has(
-                                activityKey
-                            )
-                        ) {
-
-                            usedActivities.add(
-                                activityKey
-                            );
-
-                            return activity;
-                        }
-
-                        /*
-                         * Find an unused activity.
-                         */
-                        const replacement =
-                            sortedActivities.find(
-                                candidate =>
-                                    !usedActivities.has(
-                                        candidate.name
-                                            .trim()
-                                            .toLowerCase()
-                                    )
-                            );
-
-                        /*
-                         * If all available activities
-                         * have already been used,
-                         * keep the original.
-                         */
-                        if (!replacement) {
-                            return activity;
-                        }
-
-                        const replacementKey =
-                            replacement.name
-                                .trim()
-                                .toLowerCase();
-
-                        usedActivities.add(
-                            replacementKey
-                        );
-
-                        const attractions =
-                            destinationData.attractions ||
-                            [];
-
-                        const location =
-                            attractions.length > 0
-                                ? attractions[
-                                      (
-                                          dayIndex +
-                                          activityIndex
-                                      ) %
-                                          attractions.length
-                                  ]
-                                : destinationData.name;
-
-                        return {
-                            name:
-                                replacement.name,
-
-                            location,
-
-                            cost:
-                                Number(
-                                    replacement.cost
-                                ) || 0
-                        };
-                    }
-                );
-        }
-    );
-
+function ensureActivityDiversity(days, destinationData, mode) {
+    // The destination dataset stores activities and attractions separately;
+    // it does not define which activity belongs at which attraction.
+    // Replacing duplicate activities and assigning attractions by array index
+    // fabricated activity/location relationships. Keep the AI-selected,
+    // dataset-validated pairs instead of inventing replacements.
     return days;
 }
-
 
 /**
  * ============================================================
  * NORMALIZE COMPLETE ITINERARY
  *
- * This function was missing from the previous file.
- * It validates the AI response, normalizes activities,
+ * Validates the AI response, normalizes activities,
  * enforces activity diversity and recalculates costs.
  * ============================================================
  */
+
 function normalizeItinerary(
     itinerary,
     query,
     destinationData,
     mode
 ) {
-
     if (
         !itinerary ||
         !Array.isArray(itinerary.days)
@@ -409,8 +238,7 @@ function normalizeItinerary(
         return null;
     }
 
-    const requestedDays =
-        Number(query.duration_days);
+    const requestedDays = Number(query.duration_days);
 
     if (
         !Number.isInteger(requestedDays) ||
@@ -420,13 +248,9 @@ function normalizeItinerary(
     }
 
     /*
-     * The AI must return exactly the requested
-     * number of days.
+     * The AI must return exactly the requested number of days.
      */
-    if (
-        itinerary.days.length !==
-        requestedDays
-    ) {
+    if (itinerary.days.length !== requestedDays) {
         return null;
     }
 
@@ -437,9 +261,7 @@ function normalizeItinerary(
         index < itinerary.days.length;
         index++
     ) {
-
-        const day =
-            itinerary.days[index];
+        const day = itinerary.days[index];
 
         if (
             !day ||
@@ -451,21 +273,14 @@ function normalizeItinerary(
         /*
          * Normalize up to 4 activities per day.
          */
-        const activities =
-            day.activities
-                .slice(0, 4)
-                .map(
-                    activity =>
-                        normalizeActivity(
-                            activity,
-                            destinationData
-                        )
-                )
-                .filter(Boolean);
+        const activities = day.activities
+            .slice(0, 4)
+            .map(activity =>
+                normalizeActivity(activity, destinationData)
+            )
+            .filter(Boolean);
 
-        if (
-            activities.length === 0
-        ) {
+        if (activities.length === 0) {
             return null;
         }
 
@@ -486,45 +301,31 @@ function normalizeItinerary(
         /*
          * Calculate activity costs.
          */
-        const activityCost =
-            activities.reduce(
-                (sum, activity) =>
-                    sum +
-                    Number(activity.cost || 0),
-                0
-            );
+        const activityCost = activities.reduce(
+            (sum, activity) =>
+                sum + Number(activity.cost || 0),
+            0
+        );
 
         /*
          * Use the destination's average daily
          * base cost plus activities.
          */
-        const estimatedCost =
-            Math.round(
-                Number(
-                    destinationData.avg_cost_per_day ||
-                    0
-                ) +
-                activityCost
-            );
+        const estimatedCost = Math.round(
+            Number(destinationData.avg_cost_per_day || 0) +
+            activityCost
+        );
 
         normalizedDays.push({
             day: index + 1,
-
             activities,
-
             accommodation,
-
-            estimated_cost:
-                estimatedCost,
-
-            travel_time_hours:
-                Number(
-                    destinationData.travel_time_between ||
-                    0
-                )
+            estimated_cost: estimatedCost,
+            travel_time_hours: Number(
+                destinationData.travel_time_between || 0
+            )
         });
     }
-
     /*
      * Enforce diversity AFTER all activities
      * have been normalized.
@@ -539,115 +340,77 @@ function normalizeItinerary(
      * Recalculate costs after replacements.
      */
     normalizedDays.forEach(day => {
+        const activityCost = day.activities.reduce(
+            (sum, activity) =>
+                sum + Number(activity.cost || 0),
+            0
+        );
 
-        const activityCost =
-            day.activities.reduce(
-                (sum, activity) =>
-                    sum +
-                    Number(activity.cost || 0),
-                0
-            );
-
-        day.estimated_cost =
-            Math.round(
-                Number(
-                    destinationData.avg_cost_per_day ||
-                    0
-                ) +
-                activityCost
-            );
+        day.estimated_cost = Math.round(
+            Number(destinationData.avg_cost_per_day || 0) +
+            activityCost
+        );
     });
 
     /*
      * If the generated itinerary exceeds the
-     * requested budget, keep the itinerary valid
-     * but prefer cheaper activities for budget mode.
+     * requested budget, prefer cheaper activities
+     * for budget mode.
      */
-    const totalCost =
-        normalizedDays.reduce(
-            (sum, day) =>
-                sum +
-                Number(
-                    day.estimated_cost || 0
-                ),
-            0
-        );
+    const totalCost = normalizedDays.reduce(
+        (sum, day) =>
+            sum + Number(day.estimated_cost || 0),
+        0
+    );
 
-    const budget =
-        Number(query.budget_total);
+    const budget = Number(query.budget_total);
 
     if (
         mode === "budget" &&
         Number.isFinite(budget) &&
         totalCost > budget
     ) {
+        const budgetActivities = [
+            ...(destinationData.activities || [])
+        ].sort(
+            (a, b) =>
+                Number(a.cost || 0) - Number(b.cost || 0)
+        );
 
-        const budgetActivities =
-            [...(destinationData.activities || [])]
-                .sort(
-                    (a, b) =>
-                        Number(a.cost || 0) -
-                        Number(b.cost || 0)
-                );
-
-        const replacementMap =
-            new Map(
-                budgetActivities.map(
-                    activity => [
-                        activity.name
-                            .toLowerCase(),
-                        activity
-                    ]
-                )
-            );
+        const replacementMap = new Map(
+            budgetActivities.map(activity => [
+                activity.name.toLowerCase(),
+                activity
+            ])
+        );
 
         normalizedDays.forEach(day => {
-
-            day.activities =
-                day.activities.map(
-                    activity => {
-
-                        const matched =
-                            replacementMap.get(
-                                activity.name
-                                    .toLowerCase()
-                            );
-
-                        if (matched) {
-                            return {
-                                name:
-                                    matched.name,
-                                location:
-                                    activity.location,
-                                cost:
-                                    Number(
-                                        matched.cost
-                                    ) || 0
-                            };
-                        }
-
-                        return activity;
-                    }
+            day.activities = day.activities.map(activity => {
+                const matched = replacementMap.get(
+                    activity.name.toLowerCase()
                 );
 
-            const activityCost =
-                day.activities.reduce(
-                    (sum, activity) =>
-                        sum +
-                        Number(
-                            activity.cost || 0
-                        ),
-                    0
-                );
+                if (matched) {
+                    return {
+                        name: matched.name,
+                        location: activity.location,
+                        cost: Number(matched.cost) || 0
+                    };
+                }
 
-            day.estimated_cost =
-                Math.round(
-                    Number(
-                        destinationData.avg_cost_per_day ||
-                        0
-                    ) +
-                    activityCost
-                );
+                return activity;
+            });
+
+            const activityCost = day.activities.reduce(
+                (sum, activity) =>
+                    sum + Number(activity.cost || 0),
+                0
+            );
+
+            day.estimated_cost = Math.round(
+                Number(destinationData.avg_cost_per_day || 0) +
+                activityCost
+            );
         });
     }
 
@@ -655,7 +418,6 @@ function normalizeItinerary(
         days: normalizedDays
     };
 }
-
 
 /**
  * ============================================================
@@ -665,167 +427,117 @@ function normalizeItinerary(
  * Still produces two different styles.
  * ============================================================
  */
-function createFallbackItinerary(
-    query,
-    mode,
-    destinationData
-) {
 
-    const requestedDays =
-        Number(query.duration_days);
+function createFallbackItinerary(query, mode, destinationData) {
+    const requestedDays = Number(query.duration_days);
 
-    let availableActivities =
-        [
-            ...(destinationData.activities || [])
-        ];
-
-    if (mode === "budget") {
-
-        availableActivities.sort(
-            (a, b) =>
-                Number(a.cost || 0) -
-                Number(b.cost || 0)
-        );
-
-    } else {
-
-        availableActivities.sort(
-            (a, b) =>
-                Number(b.cost || 0) -
-                Number(a.cost || 0)
-        );
+    if (!Number.isInteger(requestedDays) || requestedDays <= 0) {
+        return null;
     }
 
-    /*
-     * Remove duplicate activity names.
-     */
-    const uniqueActivities = [];
+    const availableActivities = Array.isArray(destinationData.activities)
+        ? [...destinationData.activities]
+        : [];
 
+    if (availableActivities.length === 0) {
+        return null;
+    }
+
+    availableActivities.sort((a, b) => {
+        const aCost = Number(a.cost || 0);
+        const bCost = Number(b.cost || 0);
+
+        return mode === "budget"
+            ? aCost - bCost
+            : bCost - aCost;
+    });
+
+    const uniqueActivities = [];
     const seen = new Set();
 
-    availableActivities.forEach(
-        activity => {
-
-            const key =
-                activity.name
-                    .trim()
-                    .toLowerCase();
-
-            if (!seen.has(key)) {
-
-                seen.add(key);
-
-                uniqueActivities.push(
-                    activity
-                );
-            }
-        }
-    );
-
-    availableActivities =
-        uniqueActivities;
-
-    const days = [];
-
-    for (
-        let i = 0;
-        i < requestedDays;
-        i++
-    ) {
-
-        const activity =
-            availableActivities[
-                i %
-                    availableActivities.length
-            ];
-
-        if (!activity) {
+    for (const activity of availableActivities) {
+        if (!activity || typeof activity.name !== "string") {
             continue;
         }
 
-        const attractions =
-            destinationData.attractions ||
-            [];
+        const key = activity.name.trim().toLowerCase();
 
-        const attractionIndex =
-            attractions.length > 0
-                ? i % attractions.length
-                : 0;
+        if (!key || seen.has(key)) {
+            continue;
+        }
 
-        const activityCost =
-            Number(activity.cost || 0);
+        const cost = Number(activity.cost);
+
+        if (!Number.isFinite(cost) || cost < 0) {
+            continue;
+        }
+
+        seen.add(key);
+
+        uniqueActivities.push({
+            name: activity.name.trim(),
+            cost
+        });
+    }
+
+    if (uniqueActivities.length === 0) {
+        return null;
+    }
+
+    const days = [];
+
+    for (let i = 0; i < requestedDays; i++) {
+        const activity = uniqueActivities[i % uniqueActivities.length];
+        const activityCost = Number(activity.cost) || 0;
 
         days.push({
-
             day: i + 1,
-
-            activities: [
-                {
-                    name:
-                        activity.name,
-
-                    location:
-                        attractions[
-                            attractionIndex
-                        ] ||
-                        destinationData.name,
-
-                    cost:
-                        activityCost
-                }
-            ],
-
+            activities: [{
+                name: activity.name,
+                // No activity-to-attraction mapping exists in the dataset.
+                // Use the destination as the broad location rather than
+                // inventing a specific attraction association.
+                location: destinationData.name,
+                cost: activityCost
+            }],
             accommodation:
                 mode === "budget"
                     ? "Budget-friendly local accommodation"
                     : "Premium hotel or resort accommodation",
-
-            estimated_cost:
-                Math.round(
-                    Number(
-                        destinationData.avg_cost_per_day ||
-                        0
-                    ) +
-                    activityCost
-                ),
-
-            travel_time_hours:
-                Number(
-                    destinationData.travel_time_between ||
-                    0
-                )
+            estimated_cost: Math.round(
+                Number(destinationData.avg_cost_per_day || 0) +
+                activityCost
+            ),
+            travel_time_hours: Number(
+                destinationData.travel_time_between || 0
+            )
         });
     }
 
-    return {
-        days
-    };
+    return { days };
 }
-
 
 /**
  * ============================================================
  * AI ITINERARY GENERATOR
  * ============================================================
  */
+
 async function generateItinerary(
     query,
     mode = "balanced",
     destinations = []
 ) {
+    const requestedDestination = String(query.destination || "")
+        .trim()
+        .toLowerCase();
 
-    const destinationData =
-        destinations.find(
-            destination =>
-                destination.name
-                    .toLowerCase() ===
-                String(
-                    query.destination
-                ).toLowerCase()
-        );
+    const destinationData = destinations.find(destination =>
+        String(destination?.name || "").trim().toLowerCase() ===
+        requestedDestination
+    );
 
     if (!destinationData) {
-
         console.error(
             `Destination not found: ${query.destination}`
         );
@@ -899,14 +611,10 @@ ${
 }
 
 AVAILABLE ATTRACTIONS:
-${JSON.stringify(
-    destinationData.attractions
-)}
+${JSON.stringify(destinationData.attractions)}
 
 AVAILABLE ACTIVITIES:
-${JSON.stringify(
-    destinationData.activities
-)}
+${JSON.stringify(destinationData.activities)}
 
 TRAVEL TIME BETWEEN LOCATIONS:
 ${destinationData.travel_time_between} hours
@@ -980,36 +688,30 @@ OUTPUT:
 
 Return ONLY JSON.
 `;
-
     for (
         let attempt = 1;
         attempt <= 3;
         attempt++
     ) {
-
         try {
-
             console.log(
                 `Generating ${mode} itinerary - attempt ${attempt}`
             );
 
-            const response =
-                await axios.post(
-                    OLLAMA_URL,
-                    {
-                        model: MODEL,
-                        stream: false,
-                        format: "json",
-
-                        options: {
-                            temperature: 0,
-                            num_predict: 4000
-                        },
-
-                        messages: [
-                            {
-                                role: "system",
-                                content: `
+            const response = await axios.post(
+                OLLAMA_URL,
+                {
+                    model: MODEL,
+                    stream: false,
+                    format: "json",
+                    options: {
+                        temperature: 0,
+                        num_predict: 4000
+                    },
+                    messages: [
+                        {
+                            role: "system",
+                            content: `
 You generate compact valid JSON only.
 
 Never use markdown.
@@ -1034,30 +736,24 @@ If the mode is "experience":
 - use varied activities
 - avoid copying the budget itinerary structure
 `
-                            },
-                            {
-                                role: "user",
-                                content: prompt
-                            }
-                        ]
-                    },
-                    {
-                        timeout: 180000
-                    }
-                );
+                        },
+                        {
+                            role: "user",
+                            content: prompt
+                        }
+                    ]
+                },
+                {
+                    timeout: 180000
+                }
+            );
 
-            let text =
-                response.data
-                    ?.message
-                    ?.content
-                    ?.trim();
+            let text = response.data?.message?.content?.trim();
 
             if (!text) {
-
                 console.warn(
                     `Attempt ${attempt}: empty AI response`
                 );
-
                 continue;
             }
 
@@ -1066,44 +762,34 @@ If the mode is "experience":
             let itinerary;
 
             try {
-
-                itinerary =
-                    JSON.parse(text);
-
+                itinerary = JSON.parse(text);
             } catch (error) {
-
                 console.warn(
                     `Attempt ${attempt}: invalid JSON`
                 );
-
                 console.warn(text);
-
                 continue;
             }
 
-            const normalized =
-                normalizeItinerary(
-                    itinerary,
-                    query,
-                    destinationData,
-                    mode
-                );
+            const normalized = normalizeItinerary(
+                itinerary,
+                query,
+                destinationData,
+                mode
+            );
 
             if (normalized) {
-
                 console.log(
                     `✓ ${mode} itinerary generated successfully`
                 );
-
                 return normalized;
             }
 
             console.warn(
-                `Attempt ${attempt}: itinerary normalization failed`
+                `Attempt ${attempt}: itinerary normalization failed. Check exact activity names, valid attraction locations (or the destination name), and valid costs.`
             );
 
         } catch (error) {
-
             console.error(
                 `Attempt ${attempt} failed:`,
                 error.message
@@ -1122,30 +808,27 @@ If the mode is "experience":
     );
 }
 
-
 /**
  * ============================================================
  * GENERATE TWO ITINERARY OPTIONS
  * ============================================================
  */
+
 async function generateItineraryOptions(
     query,
     destinations = []
 ) {
+    const budgetItinerary = await generateItinerary(
+        query,
+        "budget",
+        destinations
+    );
 
-    const budgetItinerary =
-        await generateItinerary(
-            query,
-            "budget",
-            destinations
-        );
-
-    const experienceItinerary =
-        await generateItinerary(
-            query,
-            "experience",
-            destinations
-        );
+    const experienceItinerary = await generateItinerary(
+        query,
+        "experience",
+        destinations
+    );
 
     if (
         !budgetItinerary &&
@@ -1156,63 +839,45 @@ async function generateItineraryOptions(
 
     return {
         options: [
-
             {
                 id: "A",
                 type: "budget",
                 title: "Budget Explorer",
                 description:
                     "A cost-conscious itinerary focused on essential experiences and practical travel.",
-                itinerary:
-                    budgetItinerary
+                itinerary: budgetItinerary
             },
-
             {
                 id: "B",
                 type: "experience",
                 title: "Premium Experience",
                 description:
                     "A richer itinerary focused on memorable experiences, comfort and premium activities.",
-                itinerary:
-                    experienceItinerary
+                itinerary: experienceItinerary
             }
-
-        ].filter(
-            option =>
-                option.itinerary
-        )
+        ].filter(option => option.itinerary)
     };
 }
-
-
 /**
  * ============================================================
  * AI QUOTE SUMMARY
  * ============================================================
  */
-async function generateQuoteSummary(
-    quote
-) {
 
-    const total =
-        Number(
-            quote?.group_total || 0
-        );
+async function generateQuoteSummary(quote) {
+    const total = Number(
+        quote?.group_total || 0
+    );
 
-    const margin =
-        Number(
-            quote?.margin_applied || 0
-        );
+    const margin = Number(
+        quote?.margin_applied || 0
+    );
 
     const prompt = `
 Write a 2-sentence professional summary of this travel quote for a customer.
 
 QUOTE DETAILS:
-${JSON.stringify(
-    quote,
-    null,
-    2
-)}
+${JSON.stringify(quote, null, 2)}
 
 IMPORTANT:
 - The currency is INR (Indian Rupees).
@@ -1228,23 +893,19 @@ IMPORTANT:
 `;
 
     try {
-
-        const response =
-            await axios.post(
-                OLLAMA_URL,
-                {
-                    model: MODEL,
-                    stream: false,
-
-                    options: {
-                        temperature: 0,
-                        num_predict: 300
-                    },
-
-                    messages: [
-                        {
-                            role: "system",
-                            content: `
+        const response = await axios.post(
+            OLLAMA_URL,
+            {
+                model: MODEL,
+                stream: false,
+                options: {
+                    temperature: 0,
+                    num_predict: 300
+                },
+                messages: [
+                    {
+                        role: "system",
+                        content: `
 You are a professional travel quotation assistant.
 
 Always use Indian Rupees (₹).
@@ -1253,42 +914,30 @@ Use the exact total supplied by the application.
 Return exactly 2 sentences.
 Return plain text only.
 `
-                        },
-
-                        {
-                            role: "user",
-                            content: prompt
-                        }
-                    ]
-                },
-                {
-                    timeout: 120000
-                }
-            );
+                    },
+                    {
+                        role: "user",
+                        content: prompt
+                    }
+                ]
+            },
+            {
+                timeout: 120000
+            }
+        );
 
         let summary =
-            response.data
-                ?.message
-                ?.content
-                ?.trim() || "";
+            response.data?.message?.content?.trim() || "";
 
-        summary =
-            summary
-                .replace(/\$/g, "₹")
-                .replace(
-                    /\bUSD\b/gi,
-                    "INR"
-                )
-                .replace(
-                    /\bdollars?\b/gi,
-                    "Indian Rupees"
-                );
+        summary = summary
+            .replace(/\$/g, "₹")
+            .replace(/\bUSD\b/gi, "INR")
+            .replace(/\bdollars?\b/gi, "Indian Rupees");
 
         if (
             !summary.includes("₹") &&
             !summary.includes("INR")
         ) {
-
             summary =
                 `${summary} The total quoted amount is ₹${total.toLocaleString("en-IN")}.`;
         }
@@ -1298,7 +947,6 @@ Return plain text only.
                 `₹${total.toLocaleString("en-IN")}`
             )
         ) {
-
             summary =
                 `The total quoted amount for your trip is ₹${total.toLocaleString("en-IN")}. ${summary}`;
         }
@@ -1306,7 +954,6 @@ Return plain text only.
         return summary;
 
     } catch (error) {
-
         console.error(
             "Quote Summary AI Error:",
             error.message
@@ -1319,12 +966,12 @@ Return plain text only.
     }
 }
 
-
 /**
  * ============================================================
  * EXPORTS
  * ============================================================
  */
+
 module.exports = {
     generateTrip,
     generateItinerary,

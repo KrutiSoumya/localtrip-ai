@@ -1,144 +1,209 @@
-const prisma = require("../services/db");
 
-const safeParseDestinations = (value) => {
-  try {
-    const parsed = value ? JSON.parse(value) : [];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-};
+const fs = require("fs");
+const path = require("path");
 
-// POST /api/config/agent
+
+const DESTINATIONS_FILE = path.join(
+  __dirname,
+  "../data/destinations.json"
+);
+
+// Read all destinations
+function readDestinations() {
+  const data = fs.readFileSync(DESTINATIONS_FILE, "utf8");
+  return JSON.parse(data);
+}
+
+// Save destinations
+function writeDestinations(destinations) {
+  fs.writeFileSync(
+    DESTINATIONS_FILE,
+    JSON.stringify(destinations, null, 2),
+    "utf8"
+  );
+}
+
+// Return active destinations
+function getActiveDestinations() {
+  const destinations = readDestinations();
+
+  return destinations.filter(
+    destination => destination.active !== false
+  );
+}
+
+// Save agent configuration
 const saveAgentConfig = async (req, res) => {
   try {
     const { name, contact, currency_preference } = req.body;
 
-    const existing = await prisma.agentConfig.findFirst();
+    const userId = req.user.id || req.user.userId;
 
-    const data = {
-      name,
-      preferences: JSON.stringify({
-        contact,
-        currency_preference,
-      }),
-    };
-
-    const config = existing
-      ? await prisma.agentConfig.update({
-          where: { id: existing.id },
-          data,
-        })
-      : await prisma.agentConfig.create({
-          data: {
-            ...data,
-            destinations_dataset: JSON.stringify([]),
-          },
-        });
-
-    res.json(config);
-  } catch (error) {
-    res.status(500).json({
-      message: "Error saving agent config",
-      error: error.message,
-    });
-  }
-};
-
-// GET /api/config/destinations
-const getDestinations = async (req, res) => {
-  try {
-    const config = await prisma.agentConfig.findFirst();
-
-    const destinations = safeParseDestinations(config?.destinations_dataset);
-
-    res.json(destinations);
-  } catch (error) {
-    res.status(500).json({
-      message: "Error fetching destinations",
-      error: error.message,
-    });
-  }
-};
-
-// POST /api/config/destinations
-const addDestination = async (req, res) => {
-  try {
-    const { name, attractions, avg_cost_per_day } = req.body;
-
-    let config = await prisma.agentConfig.findFirst();
-
-    if (!config) {
-      config = await prisma.agentConfig.create({
-        data: {
-          name: "LocalTrip Agency",
-          destinations_dataset: JSON.stringify([]),
-        },
+    if (!userId) {
+      return res.status(401).json({
+        error: "User ID not found"
       });
     }
 
-    const destinations = safeParseDestinations(config.destinations_dataset);
-
-    destinations.push({
+    const preferences = {
       name,
-      attractions,
-      avg_cost_per_day,
-    });
+      contact,
+      currency_preference
+    };
 
-    const updated = await prisma.agentConfig.update({
-      where: { id: config.id },
-      data: {
-        destinations_dataset: JSON.stringify(destinations),
-      },
+    const config = await prisma.agentConfig.upsert({
+      where: { userId },
+      update: { preferences },
+      create: {
+        userId,
+        preferences
+      }
     });
 
     res.json({
-      message: "Destination added successfully",
-      destinations,
-      config: updated,
+      message: "Agent configuration saved successfully",
+      config
     });
+
   } catch (error) {
+    console.error("Save agent config error:", error);
     res.status(500).json({
-      message: "Error adding destination",
-      error: error.message,
+      error: "Failed to save agent configuration"
     });
   }
 };
 
-// DELETE /api/config/destinations/:name
-const deleteDestination = async (req, res) => {
+// Get active destinations
+const getDestinations = async (req, res) => {
   try {
-    const destinationName = req.params.name;
+    const destinations = getActiveDestinations();
 
-    const config = await prisma.agentConfig.findFirst();
+    res.json(destinations);
 
-    if (!config) {
-      return res.status(404).json({ message: "Agent config not found" });
+  } catch (error) {
+    console.error("Get destinations error:", error);
+    res.status(500).json({
+      error: "Failed to fetch destinations"
+    });
+  }
+};
+
+// Add a new destination
+const addDestination = async (req, res) => {
+  try {
+    const destination = req.body;
+
+    if (!destination.name) {
+      return res.status(400).json({
+        error: "Destination name is required"
+      });
     }
 
-    const destinations = safeParseDestinations(config.destinations_dataset);
+    const destinations = readDestinations();
 
-    const filtered = destinations.filter(
-      (destination) =>
-        destination.name.toLowerCase() !== destinationName.toLowerCase()
+    const exists = destinations.some(
+      item =>
+        item.name.toLowerCase() ===
+        destination.name.trim().toLowerCase()
     );
 
-    const updated = await prisma.agentConfig.update({
-      where: { id: config.id },
-      data: {
-        destinations_dataset: JSON.stringify(filtered),
-      },
+    if (exists) {
+      return res.status(409).json({
+        error: "Destination already exists"
+      });
+    }
+
+    destinations.push({
+      ...destination,
+      name: destination.name.trim(),
+      active: destination.active !== false
     });
 
-    res.json({
-      message: "Destination deleted successfully",
-      destinations: filtered,
-      config: updated,
+    writeDestinations(destinations);
+
+    res.status(201).json({
+      message: "Destination added successfully",
+      destination
     });
+
   } catch (error) {
+    console.error("Add destination error:", error);
     res.status(500).json({
-      message: "Error deleting destination",
-      error: error.message,
+      error: "Failed to add destination"
+    });
+  }
+};
+
+// Activate or deactivate a destination
+const updateDestinationStatus = async (req, res) => {
+  try {
+    const { name } = req.params;
+    const { active } = req.body;
+
+    if (typeof active !== "boolean") {
+      return res.status(400).json({
+        error: "Active must be true or false"
+      });
+    }
+
+    const destinations = readDestinations();
+
+    const index = destinations.findIndex(
+      item =>
+        item.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (index === -1) {
+      return res.status(404).json({
+        error: "Destination not found"
+      });
+    }
+
+    destinations[index].active = active;
+
+    writeDestinations(destinations);
+
+    res.json({
+      message: "Destination status updated successfully",
+      destination: destinations[index]
+    });
+
+  } catch (error) {
+    console.error("Update destination status error:", error);
+    res.status(500).json({
+      error: "Failed to update destination status"
+    });
+  }
+};
+
+// Delete a destination
+const deleteDestination = async (req, res) => {
+  try {
+    const { name } = req.params;
+
+    const destinations = readDestinations();
+
+    const updatedDestinations = destinations.filter(
+      item =>
+        item.name.toLowerCase() !== name.toLowerCase()
+    );
+
+    if (updatedDestinations.length === destinations.length) {
+      return res.status(404).json({
+        error: "Destination not found"
+      });
+    }
+
+    writeDestinations(updatedDestinations);
+
+    res.json({
+      message: "Destination deleted successfully"
+    });
+
+  } catch (error) {
+    console.error("Delete destination error:", error);
+    res.status(500).json({
+      error: "Failed to delete destination"
     });
   }
 };
@@ -147,5 +212,6 @@ module.exports = {
   saveAgentConfig,
   getDestinations,
   addDestination,
-  deleteDestination,
+  updateDestinationStatus,
+  deleteDestination
 };

@@ -1,16 +1,100 @@
+
 const prisma = require("../services/db");
-const { encrypt, decrypt } = require("../utils/encryption");
+
+const {
+  encrypt,
+  decrypt,
+  hashValue,
+} = require("../utils/encryption");
+
 const { sanitize } = require("../utils/sanitizer");
+
 const {
   prioritiseFollowUps,
   calculateLeadScore,
 } = require("../services/leadScorer");
 
-// Create a new lead
+console.log("LEAD CONTROLLER LOADED:", __filename);
+
+
+// =====================================================
+// CONSTANTS
+// =====================================================
+
+const ALLOWED_SOURCES = [
+  "WhatsApp",
+  "Email",
+  "Referral",
+  "Walk In",
+  "Instagram",
+];
+
+const ALLOWED_STATUSES = [
+  "New",
+  "Contacted",
+  "Quoted",
+  "Confirmed",
+  "Cancelled",
+  "Inactive",
+];
+
+
+// =====================================================
+// HELPERS
+// =====================================================
+
+// Decrypt contact details before returning a lead
+const decryptLead = (lead) => {
+  if (!lead) return lead;
+
+  return {
+    ...lead,
+    phone: lead.phone ? decrypt(lead.phone) : null,
+    email: lead.email ? decrypt(lead.email) : null,
+  };
+};
+
+
+// Parse optional dates safely
+const parseOptionalDate = (value) => {
+  if (!value) return null;
+
+  let parsedDate;
+
+  if (typeof value === "string") {
+    const dateMatch = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+    if (dateMatch) {
+      const [, year, month, day] = dateMatch;
+
+      parsedDate = new Date(
+        Date.UTC(
+          Number(year),
+          Number(month) - 1,
+          Number(day)
+        )
+      );
+    } else {
+      parsedDate = new Date(value);
+    }
+  } else {
+    parsedDate = new Date(value);
+  }
+
+  if (Number.isNaN(parsedDate.getTime())) {
+    return null;
+  }
+
+  return parsedDate;
+};
+
+
+// =====================================================
+// CREATE LEAD
+// =====================================================
+
 const createLead = async (req, res) => {
   try {
-    const userId = req.user.id;
-
     const {
       customer_name,
       phone,
@@ -21,70 +105,234 @@ const createLead = async (req, res) => {
       travel_date,
       budget,
       group_size,
+      groupType,
       preferences,
+      source,
       status,
       last_contact,
       interaction_count,
-      ...otherData
     } = req.body;
 
-    // Basic validation
-    if (!customer_name || !phone || !inquiry_text) {
+    const userId = req.user.id;
+
+    // Validate required fields
+    if (
+      !customer_name ||
+      !phone ||
+      !inquiry_text
+    ) {
       return res.status(400).json({
-        message: "customer_name, phone and inquiry_text are required",
+        message:
+          "Customer name, phone number, and inquiry are required",
       });
     }
 
-    // Check for possible duplicate by fuzzy customer name
-    const possibleDuplicates = await prisma.lead.findMany({
+    // Validate source
+    if (source && !ALLOWED_SOURCES.includes(source)) {
+      return res.status(400).json({
+        message: "Invalid lead source",
+        allowedSources: ALLOWED_SOURCES,
+      });
+    }
+
+    // Validate status
+    if (status && !ALLOWED_STATUSES.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid lead status",
+      });
+    }
+
+    // Validate numeric fields
+    if (
+      duration !== undefined &&
+      duration !== null &&
+      (!Number.isFinite(Number(duration)) || Number(duration) < 1)
+    ) {
+      return res.status(400).json({
+        message: "Duration must be a valid positive number",
+      });
+    }
+
+    if (
+      budget !== undefined &&
+      budget !== null &&
+      (!Number.isFinite(Number(budget)) || Number(budget) < 0)
+    ) {
+      return res.status(400).json({
+        message: "Budget must be a valid non-negative number",
+      });
+    }
+
+    if (
+      group_size !== undefined &&
+      group_size !== null &&
+      (!Number.isFinite(Number(group_size)) || Number(group_size) < 1)
+    ) {
+      return res.status(400).json({
+        message: "Group size must be a valid positive number",
+      });
+    }
+
+    if (
+      interaction_count !== undefined &&
+      interaction_count !== null &&
+      (!Number.isInteger(Number(interaction_count)) ||
+        Number(interaction_count) < 0)
+    ) {
+      return res.status(400).json({
+        message: "Interaction count must be a non-negative integer",
+      });
+    }
+
+    // Parse dates
+    const parsedTravelDate = parseOptionalDate(travel_date);
+    const parsedLastContact = parseOptionalDate(last_contact);
+
+    if (travel_date && !parsedTravelDate) {
+      return res.status(400).json({
+        message: "Invalid travel date",
+      });
+    }
+
+    if (last_contact && !parsedLastContact) {
+      return res.status(400).json({
+        message: "Invalid last contact date",
+      });
+    }
+
+    // Normalize contact details
+    const normalizedPhone = String(phone).trim();
+
+    const normalizedEmail = email
+      ? String(email).trim()
+      : null;
+
+    const normalizedSource = source
+      ? source.trim()
+      : null;
+
+    // Validate normalized source
+    if (
+      normalizedSource &&
+      !ALLOWED_SOURCES.includes(normalizedSource)
+    ) {
+      return res.status(400).json({
+        message: "Invalid lead source",
+        allowedSources: ALLOWED_SOURCES,
+      });
+    }
+
+    // Generate deterministic hashes
+    const phoneHash = hashValue(normalizedPhone);
+
+    const emailHash = normalizedEmail
+      ? hashValue(normalizedEmail)
+      : null;
+
+    // Check duplicates using hashes
+    const duplicateConditions = [
+      { phoneHash },
+    ];
+
+    if (emailHash) {
+      duplicateConditions.push({ emailHash });
+    }
+
+    const duplicateLead = await prisma.lead.findFirst({
       where: {
         userId,
-        customer_name: {
-          contains: customer_name,
-          mode: "insensitive",
-        },
+        OR: duplicateConditions,
       },
     });
 
-    // Since phone/email are encrypted in DB, decrypt before comparing
-    const duplicate = possibleDuplicates.find((lead) => {
-      const decryptedPhone = decrypt(lead.phone);
-      const decryptedEmail = lead.email
-        ? decrypt(lead.email)
-        : null;
-
-      return (
-        decryptedPhone === phone ||
-        decryptedEmail === email ||
-        lead.customer_name
-          .toLowerCase()
-          .includes(customer_name.toLowerCase())
-      );
-    });
-
-    if (duplicate) {
-      return res.json({
-        duplicate: true,
-        existing_lead_id: duplicate.id,
+    if (duplicateLead) {
+      return res.status(409).json({
+        message:
+          "A lead with this phone number or email already exists",
+        leadId: duplicateLead.id,
       });
     }
 
-    // Calculate lead score before creating the lead
-    const calculatedScore = calculateLeadScore({
+    // Fallback duplicate check for older leads without hashes
+    const legacyLeads = await prisma.lead.findMany({
+      where: {
+        userId,
+        OR: [
+          { phoneHash: null },
+          ...(emailHash ? [{ emailHash: null }] : []),
+        ],
+      },
+      select: {
+        id: true,
+        phone: true,
+        email: true,
+      },
+    });
+
+    const legacyDuplicate = legacyLeads.find((lead) => {
+      let existingPhone = null;
+      let existingEmail = null;
+
+      try {
+        existingPhone = lead.phone
+          ? decrypt(lead.phone)
+          : null;
+
+        existingEmail = lead.email
+          ? decrypt(lead.email)
+          : null;
+      } catch (error) {
+        console.error(
+          `Could not decrypt legacy lead ${lead.id}:`,
+          error.message
+        );
+
+        return false;
+      }
+
+      const phoneMatches =
+        existingPhone &&
+        existingPhone.trim() === normalizedPhone;
+
+      const emailMatches =
+        normalizedEmail &&
+        existingEmail &&
+        existingEmail.trim().toLowerCase() ===
+          normalizedEmail.toLowerCase();
+
+      return phoneMatches || emailMatches;
+    });
+
+    if (legacyDuplicate) {
+      return res.status(409).json({
+        message:
+          "A lead with this phone number or email already exists",
+        leadId: legacyDuplicate.id,
+      });
+    }
+
+    // Calculate lead score
+    const score = calculateLeadScore({
       budget,
-      travel_date,
+      travel_date: parsedTravelDate,
+      duration,
+      group_size,
       interaction_count,
     });
 
     // Create lead
-    const lead = await prisma.lead.create({
+    const newLead = await prisma.lead.create({
       data: {
-        ...otherData,
+        customer_name: sanitize(customer_name.trim()),
 
-        customer_name,
+        phone: encrypt(normalizedPhone),
 
-        phone: encrypt(phone),
-        email: email ? encrypt(email) : null,
+        email: normalizedEmail
+          ? encrypt(normalizedEmail)
+          : null,
+
+        phoneHash,
+        emailHash,
 
         inquiry_text: sanitize(inquiry_text),
 
@@ -92,41 +340,44 @@ const createLead = async (req, res) => {
           ? sanitize(destination)
           : null,
 
-        duration:
-          duration !== undefined
-            ? Number(duration)
-            : null,
-
-        travel_date: travel_date
-          ? new Date(travel_date)
-          : null,
-
-        budget:
-          budget !== undefined
-            ? Number(budget)
-            : null,
-
-        group_size:
-          group_size !== undefined
-            ? Number(group_size)
-            : null,
-
         preferences: preferences
           ? sanitize(preferences)
           : null,
 
-        status: status || "New",
+        // Lead acquisition source for Analytics
+        source: normalizedSource,
 
-        // Persist calculated lead score
-        score: calculatedScore.score,
-        score_label: calculatedScore.status,
+        duration:
+          duration !== undefined && duration !== null
+            ? Number(duration)
+            : null,
 
-        last_contact: last_contact
-          ? new Date(last_contact)
+        travel_date: parsedTravelDate,
+
+        budget:
+          budget !== undefined && budget !== null
+            ? Number(budget)
+            : null,
+
+        group_size:
+          group_size !== undefined && group_size !== null
+            ? Number(group_size)
+            : null,
+
+        groupType: groupType
+          ? sanitize(groupType)
           : null,
 
+        status: status || "New",
+
+        score: score.score,
+        score_label: score.label || "Cold",
+
+        last_contact: parsedLastContact,
+
         interaction_count:
-          interaction_count !== undefined
+          interaction_count !== undefined &&
+          interaction_count !== null
             ? Number(interaction_count)
             : 0,
 
@@ -134,81 +385,104 @@ const createLead = async (req, res) => {
       },
     });
 
-    res.status(201).json({
-      duplicate: false,
-      lead: {
-        ...lead,
-        phone: decrypt(lead.phone),
-        email: lead.email
-          ? decrypt(lead.email)
-          : null,
-      },
+    return res.status(201).json({
+      message: "Lead created successfully",
+      lead: decryptLead(newLead),
     });
+
   } catch (error) {
-    res.status(500).json({
-      message: "Error creating lead",
-      error: error.message,
+    console.error("CREATE LEAD ERROR:", error);
+
+    return res.status(500).json({
+      message: "Failed to create lead",
+      details: error.message,
+      code: error.code || null,
     });
   }
 };
 
-// Get all leads for logged-in user
+
+// =====================================================
+// GET ALL LEADS
+// =====================================================
+
 const getLeads = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const leads = await prisma.lead.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
     });
 
-    const decryptedLeads = leads.map((lead) => ({
-      ...lead,
-      phone: decrypt(lead.phone),
-      email: decrypt(lead.email),
-    }));
+    return res.status(200).json(
+      leads.map(decryptLead)
+    );
 
-    res.json(decryptedLeads);
   } catch (error) {
-    res.status(500).json({
-      message: "Error fetching leads",
-      error: error.message,
+    console.error("GET LEADS ERROR:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch leads",
     });
   }
 };
 
-// Get priority leads for logged-in user
+
+// =====================================================
+// GET PRIORITY LEADS
+// =====================================================
+
 const getPriorityLeads = async (req, res) => {
   try {
     const userId = req.user.id;
 
     const leads = await prisma.lead.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
+      where: {
+        userId,
+        status: {
+          notIn: ["Confirmed", "Cancelled", "Inactive"],
+        },
+      },
+      orderBy: {
+        score: "desc",
+      },
     });
 
-    const priorityLeads = prioritiseFollowUps(leads);
+    const prioritisedLeads = prioritiseFollowUps(leads);
 
-    const decryptedLeads = priorityLeads.map((lead) => ({
-      ...lead,
-      phone: decrypt(lead.phone),
-      email: decrypt(lead.email),
-    }));
+    return res.status(200).json(
+      prioritisedLeads.map(decryptLead)
+    );
 
-    res.json(decryptedLeads);
   } catch (error) {
-    res.status(500).json({
-      message: "Error fetching priority leads",
-      error: error.message,
+    console.error("GET PRIORITY LEADS ERROR:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch priority leads",
     });
   }
 };
 
-// Get one lead by ID
+
+// =====================================================
+// GET SINGLE LEAD
+// =====================================================
+
 const getLeadById = async (req, res) => {
   try {
     const userId = req.user.id;
     const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        message: "Invalid lead ID",
+      });
+    }
 
     const lead = await prisma.lead.findFirst({
       where: {
@@ -227,29 +501,39 @@ const getLeadById = async (req, res) => {
       });
     }
 
-    res.json({
-      ...lead,
-      phone: decrypt(lead.phone),
-      email: decrypt(lead.email),
-    });
+    return res.status(200).json(
+      decryptLead(lead)
+    );
+
   } catch (error) {
-    res.status(500).json({
-      message: "Error fetching lead",
-      error: error.message,
+    console.error("GET LEAD BY ID ERROR:", error);
+
+    return res.status(500).json({
+      message: "Failed to fetch lead",
     });
   }
 };
 
-// Update lead status
+
+// =====================================================
+// UPDATE LEAD STATUS
+// =====================================================
+
 const updateLeadStatus = async (req, res) => {
   try {
     const userId = req.user.id;
     const id = Number(req.params.id);
     const { status } = req.body;
 
-    if (!status) {
+    if (!Number.isInteger(id) || id <= 0) {
       return res.status(400).json({
-        message: "Status is required",
+        message: "Invalid lead ID",
+      });
+    }
+
+    if (!ALLOWED_STATUSES.includes(status)) {
+      return res.status(400).json({
+        message: "Invalid lead status",
       });
     }
 
@@ -267,29 +551,46 @@ const updateLeadStatus = async (req, res) => {
     }
 
     const updatedLead = await prisma.lead.update({
-      where: { id },
-      data: { status },
+      where: {
+        id,
+      },
+      data: {
+        status,
+      },
     });
 
-    res.json({
-      ...updatedLead,
-      phone: decrypt(updatedLead.phone),
-      email: decrypt(updatedLead.email),
+    return res.status(200).json({
+      message: "Lead status updated successfully",
+      lead: decryptLead(updatedLead),
     });
+
   } catch (error) {
-    res.status(500).json({
-      message: "Error updating lead status",
-      error: error.message,
+    console.error("UPDATE LEAD STATUS ERROR:", error);
+
+    return res.status(500).json({
+      message: "Failed to update lead status",
     });
   }
 };
 
-// Delete lead
+
+
+// =====================================================
+// DELETE LEAD
+// =====================================================
+
 const deleteLead = async (req, res) => {
   try {
     const userId = req.user.id;
     const id = Number(req.params.id);
 
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({
+        message: "Invalid lead ID",
+      });
+    }
+
+    // Verify that the lead belongs to the logged-in user
     const existingLead = await prisma.lead.findFirst({
       where: {
         id,
@@ -303,27 +604,92 @@ const deleteLead = async (req, res) => {
       });
     }
 
-    await prisma.lead.delete({
-      where: { id },
+    // Delete the lead and its dependent records safely
+    await prisma.$transaction(async (tx) => {
+      // Find itineraries belonging to this lead
+      const itineraries = await tx.itinerary.findMany({
+        where: {
+          leadId: id,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      const itineraryIds = itineraries.map(
+        (itinerary) => itinerary.id
+      );
+
+      // Delete bookings associated with this lead
+      await tx.booking.deleteMany({
+        where: {
+          leadId: id,
+        },
+      });
+
+      if (itineraryIds.length > 0) {
+        // Delete quotations associated with these itineraries
+        await tx.quotation.deleteMany({
+          where: {
+            itineraryId: {
+              in: itineraryIds,
+            },
+          },
+        });
+
+        // Delete itinerary days
+        await tx.itineraryDay.deleteMany({
+          where: {
+            itineraryId: {
+              in: itineraryIds,
+            },
+          },
+        });
+
+        // Delete itineraries
+        await tx.itinerary.deleteMany({
+          where: {
+            id: {
+              in: itineraryIds,
+            },
+          },
+        });
+      }
+
+      // Finally delete the lead
+      await tx.lead.delete({
+        where: {
+          id,
+        },
+      });
     });
 
-    res.json({
-      message: "Lead deleted successfully",
+    return res.status(200).json({
+      message: "Lead and associated records deleted successfully",
+      leadId: id,
     });
+
   } catch (error) {
-    res.status(500).json({
-      message: "Error deleting lead",
+    console.error("DELETE LEAD ERROR:", error);
+
+    return res.status(500).json({
+      message: "Failed to delete lead",
       error: error.message,
     });
   }
 };
 
+
+
+// =====================================================
+// EXPORTS
+// =====================================================
+
 module.exports = {
   createLead,
   getLeads,
+  getPriorityLeads,
   getLeadById,
   updateLeadStatus,
   deleteLead,
-  getPriorityLeads,
 };
-

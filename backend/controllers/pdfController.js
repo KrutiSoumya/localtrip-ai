@@ -1,5 +1,19 @@
+
 const prisma = require("../services/db");
 const { generatePDF } = require("../services/pdfService");
+const { decrypt } = require("../utils/encryption");
+
+// Decrypt contact details before adding them to PDFs
+const getReadableContact = (value) => {
+  if (!value) return "N/A";
+
+  try {
+    return decrypt(value);
+  } catch (error) {
+    console.error("Contact decryption error:", error.message);
+    return value;
+  }
+};
 
 // POST /api/pdf/itinerary
 const generateItineraryPDF = async (req, res) => {
@@ -10,16 +24,12 @@ const generateItineraryPDF = async (req, res) => {
     const itinerary = await prisma.itinerary.findFirst({
       where: {
         id: Number(itinerary_id),
-        lead: {
-          userId,
-        },
+        lead: { userId },
       },
       include: {
         lead: true,
         days: {
-          orderBy: {
-            day_number: "asc",
-          },
+          orderBy: { day_number: "asc" },
         },
         quotations: true,
       },
@@ -40,13 +50,16 @@ const generateItineraryPDF = async (req, res) => {
       agency_email: "agent@example.com",
 
       customer_name: itinerary.lead.customer_name,
-      customer_email: itinerary.lead.email || "N/A",
-      customer_phone: itinerary.lead.phone,
+      customer_email: getReadableContact(itinerary.lead.email),
+      customer_phone: getReadableContact(itinerary.lead.phone),
+
       destination: itinerary.lead.destination || "N/A",
 
       days: itinerary.days.map((day) => ({
         day: day.day_number,
-        activity: day.activities,
+        activity: Array.isArray(day.activities)
+          ? day.activities.join(", ")
+          : day.activities,
         location: itinerary.lead.destination || "N/A",
         cost: "N/A",
       })),
@@ -93,9 +106,7 @@ const generateQuotationPDF = async (req, res) => {
       where: {
         id: Number(quotation_id),
         itinerary: {
-          lead: {
-            userId,
-          },
+          lead: { userId },
         },
       },
       include: {
@@ -122,13 +133,11 @@ const generateQuotationPDF = async (req, res) => {
       .slice(0, 10)
       .replace(/-/g, "");
 
-    const startOfDay = new Date(
-      today.setHours(0, 0, 0, 0)
-    );
+    const startOfDay = new Date(today);
+    startOfDay.setHours(0, 0, 0, 0);
 
-    const endOfDay = new Date(
-      today.setHours(23, 59, 59, 999)
-    );
+    const endOfDay = new Date(today);
+    endOfDay.setHours(23, 59, 59, 999);
 
     const todayQuoteCount = await prisma.quotation.count({
       where: {
@@ -140,63 +149,46 @@ const generateQuotationPDF = async (req, res) => {
     });
 
     const sequence = String(todayQuoteCount).padStart(3, "0");
-    const quoteReference =
-      `QT-${dateStr}-${sequence}`;
+    const quoteReference = `QT-${dateStr}-${sequence}`;
 
     const validUntil = new Date();
     validUntil.setDate(validUntil.getDate() + 7);
 
     const breakdown = quotation.breakdown || {};
+    const lead = quotation.itinerary.lead;
 
     const data = {
-      agency_name:
-        agentConfig?.name || "LocalTrip Agency",
-
+      agency_name: agentConfig?.name || "LocalTrip Agency",
       agency_contact: "N/A",
       agency_email: "agent@example.com",
 
       quote_reference: quoteReference,
 
-      date_issued:
-        new Date().toISOString().slice(0, 10),
+      date_issued: new Date().toISOString().slice(0, 10),
+      validity_date: validUntil.toISOString().slice(0, 10),
 
-      validity_date:
-        validUntil.toISOString().slice(0, 10),
+      customer_name: lead.customer_name,
+      customer_email: getReadableContact(lead.email),
+      customer_phone: getReadableContact(lead.phone),
 
-      customer_name:
-        quotation.itinerary.lead.customer_name,
+      destination: lead.destination || "N/A",
+      group_size: lead.group_size || "N/A",
 
-      destination:
-        quotation.itinerary.lead.destination || "N/A",
+      accommodation_cost: breakdown.accommodation || "N/A",
+      transport_cost: breakdown.transport || "N/A",
+      activities: breakdown.activities || [],
+      profit_margin: breakdown.profit_margin || "N/A",
 
-      group_size:
-        quotation.itinerary.lead.group_size || "N/A",
-
-      accommodation_cost:
-        breakdown.accommodation || "N/A",
-
-      transport_cost:
-        breakdown.transport || "N/A",
-
-      activities:
-        breakdown.activities || [],
-
-      profit_margin:
-        breakdown.profit_margin || "N/A",
-
-      grand_total:
-        `${quotation.currency} ${quotation.total_price}`,
+      grand_total: `${quotation.currency} ${quotation.total_price}`,
 
       ai_summary:
         quotation.notes ||
         "This quotation has been generated based on the selected itinerary and customer preferences.",
 
-      agent_name:
-        agentConfig?.name || "LocalTrip Agent",
+      agent_name: agentConfig?.name || "LocalTrip Agent",
     };
 
-    const pdfBuffer =
-      await generatePDF("quotation", data);
+    const pdfBuffer = await generatePDF("quotation", data);
 
     res.set({
       "Content-Type": "application/pdf",
@@ -218,10 +210,7 @@ const generateQuotationPDF = async (req, res) => {
 
 
 // GET /api/pdf/booking-confirmation/:id
-const generateBookingConfirmationPDF = async (
-  req,
-  res
-) => {
+const generateBookingConfirmationPDF = async (req, res) => {
   try {
     const bookingId = Number(req.params.id);
     const userId = req.user.id;
@@ -229,9 +218,7 @@ const generateBookingConfirmationPDF = async (
     const booking = await prisma.booking.findFirst({
       where: {
         id: bookingId,
-        lead: {
-          userId,
-        },
+        lead: { userId },
       },
       include: {
         lead: true,
@@ -249,47 +236,34 @@ const generateBookingConfirmationPDF = async (
     const agentConfig = await prisma.agentConfig.findFirst();
 
     const data = {
-      agency_name:
-        agentConfig?.name || "LocalTrip Agency",
+      agency_name: agentConfig?.name || "LocalTrip Agency",
 
       booking_id: booking.id,
 
-      customer_name:
-        booking.lead.customer_name,
+      customer_name: booking.lead.customer_name,
+      customer_email: getReadableContact(booking.lead.email),
+      customer_phone: getReadableContact(booking.lead.phone),
 
-      destination:
-        booking.lead.destination || "N/A",
-
-      itinerary_title:
-        booking.itinerary.title,
+      destination: booking.lead.destination || "N/A",
+      itinerary_title: booking.itinerary.title,
 
       total_price:
         `${booking.quotation.currency} ${booking.quotation.total_price}`,
 
-      booking_status:
-        booking.status,
+      booking_status: booking.status,
+      payment_status: booking.paymentStatus,
 
-      payment_status:
-        booking.paymentStatus,
+      booked_at: booking.bookedAt.toISOString().slice(0, 10),
 
-      booked_at:
-        booking.bookedAt
-          .toISOString()
-          .slice(0, 10),
-
-      travel_date:
-        booking.travelDate
-          ? booking.travelDate
-              .toISOString()
-              .slice(0, 10)
-          : "N/A",
+      travel_date: booking.travelDate
+        ? booking.travelDate.toISOString().slice(0, 10)
+        : "N/A",
     };
 
-    const pdfBuffer =
-      await generatePDF(
-        "booking-confirmation",
-        data
-      );
+    const pdfBuffer = await generatePDF(
+      "booking-confirmation",
+      data
+    );
 
     res.set({
       "Content-Type": "application/pdf",
@@ -300,14 +274,10 @@ const generateBookingConfirmationPDF = async (
     res.send(pdfBuffer);
 
   } catch (error) {
-    console.error(
-      "Booking confirmation PDF error:",
-      error
-    );
+    console.error("Booking confirmation PDF error:", error);
 
     res.status(500).json({
-      message:
-        "Error generating booking confirmation PDF",
+      message: "Error generating booking confirmation PDF",
       error: error.message,
     });
   }

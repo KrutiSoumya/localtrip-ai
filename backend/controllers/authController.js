@@ -1,23 +1,39 @@
+
 const prisma = require("../services/db");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
+
+console.log("AUTH CONTROLLER LOADED FROM:", __filename);
 
 // ===== REGISTER =====
 exports.register = async (req, res) => {
   try {
     const {
-  email,
-  password,
-  name,
-  agency_name
-} = req.body;
+      email,
+      password,
+      name,
+      agencyName,
+      agency_name,
+    } = req.body;
 
-if (!email || !password || !agency_name) {
-return res.status(400).json({
-  error: "Email, password and agency name required",
-});
+    // Accept either agencyName (frontend) or agency_name
+    const agencyNameValue = agencyName || agency_name;
+
+    // Validate required fields
+    if (!email || !password || !agencyNameValue) {
+      return res.status(400).json({
+        error: "Email, password and agency name required",
+      });
     }
 
+    // Validate password length
+    if (password.length < 8) {
+      return res.status(400).json({
+        error: "Password must be at least 8 characters",
+      });
+    }
+
+    // Check whether the user already exists
     const existingUser = await prisma.user.findFirst({
       where: { email },
     });
@@ -28,28 +44,33 @@ return res.status(400).json({
       });
     }
 
-const hashedPassword = await bcrypt.hash(password, 10);
+    // Hash password before saving
+    const hashedPassword = await bcrypt.hash(password, 10);
 
-const user = await prisma.user.create({
-  data: {
-    email,
-    password: hashedPassword,
-    name: name || null,
-    agency_name,
-  },
-});
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        email,
+        password: hashedPassword,
+        name: name || null,
+        agency_name: agencyNameValue,
+      },
+    });
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Registration successful",
       user: {
         id: user.id,
         email: user.email,
         name: user.name,
+        agency_name: user.agency_name,
       },
     });
 
   } catch (error) {
-    res.status(500).json({
+    console.error("Registration error:", error);
+
+    return res.status(500).json({
       error: "Registration failed",
       details: error.message,
     });
@@ -61,38 +82,71 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // check if body exists
+    // Validate required fields
     if (!email || !password) {
-      return res.status(400).json({ error: "Email and password required" });
+      return res.status(400).json({
+        error: "Email and password required",
+      });
     }
 
+    // Find user by email
     const user = await prisma.user.findFirst({
       where: { email },
     });
 
     if (!user) {
-      return res.status(400).json({ error: "User not found" });
+      return res.status(400).json({
+        error: "User not found",
+      });
     }
 
-    // plain text check (since DB uses plain password)
-const isPasswordValid = await bcrypt.compare(password, user.password);
+    // Compare submitted password with stored password hash
+    const isPasswordValid = await bcrypt.compare(
+      password,
+      user.password
+    );
 
-if (!isPasswordValid) {
-  return res.status(401).json({ error: "Invalid credentials" });
-}
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        error: "Invalid credentials",
+      });
+    }
+
+    // Generate authentication token
     const token = jwt.sign(
       { id: user.id },
       process.env.JWT_SECRET || "secret",
       { expiresIn: "7d" }
     );
 
-    res.json({
+    // Temporary debug logs to verify the active controller
+    console.log(
+      "LOGIN CONTROLLER VERSION WITH USER OBJECT IS RUNNING"
+    );
+
+    console.log("Authenticated user:", {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      agency_name: user.agency_name,
+    });
+
+    // Return token and authenticated user's actual details
+    return res.status(200).json({
       message: "Login successful",
       token,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        agency_name: user.agency_name,
+      },
     });
 
   } catch (error) {
-    res.status(500).json({
+    console.error("Login error:", error);
+
+    return res.status(500).json({
       error: "Login failed",
       details: error.message,
     });

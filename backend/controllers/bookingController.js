@@ -1,15 +1,31 @@
+
 const prisma = require("../services/db");
 
 // ===== CREATE BOOKING =====
 const createBooking = async (req, res) => {
   try {
-    const { leadId, itineraryId, quotationId } = req.body;
+    const { leadId, itineraryId } = req.body;
     const userId = req.user.id;
+
+    const parsedLeadId = Number(leadId);
+    const parsedItineraryId = Number(itineraryId);
+
+    // Validate IDs
+    if (
+      !Number.isInteger(parsedLeadId) ||
+      !Number.isInteger(parsedItineraryId) ||
+      parsedLeadId <= 0 ||
+      parsedItineraryId <= 0
+    ) {
+      return res.status(400).json({
+        message: "Valid leadId and itineraryId are required",
+      });
+    }
 
     // Verify that the lead belongs to the logged-in user
     const lead = await prisma.lead.findFirst({
       where: {
-        id: leadId,
+        id: parsedLeadId,
         userId,
       },
     });
@@ -23,8 +39,11 @@ const createBooking = async (req, res) => {
     // Verify that the itinerary belongs to this lead
     const itinerary = await prisma.itinerary.findFirst({
       where: {
-        id: itineraryId,
-        leadId,
+        id: parsedItineraryId,
+        leadId: parsedLeadId,
+      },
+      include: {
+        days: true,
       },
     });
 
@@ -34,46 +53,112 @@ const createBooking = async (req, res) => {
       });
     }
 
-    // Verify that the quotation belongs to this itinerary
-    const quotation = await prisma.quotation.findFirst({
+    // Prevent duplicate bookings for the same itinerary
+    const existingBooking = await prisma.booking.findFirst({
       where: {
-        id: quotationId,
-        itineraryId,
+        itineraryId: parsedItineraryId,
       },
     });
 
-    if (!quotation) {
-      return res.status(404).json({
-        message: "Quotation not found for this itinerary",
+    if (existingBooking) {
+      return res.status(409).json({
+        message: "A booking already exists for this itinerary",
+        booking: existingBooking,
       });
     }
 
-    // Create booking only after all ownership checks pass
-    const booking = await prisma.booking.create({
-      data: {
-        leadId,
-        itineraryId,
-        quotationId,
-        status: "Confirmed",
-      },
+    // Calculate the internal quotation amount from itinerary costs
+    const totalPrice = itinerary.days.reduce((total, day) => {
+      return total + Number(day.estimated_cost || 0);
+    }, 0);
+
+    // Create quotation, booking and update lead in one transaction
+    const booking = await prisma.$transaction(async (tx) => {
+
+      // Create a minimal internal quotation
+      const quotation = await tx.quotation.create({
+        data: {
+          itineraryId: parsedItineraryId,
+          total_price: Math.max(0, Math.round(totalPrice)),
+          currency: "INR",
+          notes: "Internal quotation created during booking approval.",
+        },
+      });
+
+      // Create confirmed booking
+      const newBooking = await tx.booking.create({
+        data: {
+          leadId: parsedLeadId,
+          itineraryId: parsedItineraryId,
+          quotationId: quotation.id,
+          status: "Confirmed",
+          paymentStatus: "Pending",
+          travelDate: lead.travel_date,
+        },
+        include: {
+          lead: true,
+          itinerary: true,
+          quotation: true,
+        },
+      });
+
+      // Update lead status
+      await tx.lead.update({
+        where: {
+          id: parsedLeadId,
+        },
+        data: {
+          status: "Confirmed",
+        },
+      });
+
+      return newBooking;
     });
 
-    // Update lead status
-    await prisma.lead.update({
-      where: {
-        id: leadId,
-      },
-      data: {
-        status: "Confirmed",
-      },
+    return res.status(201).json({
+      message: "Booking created successfully",
+      booking,
     });
 
-    res.json(booking);
   } catch (error) {
     console.error("Booking creation error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error creating booking",
+      error: error.message,
+    });
+  }
+};
+
+
+// ===== GET ALL BOOKINGS =====
+const getAllBookings = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    const bookings = await prisma.booking.findMany({
+      where: {
+        lead: {
+          userId,
+        },
+      },
+      orderBy: {
+        bookedAt: "desc",
+      },
+      include: {
+        lead: true,
+        itinerary: true,
+        quotation: true,
+      },
+    });
+
+    return res.json(bookings);
+
+  } catch (error) {
+    console.error("Get all bookings error:", error);
+
+    return res.status(500).json({
+      message: "Error fetching bookings",
       error: error.message,
     });
   }
@@ -86,8 +171,8 @@ const getUpcomingBookings = async (req, res) => {
     const userId = req.user.id;
 
     const now = new Date();
-
     const next7Days = new Date();
+
     next7Days.setDate(now.getDate() + 7);
 
     const bookings = await prisma.booking.findMany({
@@ -96,17 +181,13 @@ const getUpcomingBookings = async (req, res) => {
           gte: now,
           lte: next7Days,
         },
-
-        // Only bookings belonging to the logged-in user's leads
         lead: {
           userId,
         },
       },
-
       orderBy: {
         travelDate: "asc",
       },
-
       include: {
         lead: true,
         itinerary: true,
@@ -114,11 +195,12 @@ const getUpcomingBookings = async (req, res) => {
       },
     });
 
-    res.json(bookings);
+    return res.json(bookings);
+
   } catch (error) {
     console.error("Upcoming bookings error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error fetching upcoming bookings",
       error: error.message,
     });
@@ -135,7 +217,6 @@ const updatePaymentStatus = async (req, res) => {
     const bookingId = parseInt(id, 10);
     const userId = req.user.id;
 
-    // Verify that the booking belongs to the logged-in user's lead
     const existingBooking = await prisma.booking.findFirst({
       where: {
         id: bookingId,
@@ -160,11 +241,12 @@ const updatePaymentStatus = async (req, res) => {
       },
     });
 
-    res.json(booking);
+    return res.json(booking);
+
   } catch (error) {
     console.error("Payment status update error:", error);
 
-    res.status(500).json({
+    return res.status(500).json({
       message: "Error updating payment status",
       error: error.message,
     });
@@ -174,6 +256,7 @@ const updatePaymentStatus = async (req, res) => {
 
 module.exports = {
   createBooking,
+  getAllBookings,
   getUpcomingBookings,
   updatePaymentStatus,
 };
