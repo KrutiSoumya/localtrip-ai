@@ -265,7 +265,6 @@ function Analytics() {
     topDestinations = [],
     conversionBySource = [],
     summary = {},
-    topAgents = [],
   } = data
 
   const safeLeadsPerMonth = Array.isArray(leadsPerMonth)
@@ -282,10 +281,6 @@ function Analytics() {
 
   const safeConversionBySource = Array.isArray(conversionBySource)
     ? conversionBySource
-    : []
-
-  const safeTopAgents = Array.isArray(topAgents)
-    ? topAgents
     : []
 
   // ── KPI data ────────────────────────────────────────────────────────────────
@@ -850,100 +845,6 @@ function Analytics() {
                 padding: '30px 0'
               }}>
                 No lead source data available yet.
-              </p>
-            )}
-          </div>
-
-          {/* Top Agents */}
-          <div style={{
-            marginTop: '24px',
-            paddingTop: '18px',
-            borderTop: '1px solid #f3f4f6'
-          }}>
-            <p style={{
-              margin: '0 0 12px',
-              fontSize: '13px',
-              fontWeight: '600',
-              color: '#111827'
-            }}>
-              Top Agents
-            </p>
-
-            {safeTopAgents.length > 0 ? (
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px'
-              }}>
-                {safeTopAgents.map((agent, i) => (
-                  <div
-                    key={agent.name}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '8px 10px',
-                      borderRadius: '8px',
-                      backgroundColor: '#f9fafb',
-                    }}
-                  >
-                    <span style={{
-                      width: '22px',
-                      height: '22px',
-                      borderRadius: '6px',
-                      flexShrink: 0,
-                      backgroundColor: [
-                        '#f0fdfa',
-                        '#eff6ff',
-                        '#f5f3ff'
-                      ][i % 3],
-                      color: [
-                        '#0f766e',
-                        '#2563eb',
-                        '#7c3aed'
-                      ][i % 3],
-                      fontSize: '11px',
-                      fontWeight: '700',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}>
-                      {i + 1}
-                    </span>
-
-                    <span style={{
-                      flex: 1,
-                      fontSize: '13px',
-                      color: '#374151',
-                      fontWeight: '500'
-                    }}>
-                      {agent.name}
-                    </span>
-
-                    <span style={{
-                      fontSize: '12px',
-                      color: '#6b7280'
-                    }}>
-                      {agent.deals} deals
-                    </span>
-
-                    <span style={{
-                      fontSize: '13px',
-                      fontWeight: '600',
-                      color: '#111827'
-                    }}>
-                      {agent.revenue}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p style={{
-                margin: 0,
-                fontSize: '12px',
-                color: '#9ca3af'
-              }}>
-                Agent performance data is not available yet.
               </p>
             )}
           </div>
