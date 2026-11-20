@@ -31,9 +31,9 @@ const buildFallbackVariation = (parsed) => ({
 })
 
 const timeIcons = [
-  <Coffee size={12} color="#d97706" />,
-  <Sun size={12} color="#2563eb" />,
-  <Moon size={12} color="#7c3aed" />,
+  <Coffee size={12} color="#A9803A" />,
+  <Sun size={12} color="#A9803A" />,
+  <Moon size={12} color="#5C1020" />,
 ]
 
 const fieldConfig = [
@@ -81,69 +81,432 @@ const fieldConfig = [
   },
 ]
 
+// ── UI-only constants ─────────────────────────────────────────────────────────
+
+const COOKING_LINES = [
+  'Picking the best beaches',
+  'Haggling over hotel rates',
+  'Saving a table at sunset',
+  'Balancing the budget',
+  'Adding a little spice',
+]
+const STAGE_LABELS = ['Paste the inquiry', 'Check the details', 'Pick a version', 'Ready to send']
+
+// Major tourism cities of India: [city, icon that matches the place]
+const CITIES = [
+  ['Jaipur', '🏰'],
+  ['Udaipur', '🛶'],
+  ['Jaisalmer', '🐪'],
+  ['Agra', '🕌'],
+  ['Delhi', '🏛️'],
+  ['Varanasi', '🪔'],
+  ['Amritsar', '🛕'],
+  ['Rishikesh', '🧘'],
+  ['Shimla', '🚂'],
+  ['Manali', '🏔️'],
+  ['Leh', '⛰️'],
+  ['Srinagar', '🌸'],
+  ['Mumbai', '🌆'],
+  ['Goa', '🏖️'],
+  ['Ahmedabad', '🪁'],
+  ['Khajuraho', '🗿'],
+  ['Hyderabad', '🍛'],
+  ['Hampi', '🏞️'],
+  ['Mysuru', '👑'],
+  ['Kochi', '⚓'],
+  ['Munnar', '🍃'],
+  ['Alleppey', '🚤'],
+  ['Madurai', '🛕'],
+  ['Pondicherry', '🥐'],
+  ['Kolkata', '🌉'],
+  ['Darjeeling', '🍵'],
+  ['Puri', '🌊'],
+  ['Gangtok', '🎏'],
+]
+
+// ── Styles ────────────────────────────────────────────────────────────────────
+
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Jost:wght@400;500;600;700&display=swap');
+
+.adn-root {
+  --maroon: #5C1020;
+  --maroon-soft: #8A2A3C;
+  --burgundy: #581822;
+  --taupe: #C8B9A6;
+  --gold: #C9A765;
+  --ivory: #F3E8D0;
+  --espresso: #2B1810;
+  --offwhite: #FBF8F2;
+  --paper: #FFFDF8;
+  --ink: #1E110B;
+  --display: 'Cormorant Garamond', Georgia, serif;
+  --body: 'Jost', system-ui, sans-serif;
+  font-family: var(--body);
+  font-size: 13px;
+  font-variant-numeric: lining-nums;
+  color: var(--espresso);
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+}
+.adn-root *, .adn-root *::before, .adn-root *::after { box-sizing: border-box; }
+.adn-display {
+  font-family: var(--display);
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+.adn-root button { font-family: inherit; }
+.adn-root :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Hero */
+.adn-hero {
+  position: relative; overflow: hidden;
+  background: var(--maroon); color: var(--offwhite);
+  border-radius: 14px; padding: 14px 20px 16px;
+}
+.adn-hero h1 { position: relative; z-index: 2; margin: 0; font-size: clamp(17px, 2vw, 21px); max-width: 28em; text-transform: uppercase; letter-spacing: 0.1em; font-weight: 500; }
+.adn-hero p { position: relative; z-index: 2; margin: 4px 0 0; font-size: 12.5px; font-weight: 500; opacity: 0.9; max-width: 44em; }
+.adn-blob { position: absolute; background: var(--gold); opacity: 0.9; animation: adn-morph 11s ease-in-out infinite, adn-drift 17s ease-in-out infinite; }
+.adn-blob.one { width: 110px; height: 96px; left: -40px; top: -46px; }
+.adn-blob.two { width: 80px; height: 74px; right: 24%; bottom: -46px; animation-delay: -4s, -7s; background: var(--maroon-soft); }
+.adn-blob.three { width: 74px; height: 66px; right: -24px; top: -22px; animation-delay: -2s, -3s; }
+.adn-splat { position: absolute; right: 5%; top: 8px; z-index: 1; animation: adn-spin 26s linear infinite; }
+
+/* Cities scroller: no box, no title, just a clean strip */
+.adn-cities {
+  overflow: hidden;
+  padding: 2px 0;
+}
+.adn-cities-viewport {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 6%, #000 94%, transparent 100%);
+}
+.adn-cities-track {
+  display: flex; width: max-content;
+  animation: adn-cities-scroll 60s linear infinite;
+}
+.adn-cities-viewport:hover .adn-cities-track { animation-play-state: paused; }
+.adn-city {
+  display: inline-flex; align-items: center; gap: 6px;
+  margin-right: 8px; padding: 3px 12px 3px 3px;
+  border-radius: 999px; white-space: nowrap;
+  background: var(--ivory);
+  border: 1.5px solid var(--espresso);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.adn-city:hover { transform: translateY(-1px); box-shadow: 0 2px 0 var(--espresso); }
+.adn-city-ico {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--offwhite); font-size: 12px; line-height: 1;
+  font-family: 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+}
+.adn-city b { font-family: var(--display); font-size: 15px; font-weight: 600; line-height: 1; }
+/* every third pill gets the maroon treatment to match the hero */
+.adn-city:nth-child(3n + 1) { background: var(--maroon); border-color: var(--maroon); color: var(--offwhite); }
+.adn-city:nth-child(3n + 1) .adn-city-ico { background: var(--gold); }
+@keyframes adn-cities-scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+/* Buttons: flat, small */
+.adn-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 6px 12px; border-radius: 999px;
+  border: 1.5px solid var(--espresso);
+  background: var(--gold); color: var(--espresso);
+  font-size: 12.5px; font-weight: 700; cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, background 0.2s;
+}
+.adn-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 2px 0 var(--espresso); }
+.adn-btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+.adn-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.adn-btn.green { background: var(--espresso); color: var(--offwhite); }
+.adn-btn.burgundy { background: var(--burgundy); color: var(--offwhite); border-color: var(--burgundy); }
+.adn-btn.burgundy:hover:not(:disabled) { box-shadow: 0 2px 0 rgba(88,24,34,0.35); }
+.adn-btn.maroon { background: var(--maroon); color: var(--offwhite); }
+.adn-btn.cream { background: var(--offwhite); color: var(--espresso); }
+.adn-btn.yellow { background: var(--ivory); color: var(--espresso); }
+.adn-btn.ghost { background: transparent; color: var(--offwhite); border-color: rgba(251,248,242,0.7); }
+.adn-btn.ghost:hover:not(:disabled) { box-shadow: 0 2px 0 rgba(251,248,242,0.5); }
+.adn-btn.block { width: 100%; }
+.adn-btn.small { padding: 3px 10px; font-size: 12px; }
+.adn-spin { animation: adn-spin 0.8s linear infinite; }
+.adn-spin-slow { animation: adn-spin 7s linear infinite; }
+
+/* Cards */
+.adn-card { background: var(--ivory); border-radius: 14px; padding: 10px; display: flex; flex-direction: column; }
+.adn-panel { background: var(--offwhite); border-radius: 10px; padding: 12px; flex: 1; }
+.adn-pop { animation: adn-pop 0.5s cubic-bezier(.2,1.2,.4,1) both; }
+
+@keyframes adn-morph {
+  0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  50% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+}
+@keyframes adn-drift {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  50% { transform: translate(18px, 10px) rotate(14deg); }
+}
+@keyframes adn-spin { to { transform: rotate(360deg); } }
+@keyframes adn-pop {
+  from { opacity: 0; transform: translateY(14px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes adn-grow { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
+/* Stepper */
+.adn-stepper { display: flex; align-items: center; padding: 2px 4px; }
+.adn-step { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.adn-step:last-child { flex: none; }
+.adn-step::after {
+  content: ''; flex: 1; height: 1px; margin: 0 12px;
+  background: var(--taupe); transition: background 0.3s;
+}
+.adn-step:last-child::after { display: none; }
+.adn-step.done::after { background: var(--burgundy); }
+.adn-dot {
+  width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  background: transparent; color: var(--espresso);
+  border: 1px solid var(--taupe);
+  transition: background 0.3s, border-color 0.3s;
+}
+.adn-step.on .adn-dot { background: var(--gold); border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,167,101,0.3); }
+.adn-step.done .adn-dot { background: var(--burgundy); border-color: var(--burgundy); color: var(--offwhite); }
+.adn-step-label { font-size: 12.5px; font-weight: 600; white-space: nowrap; opacity: 0.55; }
+.adn-step.on .adn-step-label, .adn-step.done .adn-step-label { opacity: 1; }
+
+/* Step heads */
+.adn-card-head { display: flex; align-items: center; gap: 8px; padding: 0 4px 8px; flex-wrap: wrap; }
+.adn-card-head h2 { margin: 0; font-size: 18px; color: var(--espresso); }
+.adn-num {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--espresso); color: var(--offwhite);
+  display: inline-flex; align-items: center; justify-content: center;
+  font-family: var(--display); font-weight: 600; font-size: 13px; flex-shrink: 0;
+}
+.adn-sub { margin: 0 0 8px; font-size: 12.5px; font-weight: 500; opacity: 0.8; }
+.adn-hint { font-size: 12.5px; font-weight: 600; }
+
+.adn-iconbtn { background: none; border: none; cursor: pointer; padding: 4px; border-radius: 8px; display: inline-flex; transition: background 0.15s, transform 0.15s; }
+.adn-iconbtn:hover { background: rgba(43,24,16,0.1); transform: rotate(-8deg) scale(1.1); }
+.adn-iconbtn.danger:hover { background: rgba(92,16,32,0.12); }
+
+/* Form */
+.adn-toprow { display: flex; flex-direction: column; gap: 3px; margin-bottom: 10px; max-width: 360px; }
+.adn-toprow label { font-size: 12px; font-weight: 600; }
+
+.adn-textarea {
+  width: 100%; min-height: 88px; resize: vertical;
+  padding: 9px 12px; border-radius: 10px;
+  border: 1px solid var(--taupe); background: var(--paper); color: var(--ink);
+  font-family: inherit; font-size: 13px; font-weight: 500; line-height: 1.5; outline: none;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.adn-textarea:focus, .adn-input:focus, .adn-select:focus {
+  border-color: var(--burgundy); box-shadow: 0 0 0 3px rgba(88,24,34,0.12);
+}
+.adn-error { margin: 8px 0 0; font-size: 12.5px; font-weight: 700; color: var(--maroon); }
+.adn-foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
+.adn-foot p { margin: 0; font-size: 12px; font-weight: 500; opacity: 0.7; }
+
+.adn-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; }
+.adn-field label { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; font-size: 12px; font-weight: 600; }
+.adn-field .wrap { position: relative; }
+.adn-field .wrap svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); pointer-events: none; }
+.adn-input {
+  width: 100%; padding: 5px 12px 5px 30px; border-radius: 999px;
+  border: 1px solid var(--taupe); background: var(--paper); color: var(--ink);
+  font-family: inherit; font-size: 13px; font-weight: 600; outline: none;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.adn-select {
+  width: 100%; max-width: 360px; padding: 6px 14px; border-radius: 999px;
+  border: 1px solid var(--taupe); background: var(--paper); color: var(--ink);
+  font-family: inherit; font-size: 13px; font-weight: 600; outline: none;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.adn-alert { margin-top: 10px; padding: 7px 12px; border-radius: 10px; background: var(--maroon); color: var(--offwhite); font-size: 12.5px; font-weight: 600; animation: adn-shake 0.4s ease; }
+
+/* Loader + notice */
+.adn-cooking { background: var(--espresso); color: var(--offwhite); border-radius: 14px; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.adn-cooking .adn-display { font-size: clamp(17px, 2vw, 21px); text-align: center; animation: adn-pop 0.5s ease both; }
+.adn-bounce { display: flex; gap: 6px; }
+.adn-bounce i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); animation: adn-bounce 0.9s ease-in-out infinite; }
+.adn-bounce i:nth-child(2) { animation-delay: 0.15s; background: var(--maroon-soft); }
+.adn-bounce i:nth-child(3) { animation-delay: 0.3s; background: var(--offwhite); }
+.adn-note { display: flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px; background: var(--offwhite); border: 1.5px dashed var(--espresso); font-size: 12.5px; font-weight: 600; }
+
+/* Variations */
+.adn-var-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+.adn-var-grid.single { grid-template-columns: minmax(0, 1fr); }
+.adn-count { padding: 2px 9px; border-radius: 999px; background: var(--espresso); color: var(--offwhite); font-size: 12px; font-weight: 600; }
+.adn-vcard {
+  background: var(--ivory); border-radius: 14px; padding: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+  transition: transform 0.2s, box-shadow 0.2s;
+  animation: adn-pop 0.5s cubic-bezier(.2,1.2,.4,1) both;
+}
+.adn-vcard:nth-child(2) { animation-delay: 0.1s; }
+.adn-vcard:hover { transform: translateY(-2px); }
+.adn-vcard.sel { box-shadow: 0 0 0 2px var(--offwhite), 0 0 0 4px var(--accent); }
+.adn-vtop { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.adn-tag { padding: 2px 9px; border-radius: 999px; background: var(--accent); color: var(--offwhite); font-size: 12px; font-weight: 600; }
+.adn-score { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; background: var(--offwhite); color: var(--accent); font-size: 12px; font-weight: 700; }
+.adn-vcard h3 { margin: 6px 2px 0; font-size: 20px; color: var(--accent); }
+.adn-vlabel { margin: 2px 2px 0; font-size: 12px; font-weight: 700; }
+.adn-expl { margin: 5px 2px 0; font-size: 12.5px; font-weight: 500; line-height: 1.5; color: var(--ink); }
+.adn-chips { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 2px 0; }
+.adn-chips span { font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 999px; background: var(--offwhite); }
+.adn-cost { display: flex; justify-content: space-between; align-items: flex-end; gap: 8px; padding: 0 2px; flex-wrap: wrap; }
+.adn-cost-group { display: flex; gap: 16px; }
+.adn-cost small { display: block; font-size: 12px; font-weight: 600; opacity: 0.7; }
+.adn-cost strong { display: block; margin-top: 1px; font-family: var(--display); font-weight: 600; font-size: 19px; line-height: 1; }
+.adn-selected-flag { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 700; animation: adn-pop 0.4s ease both; }
+.adn-days { background: var(--offwhite); border-radius: 10px; padding: 8px; max-height: 360px; overflow-y: auto; }
+.adn-days-title { margin: 0 0 6px; font-size: 12px; font-weight: 700; }
+.adn-days-title em { font-style: normal; font-weight: 500; margin-left: 8px; color: var(--maroon); }
+.adn-stack { display: flex; flex-direction: column; gap: 5px; }
+.adn-day { border-radius: 10px; background: var(--paper); border: 1.5px solid rgba(43,24,16,0.14); overflow: hidden; }
+.adn-day-head { width: 100%; display: flex; align-items: center; gap: 8px; padding: 5px 10px; background: transparent; border: none; cursor: pointer; text-align: left; color: var(--espresso); }
+.adn-day-head.open { border-bottom: 1.5px solid rgba(43,24,16,0.1); }
+.adn-day-no { width: 18px; height: 18px; border-radius: 50%; background: var(--espresso); color: var(--offwhite); display: inline-flex; align-items: center; justify-content: center; font-family: var(--display); font-weight: 600; font-size: 12px; flex-shrink: 0; }
+.adn-day-title { flex: 1; font-size: 12.5px; font-weight: 700; color: var(--ink); }
+.adn-day-body { padding: 7px 9px 9px; display: flex; flex-direction: column; gap: 5px; }
+.adn-act { display: flex; align-items: flex-start; gap: 8px; padding: 4px 8px; border-radius: 8px; background: rgba(201,167,101,0.2); border: 1.5px solid transparent; animation: adn-slide 0.3s ease both; }
+.adn-act.editing { background: #fff; border-color: var(--gold); }
+.adn-act-ico { width: 18px; height: 18px; border-radius: 50%; background: var(--paper); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.adn-act p { margin: 0; flex: 1; font-size: 12.5px; font-weight: 500; line-height: 1.45; color: var(--ink); }
+.adn-act-tools { display: flex; gap: 2px; flex-shrink: 0; }
+.adn-inline-input { flex: 1; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--taupe); background: #fff; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink); outline: none; }
+.adn-inline-input.title { border-color: var(--taupe); }
+.adn-inline-input:focus { border-color: var(--burgundy); }
+.adn-add { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; padding: 4px 10px; border-radius: 999px; border: 1.5px dashed var(--espresso); background: transparent; color: var(--espresso); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+.adn-add:hover { background: rgba(43,24,16,0.08); }
+.adn-add-row { display: flex; align-items: center; gap: 6px; padding: 3px 8px; border-radius: 999px; background: #fff; border: 1.5px solid var(--gold); }
+.adn-add-row input { flex: 1; border: none; outline: none; background: transparent; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink); }
+
+/* Approval bar */
+.adn-approval {
+  position: sticky; bottom: 12px; z-index: 30;
+  background: var(--maroon); color: var(--offwhite);
+  border-radius: 14px; padding: 8px 14px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  box-shadow: 0 0 0 2px var(--offwhite), 0 8px 20px rgba(30,17,11,0.25);
+  animation: adn-rise-bar 0.4s cubic-bezier(.2,1.2,.4,1) both;
+}
+.adn-approval h4 { margin: 0; font-size: 17px; }
+.adn-approval p { margin: 2px 0 0; font-size: 12px; font-weight: 500; opacity: 0.9; max-width: 34em; }
+.adn-approval-actions { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+
+/* Toast */
+.adn-toast { position: fixed; bottom: 20px; right: 20px; z-index: 999; display: flex; align-items: center; gap: 8px; min-width: 240px; max-width: 340px; padding: 8px 14px; border-radius: 12px; border: 1.5px solid var(--ink); font-size: 12.5px; font-weight: 600; animation: adn-toast-in 0.4s cubic-bezier(.2,1.3,.4,1) both; }
+.adn-toast.success { background: var(--espresso); color: var(--offwhite); }
+.adn-toast.draft { background: var(--ivory); color: var(--espresso); }
+.adn-toast.error, .adn-toast.reject { background: var(--maroon); color: var(--offwhite); }
+.adn-toast p { margin: 0; flex: 1; }
+.adn-toast button { background: none; border: none; cursor: pointer; padding: 2px; display: flex; color: inherit; }
+
+@keyframes adn-slide { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: none; } }
+@keyframes adn-bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes adn-shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-5px); } 75% { transform: translateX(5px); } }
+@keyframes adn-toast-in { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: none; } }
+@keyframes adn-rise-bar { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 860px) { .adn-var-grid { grid-template-columns: minmax(0, 1fr); } .adn-hero { padding: 14px 16px 16px; } }
+@media (max-width: 640px) {
+  .adn-fields { grid-template-columns: 1fr; }
+  .adn-approval-actions { justify-content: flex-start; }
+  .adn-step:not(.on) .adn-step-label { display: none; }
+  .adn-step::after { margin: 0 8px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .adn-root *, .adn-root *::before, .adn-root *::after, .adn-toast { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+  .adn-cities-viewport { overflow-x: auto; -webkit-mask-image: none; mask-image: none; }
+  .adn-cities-track { animation: none !important; }
+}
+`
+
+// ── Decorative pieces ─────────────────────────────────────────────────────────
+
+function Splat({ className = '', size = 120, color = '#C9A765' }) {
+  return (
+    <svg className={className} viewBox="0 0 200 200" width={size} height={size} aria-hidden="true">
+      <g fill={color}>
+        <circle cx="100" cy="100" r="44" />
+        {[0, 45, 90, 135, 180, 225, 270, 315].map(a => (
+          <ellipse
+            key={a}
+            cx="100"
+            cy="32"
+            rx="16"
+            ry={a % 90 === 0 ? 34 : 22}
+            transform={`rotate(${a} 100 100)`}
+          />
+        ))}
+      </g>
+    </svg>
+  )
+}
+
+function CookingPanel() {
+  const [i, setI] = useState(0)
+
+  useEffect(() => {
+    const t = setInterval(() => setI(p => (p + 1) % COOKING_LINES.length), 1800)
+    return () => clearInterval(t)
+  }, [])
+
+  return (
+    <div className="adn-cooking" role="status" aria-live="polite">
+      <Splat size={36} color="#C9A765" className="adn-spin-slow" />
+      <p key={i} className="adn-display">{COOKING_LINES[i]}</p>
+      <div className="adn-bounce" aria-hidden="true"><i /><i /><i /></div>
+    </div>
+  )
+}
+
+// Auto-scrolling strip of major tourism cities (UI only, no title, no box)
+function CitiesScroller() {
+  // Rendered twice so the loop is seamless (the track moves -50%).
+  const loop = [...CITIES, ...CITIES]
+
+  return (
+    <section className="adn-cities" aria-label="Popular tourism cities in India">
+      <div className="adn-cities-viewport">
+        <div className="adn-cities-track">
+          {loop.map(([city, icon], i) => (
+            <div
+              key={`${city}-${i}`}
+              className="adn-city"
+              aria-hidden={i >= CITIES.length ? 'true' : undefined}
+            >
+              <span className="adn-city-ico" aria-hidden="true">{icon}</span>
+              <b>{city}</b>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 // ── Toast ─────────────────────────────────────────────────────────────────────
 
 function Toast({ message, type, onClose }) {
   return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: '28px',
-        right: '28px',
-        zIndex: 999,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        padding: '14px 18px',
-        borderRadius: '12px',
-        backgroundColor:
-          type === 'success'
-            ? '#f0fdfa'
-            : type === 'draft'
-              ? '#fffbeb'
-              : '#fef2f2',
-        border: `1px solid ${
-          type === 'success'
-            ? '#99f6e4'
-            : type === 'draft'
-              ? '#fde68a'
-              : '#fecaca'
-        }`,
-        boxShadow: '0 8px 24px rgba(0,0,0,0.10)',
-        minWidth: '280px',
-      }}
-    >
-      {type === 'success' && <CheckCircle size={18} color="#0f766e" />}
-      {type === 'draft' && <Save size={18} color="#d97706" />}
-      {type === 'reject' && <XCircle size={18} color="#dc2626" />}
+    <div className={`adn-toast ${type}`} role="status">
+      {type === 'success' && <CheckCircle size={16} />}
+      {type === 'draft' && <Save size={16} />}
+      {type !== 'success' && type !== 'draft' && <XCircle size={16} />}
 
-      <p
-        style={{
-          margin: 0,
-          fontSize: '14px',
-          fontWeight: '500',
-          flex: 1,
-          color:
-            type === 'success'
-              ? '#0f766e'
-              : type === 'draft'
-                ? '#d97706'
-                : '#dc2626',
-        }}
-      >
-        {message}
-      </p>
+      <p>{message}</p>
 
-      <button
-        onClick={onClose}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '2px',
-        }}
-      >
-        <X size={14} color="#9ca3af" />
+      <button onClick={onClose} aria-label="Dismiss">
+        <X size={13} />
       </button>
     </div>
   )
@@ -198,74 +561,27 @@ function EditableDayCard({
   }
 
   return (
-    <div
-      style={{
-        border: '1px solid #f3f4f6',
-        borderRadius: '12px',
-        overflow: 'hidden',
-        backgroundColor: '#fff',
-      }}
-    >
+    <div className="adn-day">
       {/* Day header */}
 
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          padding: '12px 14px',
-          backgroundColor: '#fafafa',
-          borderBottom: expanded
-            ? '1px solid #f3f4f6'
-            : 'none',
-        }}
-      >
-        <span
-          style={{
-            width: '26px',
-            height: '26px',
-            borderRadius: '8px',
-            backgroundColor: '#f0fdfa',
-            color: '#0f766e',
-            fontSize: '11px',
-            fontWeight: '700',
-            flexShrink: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          {dayData.day}
-        </span>
+      <div className={`adn-day-head ${expanded ? 'open' : ''}`}>
+        <span className="adn-day-no">{dayData.day}</span>
 
         {editingTitle ? (
           <input
             autoFocus
+            className="adn-inline-input title"
             value={titleVal}
             onChange={e => setTitleVal(e.target.value)}
             onBlur={saveTitle}
             onKeyDown={e =>
               e.key === 'Enter' && saveTitle()
             }
-            style={{
-              flex: 1,
-              padding: '4px 8px',
-              borderRadius: '6px',
-              border: '1px solid #0f766e',
-              fontSize: '13px',
-              fontWeight: '500',
-              outline: 'none',
-            }}
           />
         ) : (
           <span
-            style={{
-              flex: 1,
-              fontSize: '13px',
-              fontWeight: '500',
-              color: '#111827',
-              cursor: 'text',
-            }}
+            className="adn-day-title"
+            style={{ cursor: 'text' }}
             onClick={() => setEditingTitle(true)}
           >
             {titleVal}
@@ -273,34 +589,22 @@ function EditableDayCard({
         )}
 
         <button
+          className="adn-iconbtn"
           onClick={() => setEditingTitle(true)}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '4px',
-            borderRadius: '6px',
-            display: 'flex',
-          }}
           title="Edit day title"
         >
-          <Edit3 size={13} color="#9ca3af" />
+          <Edit3 size={12} color="#2B1810" />
         </button>
 
         <button
+          className="adn-iconbtn"
           onClick={() => setExpanded(p => !p)}
-          style={{
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            padding: '4px',
-            display: 'flex',
-          }}
+          aria-label={expanded ? 'Collapse day' : 'Expand day'}
         >
           {expanded ? (
-            <ChevronUp size={14} color="#9ca3af" />
+            <ChevronUp size={13} color="#2B1810" />
           ) : (
-            <ChevronDown size={14} color="#9ca3af" />
+            <ChevronDown size={13} color="#2B1810" />
           )}
         </button>
       </div>
@@ -308,46 +612,14 @@ function EditableDayCard({
       {/* Activities */}
 
       {expanded && (
-        <div
-          style={{
-            padding: '12px 14px',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '8px',
-          }}
-        >
+        <div className="adn-day-body">
           {activityVals.map((activity, actIdx) => (
             <div
               key={actIdx}
-              style={{
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '8px',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                backgroundColor:
-                  editingIdx === actIdx
-                    ? '#f0fdfa'
-                    : '#f9fafb',
-                border: `1px solid ${
-                  editingIdx === actIdx
-                    ? '#99f6e4'
-                    : '#f3f4f6'
-                }`,
-              }}
+              className={`adn-act ${editingIdx === actIdx ? 'editing' : ''}`}
+              style={{ animationDelay: `${actIdx * 45}ms` }}
             >
-              <div
-                style={{
-                  width: '22px',
-                  height: '22px',
-                  borderRadius: '6px',
-                  flexShrink: 0,
-                  backgroundColor: '#fff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
+              <div className="adn-act-ico">
                 {timeIcons[actIdx % 3]}
               </div>
 
@@ -362,6 +634,7 @@ function EditableDayCard({
                 >
                   <input
                     autoFocus
+                    className="adn-inline-input"
                     value={activityVals[actIdx]}
                     onChange={e => {
                       const copy = [...activityVals]
@@ -372,75 +645,34 @@ function EditableDayCard({
                       e.key === 'Enter' &&
                       saveActivity(actIdx)
                     }
-                    style={{
-                      flex: 1,
-                      padding: '4px 8px',
-                      borderRadius: '6px',
-                      border: '1px solid #0f766e',
-                      fontSize: '12px',
-                      outline: 'none',
-                    }}
                   />
 
                   <button
+                    className="adn-iconbtn"
                     onClick={() => saveActivity(actIdx)}
-                    style={{
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '3px',
-                      borderRadius: '5px',
-                      display: 'flex',
-                      backgroundColor: '#f0fdfa',
-                    }}
+                    aria-label="Save activity"
                   >
-                    <Check
-                      size={13}
-                      color="#0f766e"
-                    />
+                    <Check size={13} color="#2B1810" />
                   </button>
                 </div>
               ) : (
-                <p
-                  style={{
-                    margin: 0,
-                    flex: 1,
-                    fontSize: '12px',
-                    color: '#374151',
-                    lineHeight: '1.5',
-                  }}
-                >
-                  {activity}
-                </p>
+                <p>{activity}</p>
               )}
 
               {editingIdx !== actIdx && (
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '4px',
-                    flexShrink: 0,
-                  }}
-                >
+                <div className="adn-act-tools">
                   <button
+                    className="adn-iconbtn"
                     onClick={() =>
                       setEditingIdx(actIdx)
                     }
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '3px',
-                      borderRadius: '5px',
-                      display: 'flex',
-                    }}
+                    aria-label="Edit activity"
                   >
-                    <Edit3
-                      size={12}
-                      color="#9ca3af"
-                    />
+                    <Edit3 size={11} color="#2B1810" />
                   </button>
 
                   <button
+                    className="adn-iconbtn danger"
                     onClick={() => {
                       const copy =
                         activityVals.filter(
@@ -454,19 +686,9 @@ function EditableDayCard({
                         actIdx
                       )
                     }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      padding: '3px',
-                      borderRadius: '5px',
-                      display: 'flex',
-                    }}
+                    aria-label="Delete activity"
                   >
-                    <Trash2
-                      size={12}
-                      color="#dc2626"
-                    />
+                    <Trash2 size={11} color="#5C1020" />
                   </button>
                 </div>
               )}
@@ -476,21 +698,8 @@ function EditableDayCard({
           {/* Add activity */}
 
           {addingNew ? (
-            <div
-              style={{
-                display: 'flex',
-                gap: '6px',
-                alignItems: 'center',
-                padding: '8px 10px',
-                borderRadius: '8px',
-                backgroundColor: '#f0fdfa',
-                border: '1px solid #99f6e4',
-              }}
-            >
-              <Plus
-                size={13}
-                color="#0f766e"
-              />
+            <div className="adn-add-row">
+              <Plus size={12} color="#A9803A" />
 
               <input
                 autoFocus
@@ -506,61 +715,30 @@ function EditableDayCard({
                     setAddingNew(false)
                 }}
                 placeholder="Type new activity and press Enter..."
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  outline: 'none',
-                  fontSize: '12px',
-                  background: 'transparent',
-                }}
               />
 
               <button
+                className="adn-btn small green"
                 onClick={handleAddActivity}
-                style={{
-                  background: '#0f766e',
-                  border: 'none',
-                  borderRadius: '5px',
-                  padding: '3px 8px',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  color: '#fff',
-                  fontWeight: '500',
-                }}
               >
                 Add
               </button>
 
               <button
+                className="adn-iconbtn"
                 onClick={() => setAddingNew(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
+                aria-label="Cancel"
               >
-                <X size={13} color="#9ca3af" />
+                <X size={12} color="#2B1810" />
               </button>
             </div>
           ) : (
             <button
+              className="adn-add"
               onClick={() => setAddingNew(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '7px 10px',
-                borderRadius: '8px',
-                border: '1px dashed #d1d5db',
-                backgroundColor: 'transparent',
-                cursor: 'pointer',
-                width: '100%',
-                fontSize: '12px',
-                color: '#9ca3af',
-              }}
             >
-              <Plus size={13} />
-              Add Activity
+              <Plus size={12} />
+              Add activity
             </button>
           )}
         </div>
@@ -650,127 +828,34 @@ function VariationCard({
     )
   }
 
+  // UI-only accent: espresso for budget, deep maroon for experience.
+  const accent = variation.type === 'budget' ? '#2B1810' : '#6B1426'
+
   return (
     <div
-      style={{
-        backgroundColor: '#fff',
-        border: selected
-          ? `2px solid ${variation.scoreColor}`
-          : '1px solid #f3f4f6',
-        borderRadius: '14px',
-        overflow: 'hidden',
-        display: 'flex',
-        flexDirection: 'column',
-      }}
+      className={`adn-vcard ${selected ? 'sel' : ''}`}
+      style={{ '--accent': accent }}
     >
       {/* Header */}
 
-      <div
-        style={{
-          padding: '18px 20px',
-          borderBottom: '1px solid #f3f4f6',
-          backgroundColor: variation.scoreBg,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            marginBottom: '10px',
-          }}
-        >
-          <div>
-            <span
-              style={{
-                fontSize: '11px',
-                fontWeight: '700',
-                color: variation.scoreColor,
-                textTransform: 'uppercase',
-                letterSpacing: '0.5px',
-              }}
-            >
-              Version {variation.id}
-            </span>
+      <div>
+        <div className="adn-vtop">
+          <span className="adn-tag">Version {variation.id}</span>
 
-            <h3
-              style={{
-                margin: '4px 0 0',
-                fontSize: '16px',
-                fontWeight: '700',
-                color: '#111827',
-              }}
-            >
-              {variation.title}
-            </h3>
-          </div>
-
-          <div style={{ textAlign: 'right' }}>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '5px',
-                padding: '5px 12px',
-                borderRadius: '999px',
-                backgroundColor:
-                  variation.scoreColor,
-                color: '#fff',
-                fontSize: '13px',
-                fontWeight: '700',
-              }}
-            >
-              <Star size={12} fill="#fff" />
-              {variation.score}
-            </div>
-
-            <p
-              style={{
-                margin: '4px 0 0',
-                fontSize: '11px',
-                color: variation.scoreColor,
-                fontWeight: '500',
-              }}
-            >
-              {variation.scoreLabel}
-            </p>
-          </div>
+          <span className="adn-score">
+            <Star size={11} fill="currentColor" />
+            {variation.score}
+          </span>
         </div>
 
-        <p
-          style={{
-            margin: '0 0 12px',
-            fontSize: '13px',
-            color: '#374151',
-            lineHeight: '1.5',
-          }}
-        >
-          {variation.explanation}
-        </p>
+        <h3 className="adn-display">{variation.title}</h3>
+        <p className="adn-vlabel">{variation.scoreLabel}</p>
+        <p className="adn-expl">{variation.explanation}</p>
 
-        <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: '6px',
-          }}
-        >
+        <div className="adn-chips">
           {variation.highlights.map(
             (h, index) => (
-              <span
-                key={`${h}-${index}`}
-                style={{
-                  fontSize: '11px',
-                  padding: '3px 10px',
-                  borderRadius: '999px',
-                  backgroundColor: '#fff',
-                  color: variation.scoreColor,
-                  border: `1px solid ${variation.scoreColor}30`,
-                  fontWeight: '500',
-                }}
-              >
-                {h}
-              </span>
+              <span key={`${h}-${index}`}>{h}</span>
             )
           )}
         </div>
@@ -778,142 +863,42 @@ function VariationCard({
 
       {/* Cost row */}
 
-      <div
-        style={{
-          padding: '12px 20px',
-          borderBottom: '1px solid #f3f4f6',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          backgroundColor: '#fafafa',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            gap: '20px',
-          }}
-        >
+      <div className="adn-cost">
+        <div className="adn-cost-group">
           <div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: '11px',
-                color: '#9ca3af',
-              }}
-            >
-              Total Cost
-            </p>
-
-            <p
-              style={{
-                margin: '2px 0 0',
-                fontSize: '17px',
-                fontWeight: '700',
-                color: '#111827',
-              }}
-            >
-              {variation.totalCost}
-            </p>
+            <small>Total cost</small>
+            <strong>{variation.totalCost}</strong>
           </div>
 
           <div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: '11px',
-                color: '#9ca3af',
-              }}
-            >
-              Duration
-            </p>
-
-            <p
-              style={{
-                margin: '2px 0 0',
-                fontSize: '17px',
-                fontWeight: '700',
-                color: '#111827',
-              }}
-            >
-              {localDays.length} Days
-            </p>
+            <small>Duration</small>
+            <strong>{localDays.length} Days</strong>
           </div>
         </div>
 
         {selected && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-            }}
-          >
-            <CheckCircle
-              size={15}
-              color="#0f766e"
-            />
-
-            <span
-              style={{
-                fontSize: '12px',
-                color: '#0f766e',
-                fontWeight: '600',
-              }}
-            >
-              Selected for editing
-            </span>
-          </div>
+          <span className="adn-selected-flag">
+            <CheckCircle size={14} />
+            Selected for editing
+          </span>
         )}
       </div>
 
       {/* Day-by-day */}
 
-      <div
-        style={{
-          padding: '16px 20px',
-          flex: 1,
-          overflowY: 'auto',
-          maxHeight: '480px',
-        }}
-      >
-        <p
-          style={{
-            margin: '0 0 12px',
-            fontSize: '12px',
-            fontWeight: '600',
-            color: '#9ca3af',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}
-        >
+      <div className="adn-days">
+        <p className="adn-days-title">
           {selected
-            ? 'Edit Day-by-Day Plan'
-            : 'Day-by-Day Plan'}
+            ? 'Edit day-by-day plan'
+            : 'Day-by-day plan'}
 
           {selected && (
-            <span
-              style={{
-                marginLeft: '8px',
-                fontSize: '11px',
-                color: '#0f766e',
-                fontWeight: '400',
-                textTransform: 'none',
-              }}
-            >
-              Click any activity to edit
-            </span>
+            <em>Click any activity to edit</em>
           )}
         </p>
 
         {selected ? (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-            }}
-          >
+          <div className="adn-stack">
             {localDays.map((day, i) => (
               <EditableDayCard
                 key={i}
@@ -931,135 +916,40 @@ function VariationCard({
             ))}
           </div>
         ) : (
-          <div
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '8px',
-            }}
-          >
+          <div className="adn-stack">
             {localDays.map((day, i) => (
-              <div
-                key={i}
-                style={{
-                  border: '1px solid #f3f4f6',
-                  borderRadius: '10px',
-                  overflow: 'hidden',
-                }}
-              >
+              <div key={i} className="adn-day">
                 <button
+                  className={`adn-day-head ${expandedDays.includes(i) ? 'open' : ''}`}
                   onClick={() =>
                     toggleDay(i)
                   }
-                  style={{
-                    width: '100%',
-                    padding: '10px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent:
-                      'space-between',
-                    backgroundColor: '#fafafa',
-                    border: 'none',
-                    cursor: 'pointer',
-                    borderBottom:
-                      expandedDays.includes(i)
-                        ? '1px solid #f3f4f6'
-                        : 'none',
-                  }}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: '22px',
-                        height: '22px',
-                        borderRadius: '6px',
-                        backgroundColor:
-                          '#f0fdfa',
-                        color: '#0f766e',
-                        fontSize: '11px',
-                        fontWeight: '700',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent:
-                          'center',
-                      }}
-                    >
-                      {day.day}
-                    </span>
+                  <span className="adn-day-no">{day.day}</span>
 
-                    <span
-                      style={{
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        color: '#111827',
-                      }}
-                    >
-                      {day.title}
-                    </span>
-                  </div>
+                  <span className="adn-day-title">{day.title}</span>
 
                   {expandedDays.includes(i) ? (
-                    <ChevronUp
-                      size={13}
-                      color="#9ca3af"
-                    />
+                    <ChevronUp size={13} color="#2B1810" />
                   ) : (
-                    <ChevronDown
-                      size={13}
-                      color="#9ca3af"
-                    />
+                    <ChevronDown size={13} color="#2B1810" />
                   )}
                 </button>
 
                 {expandedDays.includes(i) && (
-                  <div
-                    style={{
-                      padding: '10px 14px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: '6px',
-                    }}
-                  >
+                  <div className="adn-day-body">
                     {day.activities.map(
                       (act, ai) => (
                         <div
                           key={ai}
-                          style={{
-                            display: 'flex',
-                            gap: '8px',
-                            alignItems:
-                              'flex-start',
-                          }}
+                          className="adn-act"
+                          style={{ animationDelay: `${ai * 45}ms` }}
                         >
-                          <div
-                            style={{
-                              marginTop: '2px',
-                              flexShrink: 0,
-                            }}
-                          >
-                            {
-                              timeIcons[
-                                ai % 3
-                              ]
-                            }
+                          <div className="adn-act-ico">
+                            {timeIcons[ai % 3]}
                           </div>
 
-                          <p
-                            style={{
-                              margin: 0,
-                              fontSize: '12px',
-                              color: '#374151',
-                              lineHeight: '1.4',
-                            }}
-                          >
-                            {act}
-                          </p>
+                          <p>{act}</p>
                         </div>
                       )
                     )}
@@ -1073,51 +963,25 @@ function VariationCard({
 
       {/* Select */}
 
-      <div
+      <button
+        className={`adn-btn block ${selected ? 'cream' : ''}`}
         style={{
-          padding: '16px 20px',
-          borderTop: '1px solid #f3f4f6',
+          background: selected ? undefined : accent,
+          color: selected ? accent : '#FBF8F2',
         }}
+        onClick={() =>
+          onSelect(variation.id)
+        }
       >
-        <button
-          onClick={() =>
-            onSelect(variation.id)
-          }
-          style={{
-            width: '100%',
-            padding: '12px',
-            borderRadius: '10px',
-            border: selected
-              ? `1px solid ${variation.scoreColor}`
-              : 'none',
-            backgroundColor: selected
-              ? variation.scoreBg
-              : variation.scoreColor,
-            color: selected
-              ? variation.scoreColor
-              : '#fff',
-            fontSize: '14px',
-            fontWeight: '600',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '8px',
-          }}
-        >
-          {selected ? (
-            <>
-              <CheckCircle size={15} />
-              Editing Version {variation.id}
-            </>
-          ) : (
-            <>
-              Select & Edit Version{' '}
-              {variation.id}
-            </>
-          )}
-        </button>
-      </div>
+        {selected ? (
+          <>
+            <CheckCircle size={14} />
+            Editing version {variation.id}
+          </>
+        ) : (
+          <>Select &amp; edit version {variation.id}</>
+        )}
+      </button>
     </div>
   )
 }
@@ -1126,147 +990,67 @@ function VariationCard({
 
 function ApprovalBar({ selectedId, onApprove, onDraft, onReject, onDownloadPDF, loading, pdfLoading, leadSelected }) {
   return (
-    <div
-      style={{
-        backgroundColor: '#fff',
-        border: '1px solid #f3f4f6',
-        borderRadius: '14px',
-        padding: '20px 24px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        gap: '16px',
-      }}
-    >
+    <div className="adn-approval">
       <div>
-        <p
-          style={{
-            margin: 0,
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#111827',
-          }}
-        >
-          Ready to finalise Version{' '}
-          {selectedId}?
-        </p>
+        <h4 className="adn-display">
+          Ready to finalise version {selectedId}?
+        </h4>
 
-        <p
-          style={{
-            margin: '3px 0 0',
-            fontSize: '13px',
-            color: '#9ca3af',
-          }}
-        >
-          Approve to save to the lead, save
-          as draft to revisit later, or reject
-          to start over.
+        <p>
+          Approve to save to the lead, save as draft to revisit later, or reject to start over.
         </p>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          gap: '10px',
-          flexShrink: 0,
-          flexWrap: 'wrap',
-          justifyContent: 'flex-end',
-        }}
-      >
+      <div className="adn-approval-actions">
         <button
+          className="adn-btn cream"
           onClick={onDownloadPDF}
           disabled={loading || pdfLoading || !leadSelected}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '7px',
-            padding: '10px 16px', borderRadius: '10px',
-            border: '1px solid #c7d2fe', backgroundColor: '#eef2ff',
-            color: '#4338ca', fontSize: '14px', fontWeight: '500',
-            opacity: loading || pdfLoading || !leadSelected ? 0.55 : 1,
-            cursor: loading || pdfLoading || !leadSelected ? 'not-allowed' : 'pointer',
-          }}
         >
           {pdfLoading ? (
             <>
-              <Loader size={14} style={{ animation: 'spin 0.8s linear infinite' }} />
+              <Loader size={13} className="adn-spin" />
               Preparing PDF...
             </>
           ) : (
             <>
-              <Download size={15} />
+              <Download size={14} />
               Download PDF
             </>
           )}
         </button>
 
         <button
+          className="adn-btn ghost"
           onClick={onReject}
           disabled={loading}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '7px',
-            padding: '10px 18px',
-            borderRadius: '10px',
-            border: '1px solid #fecaca',
-            backgroundColor: '#fef2f2',
-            color: '#dc2626',
-            fontSize: '14px',
-            fontWeight: '500',
-            cursor: loading
-              ? 'not-allowed'
-              : 'pointer',
-          }}
         >
-          <XCircle size={15} />
+          <XCircle size={14} />
           Reject
         </button>
 
         <button
+          className="adn-btn yellow"
           onClick={onDraft}
           disabled={loading || !leadSelected}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '7px',
-            padding: '10px 18px', borderRadius: '10px',
-            border: '1px solid #fde68a', backgroundColor: '#fffbeb',
-            color: '#d97706', fontSize: '14px', fontWeight: '500',
-            opacity: loading || !leadSelected ? 0.55 : 1,
-            cursor: loading || !leadSelected ? 'not-allowed' : 'pointer',
-          }}
-          onMouseEnter={e => { if (!loading && leadSelected) e.currentTarget.style.backgroundColor = '#fef3c7' }}
-          onMouseLeave={e => e.currentTarget.style.backgroundColor = '#fffbeb'}
         >
-          <Save size={15} />
-          Save as Draft
+          <Save size={14} />
+          Save as draft
         </button>
 
         <button
+          className="adn-btn"
           onClick={onApprove}
           disabled={loading || !leadSelected}
-          style={{
-            display: 'flex', alignItems: 'center', gap: '7px',
-            padding: '10px 22px', borderRadius: '10px',
-            border: 'none', backgroundColor: loading || !leadSelected ? '#9ca3af' : '#115e59',
-            color: '#fff', fontSize: '14px', fontWeight: '600',
-            opacity: !leadSelected ? 0.75 : 1,
-            cursor: loading || !leadSelected ? 'not-allowed' : 'pointer',
-          }}
-          onMouseEnter={e => { if (!loading && leadSelected) e.currentTarget.style.backgroundColor = '#0f766e' }}
-          onMouseLeave={e => { if (!loading && leadSelected) e.currentTarget.style.backgroundColor = '#115e59' }}
         >
           {loading ? (
             <>
-              <Loader
-                size={14}
-                style={{
-                  animation:
-                    'spin 0.8s linear infinite',
-                }}
-              />
+              <Loader size={13} className="adn-spin" />
               Saving...
             </>
           ) : (
             <>
-              <CheckCircle size={15} />
+              <CheckCircle size={14} />
               Approve
             </>
           )}
@@ -1742,532 +1526,291 @@ function Itinerary() {
     ? (selectedLead.name || selectedLead.customer_name || selectedLead.customerName || `Lead #${selectedLead.id}`)
     : null
 
+  // UI-only: which stage of the flow the person is on (drives the stepper).
+  const stage = selectedId && variations?.length ? 4 : variations?.length ? 3 : parsed ? 2 : 1
+
   return (
     <div
+      className="adn-root"
       style={{
         display: 'flex',
         flexDirection: 'column',
-        gap: '24px',
+        gap: '12px',
+        position: 'relative',
+        isolation: 'isolate',
+        backgroundColor: 'transparent',
+        borderRadius: 0,
+        padding: '10px',
       }}
     >
-      {/* Header */}
+      <style>{css}</style>
 
-      <div>
-        <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#111827' }}>
+      {/* Full-screen cream backdrop */}
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: -1,
+          pointerEvents: 'none',
+          backgroundColor: '#FBF8F2',
+        }}
+      />
+
+      {/* Hero */}
+
+      <header className="adn-hero">
+        <div className="adn-blob one" aria-hidden="true" />
+        <div className="adn-blob two" aria-hidden="true" />
+        <div className="adn-blob three" aria-hidden="true" />
+        <Splat className="adn-splat" size={48} />
+
+        <h1 className="adn-display">
           {selectedLeadName ? `Building itinerary for ${selectedLeadName}` : 'Itinerary Builder'}
         </h1>
-        <p style={{ margin: '4px 0 0', fontSize: '14px', color: '#6b7280' }}>
+        <p>
           {selectedLead
             ? `Customer inquiry and itinerary options for Lead #${selectedLead.id}`
             : 'Select a customer, then parse their inquiry and generate personalised itinerary variations.'}
         </p>
-      </div>
+      </header>
 
-      {/* Customer selection is needed when opening the builder without a lead in the URL. */}
-      {!leadId && (
-        <div style={{ backgroundColor: '#fff', border: '1px solid #f3f4f6', borderRadius: '14px', padding: '20px 24px' }}>
-          <label htmlFor="customer-select" style={{ display: 'block', marginBottom: '8px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Select customer</label>
-          <select
-            id="customer-select"
-            value={selectedLeadId}
-            onChange={e => handleLeadChange(e.target.value)}
-            disabled={leadsLoading}
-            style={{ width: '100%', maxWidth: '520px', padding: '11px 12px', border: '1px solid #d1d5db', borderRadius: '9px', backgroundColor: '#fff', color: '#111827', fontSize: '14px' }}
-          >
-            <option value="">{leadsLoading ? 'Loading customers...' : 'Choose a customer'}</option>
-            {leads.map(item => (
-              <option key={item.id} value={String(item.id)}>
-                {item.name || item.customer_name || item.customerName || `Lead #${item.id}`} (Lead #{item.id})
-              </option>
-            ))}
-          </select>
-          {leadError && <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#dc2626' }}>{leadError}</p>}
-          {!leadsLoading && !leadError && leads.length === 0 && (
-            <p style={{ margin: '8px 0 0', fontSize: '12px', color: '#6b7280' }}>No customers found. Add a lead before saving an itinerary.</p>
-          )}
-        </div>
-      )}
+      {/* Tourism cities scroller */}
 
-      {/* ── Step 1: Raw Query ─────────────────────────────────────────────── */}
-      <div style={{ backgroundColor: '#fff', border: '1px solid #f3f4f6', borderRadius: '14px', padding: '24px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <div style={{
-            width: '26px', height: '26px', borderRadius: '8px', backgroundColor: '#f0fdfa',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '12px', fontWeight: '700', color: '#0f766e',
-          }}>1</div>
-          <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>Customer Inquiry</h2>
-          <button onClick={() => setRawQuery(exampleQuery)} style={{
-            marginLeft: 'auto', fontSize: '12px', color: '#0f766e',
-            background: 'none', border: '1px solid #99f6e4', borderRadius: '8px',
-            padding: '4px 12px', cursor: 'pointer',
-          }}>Load example</button>
-        </div>
+      <CitiesScroller />
 
-        <textarea
-          value={rawQuery}
-          onChange={e => {
-            setRawQuery(e.target.value)
-            setParseError(null)
-          }}
-          placeholder="Paste the customer's WhatsApp message, email, or inquiry here..."
-          rows={6}
-          style={{
-            width: '100%',
-            padding: '14px 16px',
-            borderRadius: '10px',
-            border:
-              '1px solid #e5e7eb',
-            fontSize: '14px',
-            color: '#111827',
-            resize: 'vertical',
-            outline: 'none',
-            lineHeight: '1.6',
-            fontFamily: 'inherit',
-            boxSizing: 'border-box',
-            minHeight: '140px',
-          }}
-        />
+      {/* Progress: all four steps in one row, joined by a thin line */}
 
-        {parseError && (
-          <p
-            style={{
-              margin: '8px 0 0',
-              fontSize: '13px',
-              color: '#dc2626',
-            }}
-          >
-            {parseError}
-          </p>
-        )}
+      <nav className="adn-stepper" aria-label={`Step ${stage} of 4`}>
+        {STAGE_LABELS.map((label, i) => {
+          const n = i + 1
+          const state = n === stage ? 'on' : n < stage ? 'done' : 'todo'
+          return (
+            <div
+              key={n}
+              className={`adn-step ${state}`}
+              aria-current={n === stage ? 'step' : undefined}
+            >
+              <span className="adn-dot">{n < stage ? <Check size={11} /> : n}</span>
+              <span className="adn-step-label">{label}</span>
+            </div>
+          )
+        })}
+      </nav>
 
-        <div
-          style={{
-            display: 'flex',
-            justifyContent:
-              'space-between',
-            alignItems: 'center',
-            marginTop: '14px',
-          }}
-        >
-          <p
-            style={{
-              margin: 0,
-              fontSize: '12px',
-              color: '#9ca3af',
-            }}
-          >
-            {rawQuery.length} characters ·
-            AI will extract destination,
-            budget, preferences and more
-          </p>
-
+      {/* ── Step 1: Customer + Inquiry (merged) ───────────────────────────── */}
+      <div className="adn-card">
+        <div className="adn-card-head">
+          <span className="adn-num">1</span>
+          <h2 className="adn-display">Customer inquiry</h2>
           <button
-            onClick={handleParse}
-            disabled={parsing}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '10px 22px',
-              borderRadius: '10px',
-              border: 'none',
-              backgroundColor:
-                parsing
-                  ? '#9ca3af'
-                  : '#115e59',
-              color: '#fff',
-              fontSize: '14px',
-              fontWeight: '600',
-              cursor: parsing
-                ? 'not-allowed'
-                : 'pointer',
-            }}
+            className="adn-btn small cream"
+            style={{ marginLeft: 'auto' }}
+            onClick={() => setRawQuery(exampleQuery)}
           >
-            {parsing ? (
-              <>
-                <Loader
-                  size={15}
-                  style={{
-                    animation:
-                      'spin 0.8s linear infinite',
-                  }}
-                />
-                Parsing...
-              </>
-            ) : (
-              <>
-                <Sparkles size={15} />
-                Parse Query
-              </>
-            )}
+            Load example
           </button>
+        </div>
+
+        <div className="adn-panel">
+          {/* Customer selection is needed when opening the builder without a lead in the URL. */}
+          {!leadId && (
+            <div className="adn-toprow">
+              <label htmlFor="customer-select">Customer</label>
+              <select
+                id="customer-select"
+                className="adn-select"
+                value={selectedLeadId}
+                onChange={e => handleLeadChange(e.target.value)}
+                disabled={leadsLoading}
+              >
+                <option value="">{leadsLoading ? 'Loading customers...' : 'Choose a customer'}</option>
+                {leads.map(item => (
+                  <option key={item.id} value={String(item.id)}>
+                    {item.name || item.customer_name || item.customerName || `Lead #${item.id}`} (Lead #{item.id})
+                  </option>
+                ))}
+              </select>
+              {leadError && <p className="adn-error" style={{ margin: '4px 0 0' }}>{leadError}</p>}
+              {!leadsLoading && !leadError && leads.length === 0 && (
+                <p className="adn-hint" style={{ margin: '4px 0 0' }}>
+                  No customers found. Add a lead before saving an itinerary.
+                </p>
+              )}
+            </div>
+          )}
+
+          <textarea
+            className="adn-textarea"
+            value={rawQuery}
+            onChange={e => {
+              setRawQuery(e.target.value)
+              setParseError(null)
+            }}
+            placeholder="Paste the customer's WhatsApp message, email, or inquiry here..."
+            rows={6}
+          />
+
+          {parseError && <p className="adn-error">{parseError}</p>}
+
+          <div className="adn-foot">
+            <p>
+              {rawQuery.length} characters. AI will pull out destination, budget, preferences and more.
+            </p>
+
+            <button
+              className="adn-btn burgundy"
+              onClick={handleParse}
+              disabled={parsing}
+            >
+              {parsing ? (
+                <>
+                  <Loader size={14} className="adn-spin" />
+                  Parsing...
+                </>
+              ) : (
+                <>
+                  <Sparkles size={14} />
+                  Parse query
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Step 2 */}
 
       {parsed && (
-        <div
-          style={{
-            backgroundColor: '#fff',
-            border:
-              '1px solid #f3f4f6',
-            borderRadius: '14px',
-            padding: '24px',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              marginBottom: '6px',
-            }}
-          >
-            <div
-              style={{
-                width: '26px',
-                height: '26px',
-                borderRadius: '8px',
-                backgroundColor:
-                  '#f0fdfa',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent:
-                  'center',
-                fontSize: '12px',
-                fontWeight: '700',
-                color: '#0f766e',
-              }}
-            >
-              2
-            </div>
+        <div className="adn-card adn-pop">
+          <div className="adn-card-head">
+            <span className="adn-num">2</span>
 
-            <h2
-              style={{
-                margin: 0,
-                fontSize: '15px',
-                fontWeight: '600',
-                color: '#111827',
-              }}
-            >
+            <h2 className="adn-display">
               {isRegenerate
-                ? 'Modify Fields & Regenerate'
-                : 'Extracted Fields'}
+                ? 'Modify fields & regenerate'
+                : 'Extracted fields'}
             </h2>
 
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '5px',
-                marginLeft: 'auto',
-              }}
+            <span
+              className="adn-hint"
+              style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '5px' }}
             >
-              <CheckCircle
-                size={14}
-                color="#0f766e"
-              />
-
-              <span
-                style={{
-                  fontSize: '12px',
-                  color: '#0f766e',
-                  fontWeight: '500',
-                }}
-              >
-                AI parsed successfully —
-                review and edit if needed
-              </span>
-            </div>
+              <CheckCircle size={13} />
+              AI parsed successfully. Review and edit if needed.
+            </span>
           </div>
 
-          <p
-            style={{
-              margin:
-                '0 0 20px 36px',
-              fontSize: '13px',
-              color: '#9ca3af',
-            }}
-          >
-            Review the extracted
-            details. Correct any field
-            before generating.
-          </p>
+          <div className="adn-panel">
+            <p className="adn-sub">
+              Review the extracted details. Correct any field before generating.
+            </p>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns:
-                '1fr 1fr',
-              gap: '14px',
-            }}
-          >
-            {fieldConfig.map(
-              ({
-                key,
-                label,
-                icon: Icon,
-                type,
-                placeholder,
-              }) => (
-                <div
-                  key={key}
-                  style={{
-                    display: 'flex',
-                    flexDirection:
-                      'column',
-                    gap: '6px',
-                  }}
-                >
-                  <label
-                    style={{
-                      fontSize: '12px',
-                      fontWeight: '500',
-                      color: '#6b7280',
-                      display: 'flex',
-                      alignItems:
-                        'center',
-                      gap: '5px',
-                    }}
-                  >
-                    <Icon
-                      size={12}
-                      color="#9ca3af"
-                    />
-                    {label}
-                  </label>
+            <div className="adn-fields">
+              {fieldConfig.map(
+                ({
+                  key,
+                  label,
+                  icon: Icon,
+                  type,
+                  placeholder,
+                }) => (
+                  <div key={key} className="adn-field">
+                    <label>
+                      {label}
+                    </label>
 
-                  <div
-                    style={{
-                      position:
-                        'relative',
-                    }}
-                  >
-                    <input
-                      type={type}
-                      value={
-                        parsed[key] ??
-                        ''
-                      }
-                      placeholder={
-                        placeholder
-                      }
-                      onChange={e =>
-                        handleFieldChange(
-                          key,
-                          e.target.value
-                        )
-                      }
-                      style={{
-                        width: '100%',
-                        padding:
-                          '10px 34px 10px 36px',
-                        borderRadius:
-                          '10px',
-                        border:
-                          '1px solid #e5e7eb',
-                        fontSize: '13px',
-                        color:
-                          '#111827',
-                        outline:
-                          'none',
-                        boxSizing:
-                          'border-box',
-                        backgroundColor:
-                          '#fafafa',
-                      }}
-                    />
-
-                    <div
-                      style={{
-                        position:
-                          'absolute',
-                        left: '12px',
-                        top: '50%',
-                        transform:
-                          'translateY(-50%)',
-                      }}
-                    >
-                      <Icon
-                        size={13}
-                        color="#9ca3af"
+                    <div className="wrap">
+                      <input
+                        className="adn-input"
+                        type={type}
+                        value={
+                          parsed[key] ??
+                          ''
+                        }
+                        placeholder={
+                          placeholder
+                        }
+                        onChange={e =>
+                          handleFieldChange(
+                            key,
+                            e.target.value
+                          )
+                        }
                       />
-                    </div>
-
-                    <div
-                      style={{
-                        position:
-                          'absolute',
-                        right: '10px',
-                        top: '50%',
-                        transform:
-                          'translateY(-50%)',
-                      }}
-                    >
-                      <Edit3
-                        size={11}
-                        color="#d1d5db"
-                      />
+                      <Icon size={13} color="#2B1810" />
                     </div>
                   </div>
-                </div>
-              )
+                )
+              )}
+            </div>
+
+            {/* Errors */}
+
+            {generationError && (
+              <div className="adn-alert" role="alert">
+                {generationError}
+              </div>
             )}
-          </div>
 
-          {/* Errors */}
+            {/* Buttons */}
 
-          {generationError && (
             <div
               style={{
-                marginTop: '16px',
-                padding: '12px 14px',
-                borderRadius: '8px',
-                backgroundColor:
-                  '#fef2f2',
-                border:
-                  '1px solid #fecaca',
-                color: '#dc2626',
-                fontSize: '13px',
-              }}
-            >
-              {generationError}
-            </div>
-          )}
-
-          {/* Buttons */}
-
-          <div
-            style={{
-              marginTop: '20px',
-              display: 'flex',
-              justifyContent:
-                'flex-end',
-              gap: '10px',
-            }}
-          >
-            {variations && (
-              <button
-                onClick={() => {
-                  setIsRegenerate(true)
-                  handleGenerate()
-                }}
-                disabled={generating}
-                style={{
-                  display: 'flex',
-                  alignItems:
-                    'center',
-                  gap: '8px',
-                  padding:
-                    '11px 22px',
-                  borderRadius:
-                    '10px',
-                  border:
-                    '1px solid #e5e7eb',
-                  backgroundColor:
-                    '#fff',
-                  color: '#374151',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                  cursor:
-                    generating
-                      ? 'not-allowed'
-                      : 'pointer',
-                }}
-              >
-                <RefreshCw size={14} />
-                Regenerate with
-                Changes
-              </button>
-            )}
-
-            <button
-              onClick={handleGenerate}
-              disabled={generating}
-              style={{
+                marginTop: '10px',
                 display: 'flex',
-                alignItems:
-                  'center',
+                justifyContent: 'flex-end',
                 gap: '8px',
-                padding:
-                  '11px 28px',
-                borderRadius:
-                  '10px',
-                border: 'none',
-                backgroundColor:
-                  generating
-                    ? '#9ca3af'
-                    : '#7c3aed',
-                color: '#fff',
-                fontSize: '14px',
-                fontWeight: '600',
-                cursor:
-                  generating
-                    ? 'not-allowed'
-                    : 'pointer',
+                flexWrap: 'wrap',
               }}
             >
-              {generating ? (
-                <>
-                  <Loader
-                    size={15}
-                    style={{
-                      animation:
-                        'spin 0.8s linear infinite',
-                    }}
-                  />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Wand2 size={15} />
-                  Generate
-                  Itinerary
-                </>
+              {variations && (
+                <button
+                  className="adn-btn cream"
+                  onClick={() => {
+                    setIsRegenerate(true)
+                    handleGenerate()
+                  }}
+                  disabled={generating}
+                >
+                  <RefreshCw size={13} />
+                  Regenerate with changes
+                </button>
               )}
-            </button>
+
+              <button
+                className="adn-btn"
+                onClick={handleGenerate}
+                disabled={generating}
+              >
+                {generating ? (
+                  <>
+                    <Loader size={14} className="adn-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <Wand2 size={14} />
+                    Generate itinerary
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
+
+      {/* Generating */}
+
+      {generating && <CookingPanel />}
 
       {/* Previous */}
 
       {previousVariations &&
         variations && (
-          <div
-            style={{
-              padding:
-                '12px 16px',
-              borderRadius: '10px',
-              backgroundColor:
-                '#f9fafb',
-              border:
-                '1px solid #f3f4f6',
-              display: 'flex',
-              alignItems:
-                'center',
-              gap: '8px',
-            }}
-          >
-            <RotateCcw
-              size={14}
-              color="#9ca3af"
-            />
-
-            <p
-              style={{
-                margin: 0,
-                fontSize: '13px',
-                color: '#6b7280',
-              }}
-            >
-              Previous version
-              replaced. Showing the
-              newly generated
-              itinerary below.
-            </p>
+          <div className="adn-note">
+            <RotateCcw size={13} />
+            Previous version replaced. Showing the newly generated itinerary below.
           </div>
         )}
 
@@ -2276,60 +1819,16 @@ function Itinerary() {
       {variations && (
         <div>
           <div
-            style={{
-              display: 'flex',
-              alignItems:
-                'center',
-              gap: '10px',
-              marginBottom:
-                '16px',
-            }}
+            className="adn-card-head"
+            style={{ padding: '0 4px 8px' }}
           >
-            <div
-              style={{
-                width: '26px',
-                height: '26px',
-                borderRadius: '8px',
-                backgroundColor:
-                  '#f5f3ff',
-                display: 'flex',
-                alignItems:
-                  'center',
-                justifyContent:
-                  'center',
-                fontSize: '12px',
-                fontWeight: '700',
-                color: '#7c3aed',
-              }}
-            >
-              3
-            </div>
+            <span className="adn-num">3</span>
 
-            <h2
-              style={{
-                margin: 0,
-                fontSize: '15px',
-                fontWeight: '600',
-                color: '#111827',
-              }}
-            >
-              Generated
-              Itinerary
+            <h2 className="adn-display" style={{ margin: 0, fontSize: '18px', color: '#2B1810' }}>
+              Generated itinerary
             </h2>
 
-            <span
-              style={{
-                fontSize: '11px',
-                backgroundColor:
-                  '#f5f3ff',
-                color: '#7c3aed',
-                padding:
-                  '2px 10px',
-                borderRadius:
-                  '999px',
-                fontWeight: '500',
-              }}
-            >
+            <span className="adn-count">
               {variations.length}{' '}
               {variations.length ===
               1
@@ -2338,35 +1837,13 @@ function Itinerary() {
             </span>
 
             {!selectedId && (
-              <p
-                style={{
-                  margin: 0,
-                  marginLeft:
-                    'auto',
-                  fontSize:
-                    '13px',
-                  color:
-                    '#9ca3af',
-                }}
-              >
-                Select a version
-                to enable
-                editing
+              <p className="adn-hint" style={{ margin: 0, marginLeft: 'auto' }}>
+                Select a version to enable editing
               </p>
             )}
           </div>
 
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns:
-                variations.length ===
-                1
-                  ? 'minmax(0, 1fr)'
-                  : '1fr 1fr',
-              gap: '16px',
-            }}
-          >
+          <div className={`adn-var-grid ${variations.length === 1 ? 'single' : ''}`}>
             {variations.map(
               variation => (
                 <VariationCard
@@ -2419,13 +1896,13 @@ function Itinerary() {
         />
       )}
 
-      <style>{`
-        @keyframes spin {
-          to {
-            transform: rotate(360deg);
-          }
-        }
-      `}</style>
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   )
 }

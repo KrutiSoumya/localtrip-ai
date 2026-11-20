@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Calendar,
   MapPin,
@@ -9,7 +9,7 @@ import {
   Search,
   ChevronDown,
   Plane,
-  RefreshCw
+  RotateCcw,
 } from 'lucide-react'
 
 import {
@@ -17,20 +17,15 @@ import {
   updateBookingPayment
 } from '../services/api'
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers (unchanged) ───────────────────────────────────────────────────────
 
 const formatCurrency = (amount) =>
   `₹${Number(amount || 0).toLocaleString('en-IN')}`
 
 const formatDate = (dateStr) => {
   if (!dateStr) return '—'
-
   const d = new Date(dateStr)
-
-  if (Number.isNaN(d.getTime())) {
-    return '—'
-  }
-
+  if (Number.isNaN(d.getTime())) return '—'
   return d.toLocaleDateString('en-IN', {
     day: '2-digit',
     month: 'short',
@@ -40,11 +35,50 @@ const formatDate = (dateStr) => {
 
 const daysUntil = (dateStr) => {
   if (!dateStr) return null
-
   const diff = new Date(dateStr) - new Date()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
 
-  return Math.ceil(
-    diff / (1000 * 60 * 60 * 24)
+// ── UI-only: animated number ──────────────────────────────────────────────────
+
+function useCountUp(target, duration = 900) {
+  const [val, setVal] = useState(0)
+  const from = useRef(0)
+
+  useEffect(() => {
+    const end = Number(target) || 0
+    const start = from.current
+    if (start === end) return
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (reduce) {
+      from.current = end
+      setVal(end)
+      return
+    }
+    let raf
+    const t0 = performance.now()
+    const tick = (now) => {
+      const p = Math.min((now - t0) / duration, 1)
+      const eased = 1 - Math.pow(1 - p, 3)
+      setVal(Math.round(start + (end - start) * eased))
+      if (p < 1) raf = requestAnimationFrame(tick)
+      else from.current = end
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [target, duration])
+
+  return val
+}
+
+function Stat({ label, value, money, sub }) {
+  const n = useCountUp(value)
+  return (
+    <div className="bk-stat">
+      <span className="bk-stat-num">{money ? formatCurrency(n) : n}</span>
+      <span className="bk-stat-label">{label}</span>
+      <span className="bk-stat-sub">{sub || '\u00a0'}</span>
+    </div>
   )
 }
 
@@ -53,117 +87,26 @@ const daysUntil = (dateStr) => {
 function Toast({ message, type, onClose }) {
   useEffect(() => {
     const t = setTimeout(onClose, 3500)
-
     return () => clearTimeout(t)
   }, [onClose])
 
   return (
-    <div
-      style={{
-        position: 'fixed',
-        bottom: '28px',
-        right: '28px',
-        zIndex: 999,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '10px',
-        padding: '13px 18px',
-        borderRadius: '12px',
-        backgroundColor:
-          type === 'success'
-            ? '#f0fdfa'
-            : '#fef2f2',
-        border:
-          type === 'success'
-            ? '1px solid #99f6e4'
-            : '1px solid #fecaca',
-        boxShadow:
-          '0 8px 24px rgba(0,0,0,0.10)',
-        minWidth: '260px',
-      }}
-    >
-      {type === 'success' ? (
-        <CheckCircle
-          size={16}
-          color="#0f766e"
-        />
-      ) : (
-        <AlertCircle
-          size={16}
-          color="#dc2626"
-        />
-      )}
-
-      <p
-        style={{
-          margin: 0,
-          fontSize: '13px',
-          fontWeight: '500',
-          flex: 1,
-          color:
-            type === 'success'
-              ? '#0f766e'
-              : '#dc2626',
-        }}
-      >
-        {message}
-      </p>
+    <div className={`bk-toast ${type === 'success' ? 'ok' : 'err'}`}>
+      {type === 'success' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+      <p>{message}</p>
     </div>
   )
 }
 
 // ── Status Badge ──────────────────────────────────────────────────────────────
+// Confirmed → calm; Completed → quiet; anything else (e.g. Pending) → warm highlight
 
 function StatusBadge({ status }) {
-  const map = {
-    Confirmed: {
-      bg: '#f0fdfa',
-      color: '#0f766e',
-      border: '#99f6e4',
-      dot: '#0f766e',
-    },
-
-    Completed: {
-      bg: '#f0f9ff',
-      color: '#0369a1',
-      border: '#bae6fd',
-      dot: '#0369a1',
-    },
-  }
-
-  const s =
-    map[status] || {
-      bg: '#f3f4f6',
-      color: '#6b7280',
-      border: '#e5e7eb',
-      dot: '#9ca3af',
-    }
-
+  const cls =
+    status === 'Confirmed' ? 'calm' : status === 'Completed' ? 'quiet' : 'warm'
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '5px',
-        fontSize: '11px',
-        padding: '3px 10px',
-        borderRadius: '999px',
-        fontWeight: '500',
-        backgroundColor: s.bg,
-        color: s.color,
-        border: `1px solid ${s.border}`,
-      }}
-    >
-      <span
-        style={{
-          width: '5px',
-          height: '5px',
-          borderRadius: '50%',
-          backgroundColor: s.dot,
-          flexShrink: 0,
-        }}
-      />
-
+    <span className={`bk-badge ${cls}`}>
+      <span className="bk-dot" />
       {status}
     </span>
   )
@@ -173,44 +116,17 @@ function StatusBadge({ status }) {
 
 function PaymentBadge({ status }) {
   const paid = status === 'Paid'
-
   return (
-    <span
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '5px',
-        fontSize: '11px',
-        padding: '3px 10px',
-        borderRadius: '999px',
-        fontWeight: '500',
-        backgroundColor: paid
-          ? '#fefce8'
-          : '#fef2f2',
-        color: paid
-          ? '#a16207'
-          : '#dc2626',
-        border: `1px solid ${
-          paid
-            ? '#fde68a'
-            : '#fecaca'
-        }`,
-      }}
-    >
+    <span className={`bk-badge ${paid ? 'calm' : 'warm'}`}>
       <CreditCard size={10} />
-
       {status}
     </span>
   )
 }
 
-// ── Payment Dropdown ──────────────────────────────────────────────────────────
+// ── Payment Dropdown (logic unchanged) ────────────────────────────────────────
 
-function PaymentDropdown({
-  bookingId,
-  current,
-  onUpdate,
-}) {
+function PaymentDropdown({ bookingId, current, onUpdate }) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
@@ -219,67 +135,21 @@ function PaymentDropdown({
       setOpen(false)
       return
     }
-
     setLoading(true)
     setOpen(false)
-
-    await onUpdate(
-      bookingId,
-      value
-    )
-
+    await onUpdate(bookingId, value)
     setLoading(false)
   }
 
   return (
-    <div
-      style={{
-        position: 'relative',
-      }}
-    >
+    <div style={{ position: 'relative' }}>
       <button
-        onClick={() =>
-          setOpen((p) => !p)
-        }
+        className="bk-change"
+        onClick={() => setOpen((p) => !p)}
         disabled={loading}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '5px',
-          padding: '5px 10px',
-          borderRadius: '8px',
-          cursor: loading
-            ? 'not-allowed'
-            : 'pointer',
-          border: '1px solid #e5e7eb',
-          fontSize: '12px',
-          fontWeight: '500',
-          backgroundColor: '#fff',
-          color: '#374151',
-        }}
-        onMouseEnter={(e) => {
-          if (!loading) {
-            e.currentTarget.style.backgroundColor =
-              '#f9fafb'
-          }
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.backgroundColor =
-            '#fff'
-        }}
       >
         {loading ? (
-          <div
-            style={{
-              width: '12px',
-              height: '12px',
-              borderRadius: '50%',
-              border: '2px solid #e5e7eb',
-              borderTopColor: '#0f766e',
-              animation:
-                'spin 0.6s linear infinite',
-            }}
-          />
+          <span className="bk-spin sm" />
         ) : (
           <>
             <ChevronDown size={11} />
@@ -291,85 +161,20 @@ function PaymentDropdown({
       {open && (
         <>
           <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              zIndex: 10,
-            }}
-            onClick={() =>
-              setOpen(false)
-            }
+            style={{ position: 'fixed', inset: 0, zIndex: 10 }}
+            onClick={() => setOpen(false)}
           />
-
-          <div
-            style={{
-              position: 'absolute',
-              top: 'calc(100% + 4px)',
-              right: 0,
-              zIndex: 20,
-              backgroundColor: '#fff',
-              border: '1px solid #e5e7eb',
-              borderRadius: '10px',
-              boxShadow:
-                '0 8px 24px rgba(0,0,0,0.10)',
-              overflow: 'hidden',
-              minWidth: '110px',
-            }}
-          >
-            {['Paid', 'Pending'].map(
-              (opt) => (
-                <button
-                  key={opt}
-                  onClick={() =>
-                    handleSelect(opt)
-                  }
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    width: '100%',
-                    padding: '9px 14px',
-                    border: 'none',
-                    backgroundColor:
-                      current === opt
-                        ? '#f0fdfa'
-                        : '#fff',
-                    color:
-                      current === opt
-                        ? '#0f766e'
-                        : '#374151',
-                    fontSize: '13px',
-                    fontWeight:
-                      current === opt
-                        ? '600'
-                        : '400',
-                    cursor: 'pointer',
-                    textAlign: 'left',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (current !== opt) {
-                      e.currentTarget.style.backgroundColor =
-                        '#f9fafb'
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (current !== opt) {
-                      e.currentTarget.style.backgroundColor =
-                        '#fff'
-                    }
-                  }}
-                >
-                  {current === opt && (
-                    <CheckCircle
-                      size={12}
-                      color="#0f766e"
-                    />
-                  )}
-
-                  {opt}
-                </button>
-              )
-            )}
+          <div className="bk-menu">
+            {['Paid', 'Pending'].map((opt) => (
+              <button
+                key={opt}
+                className={current === opt ? 'active' : ''}
+                onClick={() => handleSelect(opt)}
+              >
+                {current === opt && <CheckCircle size={12} />}
+                {opt}
+              </button>
+            ))}
           </div>
         </>
       )}
@@ -379,17 +184,10 @@ function PaymentDropdown({
 
 // ── Booking Row ───────────────────────────────────────────────────────────────
 
-function BookingRow({
-  booking,
-  onPaymentUpdate,
-}) {
-  const days = daysUntil(
-    booking.travelDate
-  )
-
+function BookingRow({ booking, onPaymentUpdate, index }) {
+  const days = daysUntil(booking.travelDate)
   const isPast = days !== null && days < 0
-  const isSoon =
-    days !== null && days >= 0 && days <= 7
+  const isSoon = days !== null && days >= 0 && days <= 7
 
   const customer =
     booking.lead?.customer_name ||
@@ -404,14 +202,9 @@ function BookingRow({
     '—'
 
   const pax =
-    booking.lead?.group_size ??
-    booking.pax ??
-    booking.group_size ??
-    1
+    booking.lead?.group_size ?? booking.pax ?? booking.group_size ?? 1
 
-  const bookingRef =
-    booking.bookingRef ||
-    `BK-${booking.id}`
+  const bookingRef = booking.bookingRef || `BK-${booking.id}`
 
   const totalCost =
     booking.totalCost ??
@@ -419,1334 +212,511 @@ function BookingRow({
     booking.total_price ??
     0
 
-  const paymentStatus =
-    booking.paymentStatus ||
-    'Pending'
-
-  const status =
-    booking.status ||
-    'Pending'
+  const paymentStatus = booking.paymentStatus || 'Pending'
+  const status = booking.status || 'Pending'
 
   return (
-    <tr
-      style={{
-        borderBottom:
-          '1px solid #f3f4f6',
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.backgroundColor =
-          '#fafafa'
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.backgroundColor =
-          'transparent'
-      }}
-    >
-      {/* Ref */}
-
-      <td
-        style={{
-          padding: '14px 16px',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        <span
-          style={{
-            fontSize: '12px',
-            fontWeight: '600',
-            color: '#6b7280',
-            fontFamily: 'monospace',
-          }}
-        >
-          {bookingRef}
-        </span>
+    <tr className="bk-row" style={{ '--i': Math.min(index, 12) }}>
+      <td className="nowrap">
+        <span className="bk-ref">{bookingRef}</span>
       </td>
 
-      {/* Customer */}
-
-      <td
-        style={{
-          padding: '14px 16px',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-          }}
-        >
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              flexShrink: 0,
-              backgroundColor: '#f0fdfa',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '13px',
-              fontWeight: '700',
-              color: '#0f766e',
-            }}
-          >
-            {customer.charAt(0)}
-          </div>
-
+      <td>
+        <div className="bk-cust">
+          <div className="bk-avatar">{customer.charAt(0)}</div>
           <div>
-            <p
-              style={{
-                margin: 0,
-                fontSize: '14px',
-                fontWeight: '500',
-                color: '#111827',
-              }}
-            >
-              {customer}
-            </p>
-
-            <p
-              style={{
-                margin: '1px 0 0',
-                fontSize: '11px',
-                color: '#9ca3af',
-              }}
-            >
-              {pax}{' '}
-              {pax === 1
-                ? 'person'
-                : 'people'}
+            <p className="bk-name">{customer}</p>
+            <p className="bk-meta">
+              {pax} {pax === 1 ? 'person' : 'people'}
             </p>
           </div>
         </div>
       </td>
 
-      {/* Destination */}
-
-      <td
-        style={{
-          padding: '14px 16px',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          <MapPin
-            size={13}
-            color="#9ca3af"
-          />
-
-          <span
-            style={{
-              fontSize: '13px',
-              color: '#374151',
-              fontWeight: '500',
-            }}
-          >
-            {destination}
-          </span>
+      <td>
+        <div className="bk-dest">
+          <MapPin size={12} />
+          <span>{destination}</span>
         </div>
       </td>
 
-      {/* Travel Date */}
-
-      <td
-        style={{
-          padding: '14px 16px',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        <div>
-          <p
-            style={{
-              margin: 0,
-              fontSize: '13px',
-              color: '#374151',
-              fontWeight: '500',
-            }}
-          >
-            {formatDate(
-              booking.travelDate
-            )}
-          </p>
-
-          <p
-            style={{
-              margin: '1px 0 0',
-              fontSize: '11px',
-              fontWeight: '500',
-              color: isPast
-                ? '#9ca3af'
-                : isSoon
-                  ? '#dc2626'
-                  : '#9ca3af',
-            }}
-          >
-            {days === null
-              ? 'Date not set'
-              : isPast
-                ? 'Past travel date'
-                : isSoon
-                  ? `In ${days} day${days === 1 ? '' : 's'} ⚠️`
-                  : `In ${days} days`}
-          </p>
-        </div>
+      <td className="nowrap">
+        <p className="bk-name">{formatDate(booking.travelDate)}</p>
+        <p className={`bk-meta ${isSoon ? 'soon' : ''}`}>
+          {days === null
+            ? 'Date not set'
+            : isPast
+              ? 'Past travel date'
+              : isSoon
+                ? `In ${days} day${days === 1 ? '' : 's'} ⚠️`
+                : `In ${days} days`}
+        </p>
       </td>
 
-      {/* Cost */}
-
-      <td
-        style={{
-          padding: '14px 16px',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        <span
-          style={{
-            fontSize: '14px',
-            fontWeight: '600',
-            color: '#111827',
-          }}
-        >
-          {formatCurrency(
-            totalCost
-          )}
-        </span>
+      <td className="nowrap">
+        <span className="bk-cost">{formatCurrency(totalCost)}</span>
       </td>
 
-      {/* Payment */}
+      <td>
+        <PaymentBadge status={paymentStatus} />
+      </td>
 
-      <td
-        style={{
-          padding: '14px 16px',
-        }}
-      >
-        <PaymentBadge
-          status={paymentStatus}
+      <td>
+        <StatusBadge status={status} />
+      </td>
+
+      <td>
+        <PaymentDropdown
+          bookingId={booking.id}
+          current={paymentStatus}
+          onUpdate={onPaymentUpdate}
         />
-      </td>
-
-      {/* Status */}
-
-      <td
-        style={{
-          padding: '14px 16px',
-        }}
-      >
-        <StatusBadge
-          status={status}
-        />
-      </td>
-
-      {/* Actions */}
-
-      <td
-        style={{
-          padding: '14px 16px',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-          }}
-        >
-          <PaymentDropdown
-            bookingId={booking.id}
-            current={paymentStatus}
-            onUpdate={onPaymentUpdate}
-          />
-        </div>
       </td>
     </tr>
   )
 }
 
+// ── Hero background images (UI only) ──────────────────────────────────────────
+// Hosted on GitHub (krithi575/pp_images): image1.jpg ... image5.jpg
+const BASE = 'https://raw.githubusercontent.com/krithi575/pp_images/main/'
+const EXT = '.jpg'
+const IMAGES = [4,2,3,5,1].map((n) => `${BASE}image${n}${EXT}`)
+const SLIDE_MS = 6500
+
 // ── Main Component ────────────────────────────────────────────────────────────
 
 function Bookings() {
-  const [bookings, setBookings] =
-    useState([])
+  const [bookings, setBookings] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [statusFilter, setStatusFilter] = useState('All')
+  const [paymentFilter, setPaymentFilter] = useState('All')
+  const [search, setSearch] = useState('')
+  const [toast, setToast] = useState(null)
+  const [slide, setSlide] = useState(0)
 
-  const [loading, setLoading] =
-    useState(true)
-
-  const [statusFilter, setStatusFilter] =
-    useState('All')
-
-  const [paymentFilter, setPaymentFilter] =
-    useState('All')
-
-  const [search, setSearch] =
-    useState('')
-
-  const [toast, setToast] =
-    useState(null)
-
-  const showToast = (
-    message,
-    type = 'success'
-  ) => {
-    setToast({
-      message,
-      type,
-    })
+  const showToast = (message, type = 'success') => {
+    setToast({ message, type })
   }
 
-  // ── Fetch Bookings ─────────────────────────────────────────────────────────
+  // Background slideshow: preload, then advance automatically (UI only)
+  useEffect(() => {
+    IMAGES.forEach((src) => {
+      const img = new Image()
+      img.src = src
+    })
+  }, [])
 
   useEffect(() => {
-    const fetchBookings =
-      async () => {
-        try {
-          const res =
-            await getAllBookings()
+    const id = setInterval(
+      () => setSlide((s) => (s + 1) % IMAGES.length),
+      SLIDE_MS
+    )
+    return () => clearInterval(id)
+  }, [])
 
-          const data =
-            Array.isArray(res.data)
-              ? res.data
-              : []
+  // ── Fetch Bookings (unchanged) ──────────────────────────────────────────────
 
-          setBookings(data)
-        } catch (error) {
-          console.error(
-            'Failed to fetch bookings:',
-            error.response?.data ||
-              error.message
-          )
-
-          setBookings([])
-          showToast(
-            'Could not load bookings. Please check the backend and try again.',
-            'error'
-          )
-        } finally {
-          setLoading(false)
-        }
+  useEffect(() => {
+    const fetchBookings = async () => {
+      try {
+        const res = await getAllBookings()
+        const data = Array.isArray(res.data) ? res.data : []
+        setBookings(data)
+      } catch (error) {
+        console.error(
+          'Failed to fetch bookings:',
+          error.response?.data || error.message
+        )
+        setBookings([])
+        showToast(
+          'Could not load bookings. Please check the backend and try again.',
+          'error'
+        )
+      } finally {
+        setLoading(false)
       }
+    }
 
     fetchBookings()
   }, [])
 
-  // ── Payment Update ──────────────────────────────────────────────────────────
+  // ── Payment Update (unchanged) ──────────────────────────────────────────────
 
-  const handlePaymentUpdate = async (
-    bookingId,
-    newStatus
-  ) => {
-    const previousBookings =
-      bookings
+  const handlePaymentUpdate = async (bookingId, newStatus) => {
+    const previousBookings = bookings
 
-    // Optimistic UI update
     setBookings((current) =>
       current.map((booking) =>
         booking.id === bookingId
-          ? {
-              ...booking,
-              paymentStatus:
-                newStatus,
-            }
+          ? { ...booking, paymentStatus: newStatus }
           : booking
       )
     )
 
     try {
-      await updateBookingPayment(
-        bookingId,
-        newStatus
-      )
-
-      showToast(
-        `Payment status updated to ${newStatus}`
-      )
+      await updateBookingPayment(bookingId, newStatus)
+      showToast(`Payment status updated to ${newStatus}`)
     } catch (error) {
       console.error(
         'Payment update failed:',
-        error.response?.data ||
-          error.message
+        error.response?.data || error.message
       )
-
-      // Roll back UI
-      setBookings(
-        previousBookings
-      )
-
-      showToast(
-        'Failed to update payment status',
-        'error'
-      )
+      setBookings(previousBookings)
+      showToast('Failed to update payment status', 'error')
     }
   }
 
-  // ── Filter + Search ─────────────────────────────────────────────────────────
+  // ── Filter + Search (unchanged) ─────────────────────────────────────────────
 
-  const filtered =
-    bookings.filter((booking) => {
-      const customer =
-        booking.lead?.customer_name ||
-        booking.customer ||
-        booking.customer_name ||
-        ''
+  const filtered = bookings.filter((booking) => {
+    const customer =
+      booking.lead?.customer_name ||
+      booking.customer ||
+      booking.customer_name ||
+      ''
 
-      const destination =
-        booking.lead?.destination ||
-        booking.destination ||
-        booking.itinerary?.lead
-          ?.destination ||
-        ''
+    const destination =
+      booking.lead?.destination ||
+      booking.destination ||
+      booking.itinerary?.lead?.destination ||
+      ''
 
-      const bookingRef =
-        booking.bookingRef ||
-        `BK-${booking.id}`
+    const bookingRef = booking.bookingRef || `BK-${booking.id}`
 
-      const matchStatus =
-        statusFilter === 'All' ||
-        booking.status ===
-          statusFilter
+    const matchStatus =
+      statusFilter === 'All' || booking.status === statusFilter
 
-      const matchPayment =
-        paymentFilter === 'All' ||
-        booking.paymentStatus ===
-          paymentFilter
+    const matchPayment =
+      paymentFilter === 'All' || booking.paymentStatus === paymentFilter
 
-      const q =
-        search
-          .trim()
-          .toLowerCase()
+    const q = search.trim().toLowerCase()
 
-      const matchSearch =
-        !q ||
-        customer
-          .toLowerCase()
-          .includes(q) ||
-        destination
-          .toLowerCase()
-          .includes(q) ||
-        bookingRef
-          .toLowerCase()
-          .includes(q)
+    const matchSearch =
+      !q ||
+      customer.toLowerCase().includes(q) ||
+      destination.toLowerCase().includes(q) ||
+      bookingRef.toLowerCase().includes(q)
 
-      return (
-        matchStatus &&
-        matchPayment &&
-        matchSearch
-      )
-    })
+    return matchStatus && matchPayment && matchSearch
+  })
 
-  // ── Summary Stats ───────────────────────────────────────────────────────────
+  // ── Summary Stats (unchanged) ───────────────────────────────────────────────
 
-  const totalRevenue =
-    bookings.reduce(
-      (sum, booking) =>
-        sum +
-        Number(
-          booking.totalCost ??
-            booking.quotation
-              ?.total_price ??
-            booking.total_price ??
-            0
-        ),
-      0
+  const costOf = (booking) =>
+    Number(
+      booking.totalCost ??
+        booking.quotation?.total_price ??
+        booking.total_price ??
+        0
     )
 
-  const paidRevenue =
-    bookings
-      .filter(
-        (booking) =>
-          booking.paymentStatus ===
-          'Paid'
-      )
-      .reduce(
-        (sum, booking) =>
-          sum +
-          Number(
-            booking.totalCost ??
-              booking.quotation
-                ?.total_price ??
-              booking.total_price ??
-              0
-          ),
-        0
-      )
+  const totalRevenue = bookings.reduce((sum, b) => sum + costOf(b), 0)
 
-  const pendingCount =
-    bookings.filter(
-      (booking) =>
-        booking.paymentStatus ===
-        'Pending'
-    ).length
+  const paidRevenue = bookings
+    .filter((b) => b.paymentStatus === 'Paid')
+    .reduce((sum, b) => sum + costOf(b), 0)
 
-  const confirmedCount =
-    bookings.filter(
-      (booking) =>
-        booking.status ===
-        'Confirmed'
-    ).length
+  const pendingCount = bookings.filter(
+    (b) => b.paymentStatus === 'Pending'
+  ).length
 
-  const STATUS_TABS = [
-    'All',
-    'Confirmed',
-    'Completed',
-  ]
+  const confirmedCount = bookings.filter((b) => b.status === 'Confirmed').length
 
-  const PAYMENT_TABS = [
-    'All',
-    'Paid',
-    'Pending',
-  ]
+  const STATUS_TABS = ['All', 'Confirmed', 'Completed']
+  const PAYMENT_TABS = ['All', 'Paid', 'Pending']
+
+  // UI-only: reset the existing filter/search state
+  const hasActiveFilters =
+    statusFilter !== 'All' || paymentFilter !== 'All' || search.trim() !== ''
+
+  const clearFilters = () => {
+    setStatusFilter('All')
+    setPaymentFilter('All')
+    setSearch('')
+  }
+
+  const renderTabs = (label, tabs, active, setActive, key) => (
+    <div className="bk-fgroup" role="group" aria-label={label}>
+      <span className="bk-flabel">{label}</span>
+      <div className="bk-tabs">
+        {tabs.map((tab) => {
+          const count =
+            tab === 'All'
+              ? bookings.length
+              : bookings.filter((b) => b[key] === tab).length
+          return (
+            <button
+              key={tab}
+              className={active === tab ? 'on' : ''}
+              onClick={() => setActive(tab)}
+            >
+              {tab}
+              <span>{count}</span>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '24px',
-      }}
-    >
-      {/* ── Page Header ─────────────────────────────────────────────────────── */}
-
-      <div>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: '22px',
-            fontWeight: '700',
-            color: '#111827',
-          }}
-        >
-          Bookings
-        </h1>
-
-        <p
-          style={{
-            margin: '4px 0 0',
-            fontSize: '14px',
-            color: '#9ca3af',
-          }}
-        >
-          Manage confirmed bookings
-          and track payment status.
-        </p>
-      </div>
-
-      {/* ── Summary Cards ───────────────────────────────────────────────────── */}
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns:
-            'repeat(4, 1fr)',
-          gap: '14px',
-        }}
-      >
-        {[
-          {
-            label:
-              'Total Bookings',
-            value:
-              bookings.length,
-            icon: Calendar,
-            iconBg:
-              '#f0fdfa',
-            iconColor:
-              '#0f766e',
-            sub: `${confirmedCount} confirmed`,
-          },
-          {
-            label:
-              'Total Revenue',
-            value:
-              formatCurrency(
-                totalRevenue
-              ),
-            icon: CreditCard,
-            iconBg:
-              '#f0f9ff',
-            iconColor:
-              '#0369a1',
-            sub: 'all bookings',
-          },
-          {
-            label:
-              'Collected',
-            value:
-              formatCurrency(
-                paidRevenue
-              ),
-            icon: CheckCircle,
-            iconBg:
-              '#f0fdfa',
-            iconColor:
-              '#0f766e',
-            sub:
-              'payments received',
-          },
-          {
-            label:
-              'Pending Payments',
-            value:
-              pendingCount,
-            icon: Clock,
-            iconBg:
-              '#fefce8',
-            iconColor:
-              '#a16207',
-            sub: `${formatCurrency(
-              totalRevenue -
-                paidRevenue
-            )} outstanding`,
-          },
-        ].map((card) => (
+    <div className="bk-page">
+      {/* Background slideshow */}
+      <div className="bk-bg" aria-hidden="true">
+        {IMAGES.map((src, i) => (
           <div
-            key={card.label}
-            style={{
-              backgroundColor:
-                '#fff',
-              border:
-                '1px solid #f3f4f6',
-              borderRadius:
-                '14px',
-              padding:
-                '18px 20px',
-              display:
-                'flex',
-              alignItems:
-                'flex-start',
-              gap: '14px',
-            }}
-          >
-            <div
-              style={{
-                width: '38px',
-                height: '38px',
-                borderRadius:
-                  '10px',
-                flexShrink: 0,
-                backgroundColor:
-                  card.iconBg,
-                display:
-                  'flex',
-                alignItems:
-                  'center',
-                justifyContent:
-                  'center',
-              }}
-            >
-              <card.icon
-                size={17}
-                color={
-                  card.iconColor
-                }
-              />
-            </div>
-
-            <div>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize:
-                    '12px',
-                  color:
-                    '#9ca3af',
-                  fontWeight:
-                    '500',
-                }}
-              >
-                {card.label}
-              </p>
-
-              <p
-                style={{
-                  margin:
-                    '3px 0 0',
-                  fontSize:
-                    '20px',
-                  fontWeight:
-                    '700',
-                  color:
-                    '#111827',
-                  lineHeight: 1,
-                }}
-              >
-                {card.value}
-              </p>
-
-              <p
-                style={{
-                  margin:
-                    '3px 0 0',
-                  fontSize:
-                    '11px',
-                  color:
-                    '#9ca3af',
-                }}
-              >
-                {card.sub}
-              </p>
-            </div>
-          </div>
+            key={src}
+            className={`bk-bg-layer ${i === slide ? 'on' : ''}`}
+            style={{ backgroundImage: `url("${src}")` }}
+          />
         ))}
+        <div className="bk-bg-shade" />
       </div>
 
-      {/* ── Table Card ──────────────────────────────────────────────────────── */}
+      {/* Hero */}
+      <section className="bk-hero">
+        <div className="bk-hero-text">
+          <h1 className="bk-title">Bookings</h1>
+          <p className="bk-sub">
+            Manage confirmed bookings and track payment status.
+          </p>
+        </div>
 
-      <div
-        style={{
-          backgroundColor:
-            '#fff',
-          border:
-            '1px solid #f3f4f6',
-          borderRadius:
-            '14px',
-          overflow:
-            'hidden',
-        }}
-      >
-        {/* Toolbar */}
+        <div className="bk-stats">
+          <Stat label="Total bookings" value={bookings.length} sub={`${confirmedCount} confirmed`} />
+          <Stat label="Total revenue" value={totalRevenue} money sub="all bookings" />
+          <Stat label="Collected" value={paidRevenue} money sub="payments received" />
+          <Stat label="Pending payments" value={pendingCount} sub={`${formatCurrency(totalRevenue - paidRevenue)} outstanding`} />
+        </div>
+      </section>
 
-        <div
-          style={{
-            padding:
-              '18px 24px',
-            borderBottom:
-              '1px solid #f3f4f6',
-            backgroundColor:
-              '#fafafa',
-            display:
-              'flex',
-            flexDirection:
-              'column',
-            gap: '14px',
-          }}
-        >
-          {/* Top Row */}
-
-          <div
-            style={{
-              display:
-                'flex',
-              alignItems:
-                'center',
-              gap: '12px',
-            }}
-          >
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius:
-                  '9px',
-                backgroundColor:
-                  '#f0fdfa',
-                display:
-                  'flex',
-                alignItems:
-                  'center',
-                justifyContent:
-                  'center',
-              }}
-            >
-              <Plane
-                size={15}
-                color="#0f766e"
-              />
+      {/* Table */}
+      <section className="bk-card">
+        <div className="bk-toolbar">
+          <div className="bk-toolbar-top">
+            <div className="bk-icon">
+              <Plane size={13} />
             </div>
-
-            <div
-              style={{
-                flex: 1,
-              }}
-            >
-              <h2
-                style={{
-                  margin: 0,
-                  fontSize:
-                    '15px',
-                  fontWeight:
-                    '600',
-                  color:
-                    '#111827',
-                }}
-              >
-                All Bookings
-              </h2>
-
-              <p
-                style={{
-                  margin: 0,
-                  fontSize:
-                    '12px',
-                  color:
-                    '#9ca3af',
-                }}
-              >
-                {filtered.length}{' '}
-                of{' '}
-                {bookings.length}{' '}
-                bookings
+            <div style={{ flex: 1 }}>
+              <h2>All Bookings</h2>
+              <p>
+                {filtered.length} of {bookings.length} bookings
               </p>
             </div>
-
-            {/* Search */}
-
-            <div
-              style={{
-                display:
-                  'flex',
-                alignItems:
-                  'center',
-                gap: '8px',
-                backgroundColor:
-                  '#fff',
-                border:
-                  '1px solid #e5e7eb',
-                borderRadius:
-                  '10px',
-                padding:
-                  '0 12px',
-                height: '36px',
-                width: '240px',
-              }}
-            >
-              <Search
-                size={13}
-                color="#9ca3af"
-              />
-
+            <label className="bk-search">
+              <Search size={12} />
               <input
                 type="text"
                 placeholder="Search customer, destination..."
                 value={search}
-                onChange={(e) =>
-                  setSearch(
-                    e.target.value
-                  )
-                }
-                style={{
-                  flex: 1,
-                  border: 'none',
-                  outline: 'none',
-                  fontSize:
-                    '13px',
-                  background:
-                    'transparent',
-                  color:
-                    '#111827',
-                }}
+                onChange={(e) => setSearch(e.target.value)}
               />
-            </div>
+            </label>
+            <button
+              type="button"
+              className="bk-reset"
+              onClick={clearFilters}
+              disabled={!hasActiveFilters}
+            >
+              <RotateCcw size={11} />
+              Clear filters
+            </button>
           </div>
 
-          {/* Filter Tabs */}
-
-          <div
-            style={{
-              display:
-                'flex',
-              alignItems:
-                'center',
-              gap: '12px',
-              flexWrap:
-                'wrap',
-            }}
-          >
-            {/* Status */}
-
-            <div
-              style={{
-                display:
-                  'flex',
-                backgroundColor:
-                  '#f3f4f6',
-                borderRadius:
-                  '10px',
-                padding: '3px',
-                gap: '2px',
-              }}
-            >
-              {STATUS_TABS.map(
-                (tab) => {
-                  const isActive =
-                    statusFilter ===
-                    tab
-
-                  const count =
-                    tab === 'All'
-                      ? bookings.length
-                      : bookings.filter(
-                          (b) =>
-                            b.status ===
-                            tab
-                        ).length
-
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() =>
-                        setStatusFilter(
-                          tab
-                        )
-                      }
-                      style={{
-                        padding:
-                          '6px 14px',
-                        borderRadius:
-                          '8px',
-                        border:
-                          'none',
-                        cursor:
-                          'pointer',
-                        fontSize:
-                          '13px',
-                        fontWeight:
-                          isActive
-                            ? '600'
-                            : '400',
-                        backgroundColor:
-                          isActive
-                            ? '#fff'
-                            : 'transparent',
-                        color:
-                          isActive
-                            ? '#111827'
-                            : '#6b7280',
-                        boxShadow:
-                          isActive
-                            ? '0 1px 3px rgba(0,0,0,0.08)'
-                            : 'none',
-                        transition:
-                          'all 0.15s ease',
-                        display:
-                          'flex',
-                        alignItems:
-                          'center',
-                        gap: '6px',
-                        whiteSpace:
-                          'nowrap',
-                      }}
-                    >
-                      {tab}
-
-                      <span
-                        style={{
-                          fontSize:
-                            '11px',
-                          fontWeight:
-                            '500',
-                          padding:
-                            '1px 6px',
-                          borderRadius:
-                            '999px',
-                          backgroundColor:
-                            isActive
-                              ? '#f0fdfa'
-                              : '#e5e7eb',
-                          color:
-                            isActive
-                              ? '#0f766e'
-                              : '#9ca3af',
-                        }}
-                      >
-                        {count}
-                      </span>
-                    </button>
-                  )
-                }
-              )}
-            </div>
-
-            <div
-              style={{
-                width: '1px',
-                height: '20px',
-                backgroundColor:
-                  '#e5e7eb',
-              }}
-            />
-
-            {/* Payment */}
-
-            <div
-              style={{
-                display:
-                  'flex',
-                backgroundColor:
-                  '#f3f4f6',
-                borderRadius:
-                  '10px',
-                padding: '3px',
-                gap: '2px',
-              }}
-            >
-              {PAYMENT_TABS.map(
-                (tab) => {
-                  const isActive =
-                    paymentFilter ===
-                    tab
-
-                  const count =
-                    tab === 'All'
-                      ? bookings.length
-                      : bookings.filter(
-                          (b) =>
-                            b.paymentStatus ===
-                            tab
-                        ).length
-
-                  return (
-                    <button
-                      key={tab}
-                      onClick={() =>
-                        setPaymentFilter(
-                          tab
-                        )
-                      }
-                      style={{
-                        padding:
-                          '6px 14px',
-                        borderRadius:
-                          '8px',
-                        border:
-                          'none',
-                        cursor:
-                          'pointer',
-                        fontSize:
-                          '13px',
-                        fontWeight:
-                          isActive
-                            ? '600'
-                            : '400',
-                        backgroundColor:
-                          isActive
-                            ? '#fff'
-                            : 'transparent',
-                        color:
-                          isActive
-                            ? '#111827'
-                            : '#6b7280',
-                        boxShadow:
-                          isActive
-                            ? '0 1px 3px rgba(0,0,0,0.08)'
-                            : 'none',
-                        transition:
-                          'all 0.15s ease',
-                        display:
-                          'flex',
-                        alignItems:
-                          'center',
-                        gap: '6px',
-                        whiteSpace:
-                          'nowrap',
-                      }}
-                    >
-                      {tab}
-
-                      <span
-                        style={{
-                          fontSize:
-                            '11px',
-                          fontWeight:
-                            '500',
-                          padding:
-                            '1px 6px',
-                          borderRadius:
-                            '999px',
-                          backgroundColor:
-                            isActive
-                              ? '#f0fdfa'
-                              : '#e5e7eb',
-                          color:
-                            isActive
-                              ? '#0f766e'
-                              : '#9ca3af',
-                        }}
-                      >
-                        {count}
-                      </span>
-                    </button>
-                  )
-                }
-              )}
-            </div>
+          <div className="bk-filters">
+            {renderTabs('Booking Status', STATUS_TABS, statusFilter, setStatusFilter, 'status')}
+            <div className="bk-sep" />
+            {renderTabs('Payment Status', PAYMENT_TABS, paymentFilter, setPaymentFilter, 'paymentStatus')}
           </div>
         </div>
 
-        {/* Table */}
-
         {loading ? (
-          <div
-            style={{
-              padding: '60px',
-              textAlign:
-                'center',
-            }}
-          >
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius:
-                  '50%',
-                border:
-                  '3px solid #e5e7eb',
-                borderTopColor:
-                  '#0f766e',
-                animation:
-                  'spin 0.7s linear infinite',
-                margin:
-                  '0 auto 12px',
-              }}
-            />
-
-            <p
-              style={{
-                margin: 0,
-                fontSize:
-                  '14px',
-                color:
-                  '#9ca3af',
-              }}
-            >
-              Loading bookings...
-            </p>
+          <div className="bk-empty">
+            <span className="bk-spin" />
+            <p>Loading bookings...</p>
           </div>
-        ) : filtered.length ===
-          0 ? (
-          <div
-            style={{
-              padding: '64px',
-              textAlign:
-                'center',
-              color:
-                '#9ca3af',
-            }}
-          >
-            <Plane
-              size={32}
-              style={{
-                margin:
-                  '0 auto 12px',
-                display:
-                  'block',
-                opacity: 0.3,
-              }}
-            />
-
-            <p
-              style={{
-                margin: 0,
-                fontSize:
-                  '14px',
-                fontWeight:
-                  '500',
-              }}
-            >
-              No bookings found
-            </p>
-
-            <p
-              style={{
-                margin:
-                  '4px 0 0',
-                fontSize:
-                  '13px',
-              }}
-            >
-              Try adjusting your
-              filters or search
-            </p>
+        ) : filtered.length === 0 ? (
+          <div className="bk-empty">
+            <Plane size={26} style={{ opacity: 0.35 }} />
+            <p className="t">No bookings found</p>
+            <p>Try adjusting your filters or search</p>
           </div>
         ) : (
-          <div
-            style={{
-              overflowX:
-                'auto',
-            }}
-          >
-            <table
-              style={{
-                width: '100%',
-                borderCollapse:
-                  'collapse',
-              }}
-            >
+          <div style={{ overflowX: 'auto' }}>
+            <table className="bk-table">
               <thead>
-                <tr
-                  style={{
-                    borderBottom:
-                      '1px solid #f3f4f6',
-                  }}
-                >
-                  {[
-                    'Ref #',
-                    'Customer',
-                    'Destination',
-                    'Travel Date',
-                    'Total Cost',
-                    'Payment',
-                    'Status',
-                    'Actions',
-                  ].map(
+                <tr>
+                  {['Ref #', 'Customer', 'Destination', 'Travel Date', 'Total Cost', 'Payment', 'Status', 'Actions'].map(
                     (col) => (
-                      <th
-                        key={col}
-                        style={{
-                          padding:
-                            '12px 16px',
-                          textAlign:
-                            'left',
-                          fontSize:
-                            '12px',
-                          fontWeight:
-                            '600',
-                          color:
-                            '#6b7280',
-                          textTransform:
-                            'uppercase',
-                          letterSpacing:
-                            '0.5px',
-                          backgroundColor:
-                            '#fafafa',
-                          whiteSpace:
-                            'nowrap',
-                        }}
-                      >
-                        {col}
-                      </th>
+                      <th key={col}>{col}</th>
                     )
                   )}
                 </tr>
               </thead>
-
               <tbody>
-                {filtered.map(
-                  (booking) => (
-                    <BookingRow
-                      key={
-                        booking.id
-                      }
-                      booking={
-                        booking
-                      }
-                      onPaymentUpdate={
-                        handlePaymentUpdate
-                      }
-                    />
-                  )
-                )}
+                {filtered.map((booking, i) => (
+                  <BookingRow
+                    key={booking.id}
+                    index={i}
+                    booking={booking}
+                    onPaymentUpdate={handlePaymentUpdate}
+                  />
+                ))}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* Footer */}
-
-        {!loading &&
-          filtered.length >
-            0 && (
-            <div
-              style={{
-                padding:
-                  '14px 24px',
-                borderTop:
-                  '1px solid #f3f4f6',
-                display:
-                  'flex',
-                justifyContent:
-                  'space-between',
-                alignItems:
-                  'center',
-              }}
-            >
-              <p
-                style={{
-                  margin: 0,
-                  fontSize:
-                    '12px',
-                  color:
-                    '#9ca3af',
-                }}
-              >
-                Showing{' '}
-                {filtered.length}{' '}
-                booking
-                {filtered.length !==
-                1
-                  ? 's'
-                  : ''}
+        {!loading && filtered.length > 0 && (
+          <div className="bk-foot">
+            <p className="count">
+              Showing {filtered.length} booking{filtered.length !== 1 ? 's' : ''}
+            </p>
+            <div className="bk-totals">
+              <p>
+                Collected <strong className="g">{formatCurrency(paidRevenue)}</strong>
               </p>
-
-              <p
-                style={{
-                  margin: 0,
-                  fontSize:
-                    '12px',
-                  color:
-                    '#9ca3af',
-                }}
-              >
-                Collected:{' '}
-                <strong
-                  style={{
-                    color:
-                      '#0f766e',
-                  }}
-                >
-                  {formatCurrency(
-                    paidRevenue
-                  )}
-                </strong>
-
-                {' '}&nbsp;·&nbsp;{' '}
-
-                Outstanding:{' '}
-                <strong
-                  style={{
-                    color:
-                      '#dc2626',
-                  }}
-                >
-                  {formatCurrency(
-                    totalRevenue -
-                      paidRevenue
-                  )}
-                </strong>
+              <p>
+                Outstanding <strong className="r">{formatCurrency(totalRevenue - paidRevenue)}</strong>
               </p>
             </div>
-          )}
-      </div>
-
-      {/* Toast */}
+          </div>
+        )}
+      </section>
 
       {toast && (
         <Toast
-          message={
-            toast.message
-          }
+          message={toast.message}
           type={toast.type}
-          onClose={() =>
-            setToast(null)
-          }
+          onClose={() => setToast(null)}
         />
       )}
 
-      <style>
-        {`
-          @keyframes spin {
-            to {
-              transform: rotate(360deg);
-            }
-          }
-        `}
-      </style>
+      <style>{CSS}</style>
     </div>
   )
 }
+
+const CSS = `
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@400;500;600&family=Playfair+Display:wght@400;500&display=swap');
+
+.bk-page{position:relative;isolation:isolate;display:flex;flex-direction:column;gap:16px;padding:12px;max-width:1180px;margin:0 auto;color:#faf7f2;font-family:'Playfair Display',Georgia,serif;font-size:13px;font-variant-numeric:lining-nums tabular-nums}
+.bk-page *{box-sizing:border-box}
+
+/* Background: crossfading photos with a slow push-in, under one consistent scrim */
+.bk-bg{position:fixed;inset:0;z-index:-1;pointer-events:none;background:#1e130e;overflow:hidden}
+.bk-bg-layer{position:absolute;inset:0;background-size:cover;background-position:center;opacity:0;transition:opacity 1.6s ease;transform:scale(1)}
+.bk-bg-layer.on{opacity:1;animation:bk-push 8s ease-out forwards}
+@keyframes bk-push{from{transform:scale(1)}to{transform:scale(1.06)}}
+.bk-bg-shade{position:absolute;inset:0;background:
+  linear-gradient(135deg,rgba(67,15,25,.88) 0%,rgba(46,29,23,.84) 55%,rgba(30,18,12,.90) 100%),
+  linear-gradient(0deg,rgba(30,18,12,.55) 0%,transparent 45%)}
+
+/* Hero: refined serif title + stat containers */
+.bk-hero{display:flex;flex-direction:column;gap:16px;padding:16px 4px 0}
+.bk-hero-text{max-width:520px}
+.bk-title{margin:0;color:#f6eedd;font-family:'Cormorant Garamond',Georgia,serif;font-weight:600;font-size:clamp(28px,3.4vw,40px);line-height:1.05;letter-spacing:.16em;text-transform:uppercase;text-shadow:0 2px 14px rgba(30,18,12,.5);animation:bk-rise .8s cubic-bezier(.2,.8,.2,1) both}
+@keyframes bk-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.bk-sub{margin:8px 0 0;font-family:'Jost',system-ui,sans-serif;font-size:14px;line-height:1.5;color:#efe4cc;opacity:.92}
+
+.bk-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.bk-stat{display:grid;grid-template-rows:auto auto auto;align-content:start;gap:2px;padding:12px 16px;border-radius:10px;background:rgba(30,18,12,.66);border:1px solid rgba(207,176,122,.28);box-shadow:0 6px 18px rgba(0,0,0,.25);font-family:'Jost',system-ui,sans-serif}
+.bk-stat-num{font-family:'Cormorant Garamond',Georgia,serif;font-weight:700;font-size:28px;line-height:1.1;color:#f6eedd;font-variant-numeric:lining-nums tabular-nums;white-space:nowrap}
+.bk-stat-label{font-size:12.5px;font-weight:500;color:#e8d3a6}
+.bk-stat-sub{font-size:11px;color:rgba(246,238,221,.75);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+/* Table card: near-opaque panel with border + soft shadow */
+.bk-card{background:rgba(34,21,15,.93);border:1px solid rgba(207,176,122,.3);box-shadow:0 18px 48px rgba(0,0,0,.42),0 2px 8px rgba(0,0,0,.25);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-radius:12px;overflow:hidden;font-family:'Jost',system-ui,-apple-system,'Segoe UI',sans-serif}
+.bk-toolbar{padding:12px 14px;border-bottom:1px solid rgba(246,238,221,.12);display:flex;flex-direction:column;gap:12px}
+.bk-toolbar-top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.bk-toolbar h2{margin:0;font-size:14px;font-weight:600}
+.bk-toolbar p{margin:0;font-size:11px;opacity:.65}
+.bk-icon{width:26px;height:26px;border-radius:7px;background:rgba(212,180,131,.16);color:#d4b483;display:flex;align-items:center;justify-content:center}
+.bk-search{display:flex;align-items:center;gap:6px;background:rgba(246,238,221,.08);border:1px solid rgba(246,238,221,.18);border-radius:8px;padding:0 10px;height:30px;width:220px;transition:border-color .2s,box-shadow .2s,width .25s}
+.bk-search:focus-within{border-color:#d4b483;box-shadow:0 0 0 2px rgba(212,180,131,.22);width:250px}
+.bk-search input{flex:1;border:none;outline:none;background:transparent;color:#fff;font-size:12px;font-family:inherit}
+.bk-search input::placeholder{color:rgba(246,238,221,.5)}
+
+.bk-reset{display:inline-flex;align-items:center;gap:5px;height:30px;padding:0 12px;border-radius:8px;border:1px solid rgba(212,180,131,.55);background:transparent;color:#e8d3a6;font-family:inherit;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s,border-color .2s}
+.bk-reset:hover:not(:disabled){background:#d4b483;color:#2b1b14;border-color:#d4b483}
+.bk-reset:disabled{opacity:.4;cursor:default}
+.bk-reset:focus-visible,.bk-tabs button:focus-visible,.bk-change:focus-visible{outline:2px solid #d4b483;outline-offset:2px}
+
+.bk-filters{display:flex;align-items:flex-end;gap:14px;flex-wrap:wrap}
+.bk-fgroup{display:flex;flex-direction:column;gap:5px}
+.bk-flabel{font-size:11px;font-weight:600;color:#e8d3a6;letter-spacing:.02em}
+.bk-sep{width:1px;height:28px;background:rgba(246,238,221,.2)}
+.bk-tabs{display:flex;background:rgba(246,238,221,.07);border-radius:8px;padding:2px;gap:2px}
+.bk-tabs button{display:flex;align-items:center;gap:5px;padding:4px 10px;border:none;border-radius:6px;background:transparent;color:rgba(246,238,221,.75);font-family:inherit;font-size:12px;cursor:pointer;white-space:nowrap;transition:background .2s,color .2s}
+.bk-tabs button:hover{color:#fff}
+.bk-tabs button.on{background:#d4b483;color:#2b1b14;font-weight:600}
+.bk-tabs span{font-size:10px;padding:0 5px;border-radius:999px;background:rgba(246,238,221,.14)}
+.bk-tabs button.on span{background:rgba(43,27,20,.18)}
+
+.bk-table{width:100%;border-collapse:collapse}
+.bk-table th{padding:9px 12px;text-align:left;font-size:10px;font-weight:600;color:rgba(246,238,221,.65);text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;border-bottom:1px solid rgba(246,238,221,.12)}
+.bk-table td{padding:9px 12px;vertical-align:middle}
+.bk-table td.nowrap{white-space:nowrap}
+.bk-row{border-bottom:1px solid rgba(246,238,221,.08);animation:bk-in .5s calc(var(--i) * 45ms) ease both;transition:background .2s,box-shadow .2s}
+.bk-row:hover{background:rgba(246,238,221,.07);box-shadow:inset 2px 0 0 #d4b483}
+@keyframes bk-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.bk-ref{font-family:ui-monospace,monospace;font-size:11px;font-weight:600;color:rgba(246,238,221,.7)}
+.bk-cust{display:flex;align-items:center;gap:8px}
+.bk-avatar{width:24px;height:24px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#e2c898,#9c6b3f);color:#2b1b14;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;text-transform:uppercase}
+.bk-name{margin:0;font-size:12.5px;font-weight:500;line-height:1.3}
+.bk-meta{margin:0;font-size:10.5px;opacity:.65;line-height:1.3}
+.bk-meta.soon{color:#f0a0a0;opacity:1}
+.bk-dest{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:500}
+.bk-dest svg{opacity:.5}
+.bk-cost{font-size:12.5px;font-weight:600}
+
+/* Badges: Pending = warm highlight, Confirmed/Paid = calm */
+.bk-badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;padding:2px 9px;border-radius:999px;font-weight:500;border:1px solid}
+.bk-badge.calm{background:rgba(158,184,160,.14);color:#cfe0d0;border-color:rgba(158,184,160,.42)}
+.bk-badge.quiet{background:rgba(246,238,221,.07);color:#d9cfba;border-color:rgba(246,238,221,.22)}
+.bk-badge.warm{background:rgba(226,160,72,.26);color:#ffdba3;border-color:rgba(226,160,72,.75);font-weight:600;box-shadow:0 0 0 1px rgba(226,160,72,.12)}
+.bk-dot{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+
+.bk-change{display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:7px;border:1px solid rgba(246,238,221,.24);background:rgba(246,238,221,.06);color:#fff;font-family:inherit;font-size:11px;font-weight:500;cursor:pointer;transition:background .2s,border-color .2s}
+.bk-change:hover:not(:disabled){background:rgba(212,180,131,.16);border-color:#d4b483}
+.bk-change:disabled{cursor:not-allowed}
+.bk-menu{position:absolute;top:calc(100% + 4px);right:0;z-index:20;min-width:104px;background:#2b1b14;border:1px solid rgba(246,238,221,.18);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.45);overflow:hidden;animation:bk-pop .16s ease both;transform-origin:top right}
+@keyframes bk-pop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}
+.bk-menu button{display:flex;align-items:center;gap:6px;width:100%;padding:7px 12px;border:none;background:transparent;color:#f6eedd;font-family:inherit;font-size:12px;text-align:left;cursor:pointer}
+.bk-menu button:hover{background:rgba(246,238,221,.08)}
+.bk-menu button.active{color:#d4b483;font-weight:600}
+
+.bk-empty{padding:36px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;color:rgba(246,238,221,.7)}
+.bk-empty p{margin:0;font-size:12px}.bk-empty .t{font-size:13px;font-weight:500;color:#fff}
+.bk-spin{width:24px;height:24px;border-radius:50%;border:2px solid rgba(246,238,221,.15);border-top-color:#d4b483;animation:spin .7s linear infinite}
+.bk-spin.sm{width:11px;height:11px;border-width:2px;animation-duration:.6s}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Footer totals: solid dark band, large high-contrast figures */
+.bk-foot{padding:12px 16px;background:#1b110c;border-top:1px solid rgba(207,176,122,.35);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.bk-foot p{margin:0}
+.bk-foot .count{font-size:12px;color:rgba(246,238,221,.8)}
+.bk-totals{display:flex;align-items:center;gap:24px;flex-wrap:wrap}
+.bk-totals p{display:flex;align-items:baseline;gap:8px;font-size:12px;color:rgba(246,238,221,.85)}
+.bk-totals strong{font-size:16px;font-weight:700;font-variant-numeric:lining-nums tabular-nums}
+.bk-foot .g{color:#f1dcab}.bk-foot .r{color:#ffb4a6}
+
+.bk-toast{position:fixed;bottom:20px;right:20px;z-index:999;display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:10px;min-width:220px;backdrop-filter:blur(12px);box-shadow:0 10px 30px rgba(0,0,0,.4);font-family:system-ui,sans-serif;animation:bk-toast .35s cubic-bezier(.2,.8,.2,1) both}
+.bk-toast p{margin:0;font-size:12px;font-weight:500;flex:1}
+.bk-toast.ok{background:rgba(43,27,20,.94);border:1px solid rgba(212,180,131,.55);color:#e8d3a6}
+.bk-toast.err{background:rgba(92,26,32,.94);border:1px solid rgba(190,70,80,.6);color:#f4c6c6}
+@keyframes bk-toast{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+
+@media (max-width:860px){
+  .bk-hero{padding:12px 0 0;gap:14px}
+  .bk-stats{grid-template-columns:repeat(2,1fr)}
+  .bk-search,.bk-search:focus-within{width:100%}
+  .bk-sep{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .bk-bg-layer.on,.bk-title,.bk-row,.bk-menu,.bk-toast{animation:none}
+  .bk-bg-layer{transition:none}
+}
+`
 
 export default Bookings

@@ -32,7 +32,7 @@ function Login() {
       <div style={{
         position: 'fixed',
         top: 0, left: 0, right: 0, bottom: 0,
-      backgroundImage: 'url("https://raw.githubusercontent.com/krithi575/pp_images/main/loginbg.png")',     
+        backgroundImage: 'url("https://raw.githubusercontent.com/krithi575/pp_images/main/loginbg.png")',     
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',

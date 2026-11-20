@@ -1,10 +1,206 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   User, Phone, Mail, Building2, Plus, Trash2, MapPin, RefreshCw,
   CheckCircle, AlertCircle, Globe, Database, ChevronDown, ChevronRight,
   X, Save, Info
 } from 'lucide-react'
 import api from '../services/api'
+
+// ── UI-only styles ────────────────────────────────────────────────────────────
+// Palette: royal blue, marigold, maroon, cream. Flat colour blocks separated by thin gaps.
+
+const css = `
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=Jost:wght@400;500;600;700&display=swap');
+
+.st-root {
+  --blue: #0B3283;
+  --blue-deep: #082463;
+  --gold: #E9A21B;
+  --gold-soft: #F7DDA0;
+  --maroon: #7B0D12;
+  --cream: #F7EEE3;
+  --paper: #FFFBF5;
+  --ink: #14213D;
+  --muted: #5B6785;
+  --line: rgba(20, 33, 61, 0.14);
+  --display: 'Cormorant Garamond', Georgia, serif;
+  --body: 'Jost', system-ui, sans-serif;
+  font-family: var(--body);
+  font-size: 14px;
+  font-variant-numeric: lining-nums;
+  color: var(--ink);
+  width: 100%;
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  position: relative;
+  isolation: isolate;
+}
+.st-root *, .st-root *::before, .st-root *::after { box-sizing: border-box; }
+.st-root button { font-family: inherit; }
+.st-root :focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* Hero */
+.st-hero {
+  position: relative; overflow: hidden;
+  background: var(--blue); color: var(--cream);
+  border-radius: 8px; padding: 26px 28px 28px;
+}
+.st-hero h1 { position: relative; z-index: 2; margin: 0; font-family: var(--display); font-weight: 600; font-size: clamp(34px, 5vw, 50px); line-height: 1; }
+.st-hero p { position: relative; z-index: 2; margin: 8px 0 0; font-size: 14px; font-weight: 400; opacity: 0.85; max-width: 38em; }
+.st-diamond { display: inline-block; width: 0.3em; height: 0.3em; background: var(--gold); margin-left: 0.14em; vertical-align: 0.62em; transform: rotate(45deg); animation: st-turn 6s ease-in-out infinite; }
+.st-pattern-wrap {
+  position: absolute; right: 0; top: 0; bottom: 0; width: 36%; overflow: hidden; z-index: 1;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 70%);
+  mask-image: linear-gradient(90deg, transparent, #000 70%);
+}
+.st-pattern {
+  position: absolute; inset: 0 0 0 0; width: calc(100% + 28px); opacity: 0.32;
+  background-image:
+    linear-gradient(135deg, var(--gold) 25%, transparent 25%),
+    linear-gradient(225deg, var(--gold) 25%, transparent 25%),
+    linear-gradient(45deg, var(--gold) 25%, transparent 25%),
+    linear-gradient(315deg, var(--gold) 25%, transparent 25%);
+  background-size: 28px 28px;
+  background-position: 14px 0, 14px 0, 0 0, 0 0;
+  animation: st-pan 3s linear infinite;
+}
+
+/* Section titles */
+.st-sec { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.st-sec h2 { margin: 0; font-family: var(--display); font-weight: 600; font-size: 25px; color: var(--blue); display: flex; align-items: center; gap: 9px; }
+.st-bullet { width: 9px; height: 9px; background: var(--gold); transform: rotate(45deg); flex-shrink: 0; }
+.st-sec p { margin: 0; font-size: 13px; color: var(--muted); }
+.st-sec .st-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* Buttons */
+.st-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 7px 14px; border-radius: 6px; cursor: pointer;
+  font-size: 13px; font-weight: 600;
+  border: 1.5px solid var(--blue); background: transparent; color: var(--blue);
+  transition: transform 0.12s ease, background 0.2s, color 0.2s, box-shadow 0.15s;
+}
+.st-btn:hover:not(:disabled) { transform: translateY(-1px); background: var(--blue); color: var(--cream); }
+.st-btn:active:not(:disabled) { transform: translateY(0); }
+.st-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+.st-btn.primary { background: var(--blue); color: var(--cream); }
+.st-btn.primary:hover:not(:disabled) { background: var(--blue-deep); }
+.st-btn.gold { background: var(--gold); border-color: var(--gold); color: var(--ink); }
+.st-btn.gold:hover:not(:disabled) { background: var(--ink); border-color: var(--ink); color: var(--gold); }
+.st-btn.danger { border-color: var(--maroon); color: var(--maroon); padding: 7px 10px; }
+.st-btn.danger:hover:not(:disabled) { background: var(--maroon); color: var(--cream); }
+.st-spin { animation: st-spin 0.8s linear infinite; }
+
+/* Profile blocks */
+.st-profile { display: grid; grid-template-columns: 250px 1fr; gap: 3px; }
+.st-id { background: var(--maroon); color: var(--cream); border-radius: 8px 0 0 8px; padding: 20px; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+.st-avatar { width: 52px; height: 52px; border-radius: 50%; background: var(--gold); color: var(--maroon); display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 26px; animation: st-pop 0.5s cubic-bezier(.2,1.3,.4,1) both; }
+.st-id strong { display: block; font-family: var(--display); font-weight: 600; font-size: 24px; line-height: 1.1; }
+.st-id span { font-size: 13px; color: var(--gold-soft); }
+.st-fields-panel { background: var(--paper); border: 1px solid var(--line); border-left: 0; border-radius: 0 8px 8px 0; padding: 18px 20px; }
+.st-fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px 16px; }
+.st-field { display: flex; flex-direction: column; gap: 4px; }
+.st-field label { font-size: 12px; font-weight: 600; color: var(--blue); display: flex; align-items: center; gap: 5px; }
+.st-input { width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--cream); color: var(--ink); font-family: inherit; font-size: 14px; outline: none; }
+.st-hint { margin: 12px 0 0; font-size: 12px; color: var(--muted); }
+
+/* Stat tiles */
+.st-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; }
+.st-tile { padding: 16px 20px 14px; color: var(--cream); animation: st-pop 0.5s cubic-bezier(.2,1.2,.4,1) both; }
+.st-tile:nth-child(1) { background: var(--blue); border-radius: 8px 0 0 8px; }
+.st-tile:nth-child(2) { background: var(--gold); color: var(--ink); animation-delay: 0.08s; }
+.st-tile:nth-child(3) { background: var(--maroon); border-radius: 0 8px 8px 0; animation-delay: 0.16s; }
+.st-tile b { display: block; font-family: var(--display); font-weight: 600; font-size: clamp(34px, 4vw, 44px); line-height: 1; }
+.st-tile:nth-child(1) b, .st-tile:nth-child(3) b { color: var(--gold); }
+.st-tile span { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px solid currentColor; border-top-color: rgba(247,238,227,0.35); font-size: 13px; font-weight: 500; }
+.st-tile:nth-child(2) span { border-top-color: rgba(20,33,61,0.3); }
+
+/* Dataset panel */
+.st-panel { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.st-note { margin: 14px 16px 0; padding: 10px 12px; border-left: 3px solid var(--gold); background: var(--cream); display: flex; align-items: flex-start; gap: 8px; border-radius: 0 6px 6px 0; }
+.st-note p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink); }
+.st-add { margin: 14px 16px 0; padding: 14px; background: var(--cream); border-radius: 8px; animation: st-open 0.3s ease both; }
+.st-add strong { font-size: 14px; color: var(--ink); }
+.st-add p { margin: 6px 0 10px; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.st-textarea { width: 100%; padding: 10px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--paper); color: var(--ink); font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; resize: vertical; outline: none; }
+.st-textarea:focus, .st-search:focus-within { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(233,162,27,0.3); }
+.st-error-inline { margin: 8px 0 0; font-size: 13px; font-weight: 600; color: var(--maroon); }
+.st-add-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+.st-search { margin: 14px 16px 0; display: flex; align-items: center; gap: 8px; height: 38px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--paper); }
+.st-search input { flex: 1; border: 0; outline: 0; background: transparent; font-family: inherit; font-size: 14px; color: var(--ink); }
+.st-list { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+
+/* Destination rows */
+.st-row { border: 1px solid var(--line); border-radius: 8px; background: #fff; overflow: hidden; transition: box-shadow 0.2s, border-color 0.2s; animation: st-pop 0.4s ease both; }
+.st-row:hover { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold); }
+.st-row.off { background: var(--cream); opacity: 0.8; }
+.st-row-head { display: flex; align-items: center; gap: 10px; padding: 9px 12px; flex-wrap: wrap; }
+.st-chev { border: 0; background: transparent; cursor: pointer; padding: 2px; color: var(--muted); display: inline-flex; }
+.st-pin { width: 32px; height: 32px; border-radius: 6px; background: var(--blue); display: grid; place-items: center; flex-shrink: 0; }
+.st-row.off .st-pin { background: rgba(20,33,61,0.18); }
+.st-name { flex: 1; min-width: 160px; }
+.st-name p { margin: 0; font-family: var(--display); font-weight: 700; font-size: 19px; line-height: 1.1; color: var(--ink); }
+.st-name small { display: block; margin-top: 2px; font-size: 12px; color: var(--muted); }
+.st-cost { text-align: right; min-width: 96px; }
+.st-cost b { display: block; font-family: var(--display); font-weight: 700; font-size: 19px; line-height: 1.1; color: var(--blue); }
+.st-cost small { font-size: 12px; color: var(--muted); }
+.st-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 3px 10px; border-radius: 999px; background: var(--gold-soft); color: var(--ink); }
+.st-chip i { width: 6px; height: 6px; background: var(--gold); transform: rotate(45deg); display: inline-block; }
+.st-chip.off { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+.st-chip.off i { background: var(--muted); }
+.st-details { padding: 14px 16px 16px 56px; border-top: 1px solid var(--line); background: var(--paper); display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; animation: st-open 0.3s ease both; }
+.st-dh { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: var(--blue); }
+.st-dl { margin: 0; padding-left: 17px; color: var(--ink); font-size: 13px; line-height: 1.75; }
+.st-none { margin: 0; font-size: 13px; color: var(--muted); }
+.st-pre { margin: 0; padding: 10px; border-radius: 6px; background: var(--cream); color: var(--ink); font-size: 11px; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 180px; overflow: auto; }
+.st-foot { margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--line); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.st-foot p { margin: 0; font-size: 12px; color: var(--muted); }
+
+/* States */
+.st-skel { height: 54px; border-radius: 8px; background: linear-gradient(90deg, var(--cream) 0%, #fff 50%, var(--cream) 100%); background-size: 200% 100%; animation: st-shimmer 1.4s ease-in-out infinite; }
+.st-fail { padding: 18px; border-radius: 8px; background: var(--maroon); color: var(--cream); }
+.st-fail strong { font-size: 15px; }
+.st-fail p { margin: 6px 0 12px; font-size: 13px; }
+.st-fail .st-btn { border-color: var(--cream); color: var(--cream); }
+.st-fail .st-btn:hover:not(:disabled) { background: var(--cream); color: var(--maroon); }
+.st-empty { text-align: center; padding: 28px; color: var(--muted); }
+.st-empty p { margin: 0; font-size: 14px; }
+
+/* Toast */
+.st-toast { position: fixed; bottom: 20px; right: 20px; z-index: 9999; display: flex; align-items: center; gap: 10px; min-width: 240px; max-width: 360px; padding: 10px 14px; border-radius: 8px; font-size: 13px; font-weight: 500; box-shadow: 0 8px 20px rgba(20,33,61,0.25); animation: st-toast-in 0.4s cubic-bezier(.2,1.3,.4,1) both; }
+.st-toast.success { background: var(--blue); color: var(--cream); }
+.st-toast.error { background: var(--maroon); color: var(--cream); }
+.st-toast span { flex: 1; }
+.st-toast button { border: 0; background: transparent; cursor: pointer; color: inherit; display: flex; }
+
+@keyframes st-turn { 0%, 100% { transform: rotate(45deg) scale(1); } 50% { transform: rotate(225deg) scale(1.15); } }
+@keyframes st-pan { to { transform: translateX(-28px); } }
+@keyframes st-spin { to { transform: rotate(360deg); } }
+@keyframes st-pop { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes st-open { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes st-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes st-toast-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: none; } }
+
+@media (max-width: 760px) {
+  .st-profile { grid-template-columns: minmax(0, 1fr); }
+  .st-id { border-radius: 8px 8px 0 0; flex-direction: row; align-items: center; }
+  .st-fields-panel { border-left: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; }
+  .st-stats { grid-template-columns: minmax(0, 1fr); }
+  .st-tile:nth-child(1) { border-radius: 8px 8px 0 0; }
+  .st-tile:nth-child(3) { border-radius: 0 0 8px 8px; }
+  .st-details { padding-left: 16px; }
+  .st-hero { padding: 20px 18px 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .st-root *, .st-root *::before, .st-root *::after, .st-toast { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+}
+`
+
+// ── Logic helpers (unchanged) ─────────────────────────────────────────────────
 
 const getLoggedInProfile = () => {
   try {
@@ -22,16 +218,10 @@ const getLoggedInProfile = () => {
   }
 }
 
-const inputStyle = {
-  width: '100%', padding: '10px 14px', borderRadius: '10px',
-  border: '1px solid #e5e7eb', fontSize: '14px', color: '#111827',
-  outline: 'none', boxSizing: 'border-box', backgroundColor: '#fff',
-}
-
 function Field({ label, icon: Icon, children }) {
-  return <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-    <label style={{ fontSize: 12, fontWeight: 500, color: '#6b7280', display: 'flex', alignItems: 'center', gap: 5 }}>
-      {Icon && <Icon size={12} color="#9ca3af" />} {label}
+  return <div className="st-field">
+    <label>
+      {Icon && <Icon size={12} color="#0B3283" />} {label}
     </label>
     {children}
   </div>
@@ -42,17 +232,41 @@ function Toast({ message, type, onClose }) {
     const timer = setTimeout(onClose, 3500)
     return () => clearTimeout(timer)
   }, [onClose])
-  return <div role="status" style={{
-    position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
-    display: 'flex', alignItems: 'center', gap: 10, padding: '13px 18px',
-    borderRadius: 12, background: type === 'success' ? '#f0fdfa' : '#fef2f2',
-    border: `1px solid ${type === 'success' ? '#99f6e4' : '#fecaca'}`,
-    boxShadow: '0 8px 24px rgba(0,0,0,.10)', minWidth: 260,
-  }}>
-    {type === 'success' ? <CheckCircle size={16} color="#0f766e" /> : <AlertCircle size={16} color="#dc2626" />}
-    <span style={{ fontSize: 13, fontWeight: 500, flex: 1, color: type === 'success' ? '#0f766e' : '#dc2626' }}>{message}</span>
-    <button onClick={onClose} aria-label="Dismiss notification" style={{ border: 0, background: 'transparent', cursor: 'pointer' }}><X size={14} /></button>
+  return <div role="status" className={`st-toast ${type === 'success' ? 'success' : 'error'}`}>
+    {type === 'success' ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
+    <span>{message}</span>
+    <button onClick={onClose} aria-label="Dismiss notification"><X size={14} /></button>
   </div>
+}
+
+// Display only: counts a stat tile up from its previous value.
+function CountUp({ value }) {
+  const [shown, setShown] = useState(0)
+  const prev = useRef(0)
+
+  useEffect(() => {
+    const target = Number(value) || 0
+    const from = prev.current
+    const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (reduce || from === target) {
+      setShown(target)
+      prev.current = target
+      return
+    }
+    let raf
+    const start = performance.now()
+    const duration = 800
+    const tick = now => {
+      const p = Math.min(1, (now - start) / duration)
+      setShown(Math.round(from + (target - from) * (1 - Math.pow(1 - p, 3))))
+      if (p < 1) raf = requestAnimationFrame(tick)
+      else prev.current = target
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [value])
+
+  return <>{shown}</>
 }
 
 const formatMoney = value => {
@@ -221,120 +435,150 @@ function Settings() {
   const toggleExpanded = key => setExpanded(current => ({ ...current, [key]: !current[key] }))
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      <div>
-        <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Settings</h1>
-        <p style={{ margin: '4px 0 0', fontSize: 14, color: '#9ca3af' }}>View your account details and manage the AI grounding dataset.</p>
+    <div className="st-root">
+      <style>{css}</style>
+
+      {/* Cream backdrop */}
+      <div
+        aria-hidden="true"
+        style={{ position: 'fixed', inset: 0, zIndex: -1, pointerEvents: 'none', backgroundColor: '#F7EEE3' }}
+      />
+
+      {/* Hero */}
+      <header className="st-hero">
+        <div className="st-pattern-wrap" aria-hidden="true"><div className="st-pattern" /></div>
+        <h1>Settings<span className="st-diamond" aria-hidden="true" /></h1>
+        <p>View your account details and manage the AI grounding dataset.</p>
+      </header>
+
+      {/* Agent profile */}
+      <div className="st-sec">
+        <h2><span className="st-bullet" />Agent profile</h2>
+        <p>Details from the currently logged-in account</p>
       </div>
 
-      <section style={{ background: '#fff', border: '1px solid #f3f4f6', borderRadius: 14, overflow: 'hidden' }}>
-        <header style={{ padding: '18px 24px', borderBottom: '1px solid #f3f4f6', display: 'flex', alignItems: 'center', gap: 10, background: '#fafafa' }}>
-          <div style={{ width: 32, height: 32, borderRadius: 9, background: '#f0fdfa', display: 'grid', placeItems: 'center' }}><User size={16} color="#0f766e" /></div>
-          <div><h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#111827' }}>Agent Profile</h2><p style={{ margin: 0, fontSize: 12, color: '#9ca3af' }}>Details from the currently logged-in account</p></div>
-        </header>
-        <div style={{ padding: 24 }}>
-          {profileLoading ? <p style={{ color: '#9ca3af', fontSize: 13 }}>Loading profile…</p> : <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, padding: 16, background: '#f9fafb', borderRadius: 12, border: '1px solid #f3f4f6' }}>
-              <div style={{ width: 56, height: 56, borderRadius: '50%', background: '#ccfbf1', display: 'grid', placeItems: 'center', fontSize: 22, fontWeight: 700, color: '#0f766e', flexShrink: 0 }}>{profile.name?.charAt(0)?.toUpperCase() || 'A'}</div>
-              <div><p style={{ margin: 0, fontSize: 16, fontWeight: 600, color: '#111827' }}>{profile.name || 'Agent'}</p><p style={{ margin: '2px 0 0', fontSize: 13, color: '#9ca3af' }}>{profile.agencyName || 'Your Agency'}</p></div>
+      {profileLoading ? <p className="st-hint">Loading profile…</p> : (
+        <div className="st-profile">
+          <div className="st-id">
+            <div className="st-avatar">{profile.name?.charAt(0)?.toUpperCase() || 'A'}</div>
+            <div>
+              <strong>{profile.name || 'Agent'}</strong>
+              <span>{profile.agencyName || 'Your Agency'}</span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
-              <Field label="Full Name" icon={User}><input readOnly value={profile.name || 'Not provided'} style={inputStyle} /></Field>
-              <Field label="Agency Name" icon={Building2}><input readOnly value={profile.agencyName || 'Not provided'} style={inputStyle} /></Field>
-              <Field label="Email" icon={Mail}><input readOnly value={profile.email || 'Not provided'} style={inputStyle} /></Field>
-              <Field label="Phone" icon={Phone}><input readOnly value={profile.phone || 'Not provided'} style={inputStyle} /></Field>
+          </div>
+
+          <div className="st-fields-panel">
+            <div className="st-fields">
+              <Field label="Full Name" icon={User}><input readOnly value={profile.name || 'Not provided'} className="st-input" /></Field>
+              <Field label="Agency Name" icon={Building2}><input readOnly value={profile.agencyName || 'Not provided'} className="st-input" /></Field>
+              <Field label="Email" icon={Mail}><input readOnly value={profile.email || 'Not provided'} className="st-input" /></Field>
+              <Field label="Phone" icon={Phone}><input readOnly value={profile.phone || 'Not provided'} className="st-input" /></Field>
             </div>
-            <p style={{ margin: '18px 0 0', fontSize: 12, color: '#9ca3af' }}>These details are read from the account used to sign in.</p>
-          </>}
+            <p className="st-hint">These details are read from the account used to sign in.</p>
+          </div>
         </div>
-      </section>
+      )}
 
-      <section style={{ background: '#fff', border: '1px solid #f3f4f6', borderRadius: 14, overflow: 'hidden' }}>
-        <header style={{ padding: '18px 24px', borderBottom: '1px solid #f3f4f6', background: '#fafafa' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <div style={{ width: 32, height: 32, borderRadius: 9, background: '#f5f3ff', display: 'grid', placeItems: 'center' }}><Database size={16} color="#7c3aed" /></div>
-            <div style={{ flex: 1, minWidth: 180 }}>
-              <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#111827' }}>Dataset Manager</h2>
-              <p style={{ margin: 0, fontSize: 12, color: '#9ca3af' }}>{destinations.length} destinations · {activeCount} active · {inactiveCount} inactive</p>
-            </div>
-            <button onClick={() => loadDestinations(true)} disabled={refreshing || destLoading} style={{ ...buttonStyle('secondary'), display: 'flex', alignItems: 'center', gap: 6 }}><RefreshCw size={14} /> {refreshing ? 'Refreshing…' : 'Refresh'}</button>
-            <button onClick={() => { setShowAddForm(value => !value); setJsonError('') }} style={{ ...buttonStyle('primary'), display: 'flex', alignItems: 'center', gap: 6 }}><Plus size={14} /> {showAddForm ? 'Cancel' : 'Add Destination'}</button>
-          </div>
-          <div style={{ marginTop: 14, padding: '12px 14px', borderRadius: 10, background: '#f5f3ff', border: '1px solid #ddd6fe', display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-            <Globe size={14} color="#7c3aed" style={{ flexShrink: 0, marginTop: 1 }} />
-            <p style={{ margin: 0, fontSize: 12, color: '#6d28d9', lineHeight: 1.5 }}>This manager is intended to read and update the same <strong>backend/data/destinations.json</strong> file used by itinerary generation. Existing records without an active flag are treated as active.</p>
-          </div>
-        </header>
+      {/* Dataset manager */}
+      <div className="st-sec" style={{ marginTop: 6 }}>
+        <h2><span className="st-bullet" />Dataset manager</h2>
+        <div className="st-actions">
+          <button onClick={() => loadDestinations(true)} disabled={refreshing || destLoading} className="st-btn">
+            <RefreshCw size={14} className={refreshing ? 'st-spin' : ''} /> {refreshing ? 'Refreshing…' : 'Refresh'}
+          </button>
+          <button onClick={() => { setShowAddForm(value => !value); setJsonError('') }} className="st-btn gold">
+            <Plus size={14} /> {showAddForm ? 'Cancel' : 'Add Destination'}
+          </button>
+        </div>
+      </div>
 
-        {showAddForm && <div style={{ padding: '20px 24px', borderBottom: '1px solid #f3f4f6', background: '#fafafa' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}><Info size={15} color="#7c3aed" /><strong style={{ fontSize: 13, color: '#374151' }}>Add a complete destination record</strong></div>
-          <p style={{ margin: '0 0 12px', fontSize: 12, color: '#6b7280', lineHeight: 1.5 }}>Paste a complete destination object using the same schema as destinations.json. This prevents adding a name-only record that the AI cannot use.</p>
-          <textarea rows={12} value={newDestinationJson} onChange={event => setNewDestinationJson(event.target.value)} spellCheck={false} placeholder={'{\n  "name": "Example State",\n  "attractions": ["Place 1", "Place 2"],\n  "avg_cost_per_day": 3000,\n  "activities": [{ "name": "Example activity", "cost": 500 }],\n  "accommodation": {},\n  "transport": {},\n  "travel_time_between": {},\n  "pricing_metadata": {}\n}'} style={{ ...inputStyle, fontFamily: 'monospace', fontSize: 12, resize: 'vertical' }} />
-          {jsonError && <p role="alert" style={{ color: '#dc2626', fontSize: 12, margin: '8px 0 0' }}>{jsonError}</p>}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 12 }}>
-            <button onClick={() => { setShowAddForm(false); setJsonError('') }} style={buttonStyle('secondary')}>Cancel</button>
-            <button onClick={handleAddDestination} disabled={addingDest || !newDestinationJson.trim()} style={{ ...buttonStyle('primary'), display: 'flex', alignItems: 'center', gap: 6, opacity: addingDest || !newDestinationJson.trim() ? .6 : 1 }}><Save size={14} /> {addingDest ? 'Adding…' : 'Add to dataset'}</button>
+      <div className="st-stats">
+        <div className="st-tile">
+          <b>{destLoading ? '—' : <CountUp value={destinations.length} />}</b>
+          <span>Destinations</span>
+        </div>
+        <div className="st-tile">
+          <b>{destLoading ? '—' : <CountUp value={activeCount} />}</b>
+          <span>Active in AI dataset</span>
+        </div>
+        <div className="st-tile">
+          <b>{destLoading ? '—' : <CountUp value={inactiveCount} />}</b>
+          <span>Inactive</span>
+        </div>
+      </div>
+
+      <section className="st-panel">
+        <div className="st-note">
+          <Globe size={14} color="#E9A21B" style={{ flexShrink: 0, marginTop: 2 }} />
+          <p>This manager is intended to read and update the same <strong>backend/data/destinations.json</strong> file used by itinerary generation. Existing records without an active flag are treated as active.</p>
+        </div>
+
+        {showAddForm && <div className="st-add">
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Info size={15} color="#0B3283" /><strong>Add a complete destination record</strong></div>
+          <p>Paste a complete destination object using the same schema as destinations.json. This prevents adding a name-only record that the AI cannot use.</p>
+          <textarea className="st-textarea" rows={12} value={newDestinationJson} onChange={event => setNewDestinationJson(event.target.value)} spellCheck={false} placeholder={'{\n  "name": "Example State",\n  "attractions": ["Place 1", "Place 2"],\n  "avg_cost_per_day": 3000,\n  "activities": [{ "name": "Example activity", "cost": 500 }],\n  "accommodation": {},\n  "transport": {},\n  "travel_time_between": {},\n  "pricing_metadata": {}\n}'} />
+          {jsonError && <p role="alert" className="st-error-inline">{jsonError}</p>}
+          <div className="st-add-actions">
+            <button onClick={() => { setShowAddForm(false); setJsonError('') }} className="st-btn">Cancel</button>
+            <button onClick={handleAddDestination} disabled={addingDest || !newDestinationJson.trim()} className="st-btn primary"><Save size={14} /> {addingDest ? 'Adding…' : 'Add to dataset'}</button>
           </div>
         </div>}
 
-        <div style={{ padding: '16px 24px', borderBottom: '1px solid #f3f4f6' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 10, padding: '0 14px', height: 40 }}>
-            <RefreshCw size={14} color="#9ca3af" />
-            <input value={searchDest} onChange={event => setSearchDest(event.target.value)} placeholder="Search states, destinations, attractions or activities…" style={{ flex: 1, border: 0, outline: 0, fontSize: 13, background: 'transparent', color: '#111827' }} />
-          </div>
+        <div className="st-search">
+          <RefreshCw size={14} color="#5B6785" />
+          <input value={searchDest} onChange={event => setSearchDest(event.target.value)} placeholder="Search states, destinations, attractions or activities…" />
         </div>
 
-        <div style={{ padding: '16px 24px' }}>
-          {destLoading ? <div style={{ display: 'grid', gap: 10 }}>{[1, 2, 3, 4].map(index => <div key={index} style={{ height: 62, background: '#f3f4f6', borderRadius: 10 }} />)}</div>
-            : destError ? <div style={{ padding: 24, borderRadius: 10, background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b' }}><strong style={{ fontSize: 14 }}>Could not load the actual AI dataset</strong><p style={{ fontSize: 12, margin: '6px 0 12px' }}>{destError}</p><button onClick={() => loadDestinations(true)} style={buttonStyle('secondary')}>Retry</button></div>
-              : filteredDestinations.length === 0 ? <div style={{ textAlign: 'center', padding: 32, color: '#9ca3af' }}><Database size={28} style={{ margin: '0 auto 10px', display: 'block', opacity: .4 }} /><p style={{ margin: 0, fontSize: 14 }}>{destinations.length === 0 ? 'The AI destination dataset is empty.' : 'No matching destinations found.'}</p></div>
-                : <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div className="st-list">
+          {destLoading ? <div style={{ display: 'grid', gap: 8 }}>{[1, 2, 3, 4].map(index => <div key={index} className="st-skel" />)}</div>
+            : destError ? <div className="st-fail"><strong>Could not load the actual AI dataset</strong><p>{destError}</p><button onClick={() => loadDestinations(true)} className="st-btn">Retry</button></div>
+              : filteredDestinations.length === 0 ? <div className="st-empty"><Database size={26} style={{ margin: '0 auto 8px', display: 'block', opacity: .4 }} /><p>{destinations.length === 0 ? 'The AI destination dataset is empty.' : 'No matching destinations found.'}</p></div>
+                : <>
                   {filteredDestinations.map(destination => {
                     const key = destination._key
                     const isActive = destination.active !== false
                     const isExpanded = !!expanded[key]
                     const attractions = asArray(destination.attractions)
                     const activities = asArray(destination.activities)
-                    return <article key={key} style={{ border: '1px solid #eef0f3', borderRadius: 11, overflow: 'hidden', background: isActive ? '#fff' : '#fafafa', opacity: isActive ? 1 : .75 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', flexWrap: 'wrap' }}>
-                        <button onClick={() => toggleExpanded(key)} aria-label={isExpanded ? 'Collapse destination details' : 'Expand destination details'} style={{ border: 0, background: 'transparent', cursor: 'pointer', padding: 2, color: '#6b7280' }}>{isExpanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}</button>
-                        <div style={{ width: 36, height: 36, borderRadius: 9, background: isActive ? '#f0fdfa' : '#f3f4f6', display: 'grid', placeItems: 'center', flexShrink: 0 }}><MapPin size={16} color={isActive ? '#0f766e' : '#9ca3af'} /></div>
-                        <div style={{ flex: 1, minWidth: 160 }}>
-                          <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111827' }}>{destination.name || 'Unnamed destination'}</p>
-                          <p style={{ margin: '2px 0 0', fontSize: 11, color: '#9ca3af' }}>{getDestinationRegion(destination)} · {attractions.length} attractions · {activities.length} activities</p>
+                    return <article key={key} className={`st-row ${isActive ? '' : 'off'}`}>
+                      <div className="st-row-head">
+                        <button className="st-chev" onClick={() => toggleExpanded(key)} aria-label={isExpanded ? 'Collapse destination details' : 'Expand destination details'}>{isExpanded ? <ChevronDown size={17} /> : <ChevronRight size={17} />}</button>
+                        <div className="st-pin"><MapPin size={15} color={isActive ? '#E9A21B' : '#F7EEE3'} /></div>
+                        <div className="st-name">
+                          <p>{destination.name || 'Unnamed destination'}</p>
+                          <small>{getDestinationRegion(destination)} · {attractions.length} attractions · {activities.length} activities</small>
                         </div>
-                        <div style={{ textAlign: 'right', minWidth: 105 }}><p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: '#111827' }}>{formatMoney(destination.avg_cost_per_day)}</p><p style={{ margin: '2px 0 0', fontSize: 10, color: '#9ca3af' }}>average per day</p></div>
-                        <span style={{ fontSize: 11, padding: '4px 10px', borderRadius: 999, fontWeight: 600, background: isActive ? '#f0fdfa' : '#f3f4f6', color: isActive ? '#0f766e' : '#6b7280', border: `1px solid ${isActive ? '#99f6e4' : '#e5e7eb'}` }}>{isActive ? 'Active' : 'Inactive'}</span>
-                        <button disabled={busyKey === key} onClick={() => handleToggleActive(destination)} style={buttonStyle('secondary')}>{busyKey === key ? 'Saving…' : isActive ? 'Disable' : 'Enable'}</button>
-                        <button disabled={busyKey === key} onClick={() => handleDeleteDestination(destination)} title="Remove destination from dataset" style={{ ...buttonStyle('danger'), padding: '8px 10px' }}><Trash2 size={14} /></button>
+                        <div className="st-cost"><b>{formatMoney(destination.avg_cost_per_day)}</b><small>average per day</small></div>
+                        <span className={`st-chip ${isActive ? '' : 'off'}`}><i />{isActive ? 'Active' : 'Inactive'}</span>
+                        <button disabled={busyKey === key} onClick={() => handleToggleActive(destination)} className="st-btn">{busyKey === key ? 'Saving…' : isActive ? 'Disable' : 'Enable'}</button>
+                        <button disabled={busyKey === key} onClick={() => handleDeleteDestination(destination)} title="Remove destination from dataset" aria-label="Remove destination from dataset" className="st-btn danger"><Trash2 size={14} /></button>
                       </div>
-                      {isExpanded && <div style={{ padding: '14px 18px 18px 56px', borderTop: '1px solid #f3f4f6', background: '#fcfcfd', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16 }}>
+                      {isExpanded && <div className="st-details">
                         <DetailList title="Attractions" items={attractions} />
                         <DetailList title="Activities" items={activities} showCost />
-                        <div><p style={detailHeading}>Accommodation</p><pre style={detailPre}>{JSON.stringify(destination.accommodation || {}, null, 2)}</pre></div>
-                        <div><p style={detailHeading}>Transport</p><pre style={detailPre}>{JSON.stringify(destination.transport || {}, null, 2)}</pre></div>
-                        {destination.pricing_metadata && <div><p style={detailHeading}>Pricing metadata</p><pre style={detailPre}>{JSON.stringify(destination.pricing_metadata, null, 2)}</pre></div>}
+                        <div><p className="st-dh">Accommodation</p><pre className="st-pre">{JSON.stringify(destination.accommodation || {}, null, 2)}</pre></div>
+                        <div><p className="st-dh">Transport</p><pre className="st-pre">{JSON.stringify(destination.transport || {}, null, 2)}</pre></div>
+                        {destination.pricing_metadata && <div><p className="st-dh">Pricing metadata</p><pre className="st-pre">{JSON.stringify(destination.pricing_metadata, null, 2)}</pre></div>}
                       </div>}
                     </article>
                   })}
-                </div>}
-          {!destLoading && !destError && destinations.length > 0 && <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #f3f4f6', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
-            <p style={{ margin: 0, fontSize: 12, color: '#9ca3af' }}>{filteredDestinations.length} of {destinations.length} destinations shown</p>
-            <p style={{ margin: 0, fontSize: 12, color: '#9ca3af' }}>{activeCount} active in AI dataset</p>
+                </>}
+          {!destLoading && !destError && destinations.length > 0 && <div className="st-foot">
+            <p>{filteredDestinations.length} of {destinations.length} destinations shown</p>
+            <p>{activeCount} active in AI dataset</p>
           </div>}
         </div>
       </section>
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }
 
 function DetailList({ title, items, showCost = false }) {
   return <div>
-    <p style={detailHeading}>{title} ({items.length})</p>
-    {items.length === 0 ? <p style={{ fontSize: 12, color: '#9ca3af' }}>None listed</p> : <ul style={{ margin: 0, paddingLeft: 17, color: '#4b5563', fontSize: 12, lineHeight: 1.8 }}>
+    <p className="st-dh">{title} ({items.length})</p>
+    {items.length === 0 ? <p className="st-none">None listed</p> : <ul className="st-dl">
       {items.map((item, index) => {
         const label = typeof item === 'string' ? item : item?.name || item?.activity || JSON.stringify(item)
         const cost = typeof item === 'object' && item !== null ? item.cost ?? item.avg_cost : null
@@ -342,16 +586,6 @@ function DetailList({ title, items, showCost = false }) {
       })}
     </ul>}
   </div>
-}
-
-const detailHeading = { margin: '0 0 7px', fontSize: 12, fontWeight: 700, color: '#374151' }
-const detailPre = { margin: 0, padding: 10, borderRadius: 8, background: '#f3f4f6', color: '#4b5563', fontSize: 10, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', maxHeight: 180, overflow: 'auto' }
-
-function buttonStyle(variant) {
-  const common = { borderRadius: 9, padding: '8px 12px', fontSize: 12, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6 }
-  if (variant === 'primary') return { ...common, border: 0, background: '#115e59', color: '#fff' }
-  if (variant === 'danger') return { ...common, border: '1px solid #fee2e2', background: '#fff', color: '#dc2626' }
-  return { ...common, border: '1px solid #e5e7eb', background: '#fff', color: '#374151' }
 }
 
 export default Settings

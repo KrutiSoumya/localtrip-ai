@@ -54,33 +54,33 @@ const mockLead = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const scoreMeta = {
-  Hot:  { bg: '#fef2f2', color: '#dc2626', dot: '#ef4444' },
-  Warm: { bg: '#fffbeb', color: '#d97706', dot: '#f59e0b' },
-  Cold: { bg: '#eff6ff', color: '#2563eb', dot: '#60a5fa' },
+  Hot:  { bg: '#F3E5E5', color: '#8A3541', dot: '#9B4650' },
+  Warm: { bg: '#F6EBD5', color: '#A8793E', dot: '#C6A46A' },
+  Cold: { bg: '#F1E8DC', color: '#641F32', dot: '#A8793E' },
 }
 
 const statusColors = {
-  New:         { bg: '#f3f4f6', color: '#6b7280' },
-  Contacted:   { bg: '#eff6ff', color: '#2563eb' },
-  Quoted:      { bg: '#fffbeb', color: '#d97706' },
-  Negotiating: { bg: '#f5f3ff', color: '#7c3aed' },
-  Confirmed:   { bg: '#f0fdfa', color: '#0f766e' },
-  Closed:      { bg: '#fef2f2', color: '#dc2626' },
+  New:         { bg: '#EDE3D5', color: '#725D52' },
+  Contacted:   { bg: '#F1E8DC', color: '#641F32' },
+  Quoted:      { bg: '#F6EBD5', color: '#A8793E' },
+  Negotiating: { bg: '#F0E7DD', color: '#8B6242' },
+  Confirmed:   { bg: '#F1EADF', color: '#641F32' },
+  Closed:      { bg: '#F3E5E5', color: '#8A3541' },
 }
 
 const Card = ({ children, style = {} }) => (
   <div style={{
-    backgroundColor: '#fff', border: '1px solid #f3f4f6',
+    backgroundColor: '#FFFCF7', border: '1px solid #EDE3D5',
     borderRadius: '14px', padding: '20px', ...style,
   }}>
     {children}
   </div>
 )
 
-const SectionTitle = ({ icon: Icon, title, color = '#0f766e' }) => (
+const SectionTitle = ({ icon: Icon, title, color = '#641F32' }) => (
   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
     <Icon size={16} color={color} />
-    <h2 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#111827' }}>{title}</h2>
+    <h2 style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#35231F' }}>{title}</h2>
   </div>
 )
 
@@ -110,17 +110,17 @@ const mockQuotation = {
 }
 
 const categoryMeta = {
-  'Accommodation': { color: '#0f766e', bg: '#f0fdfa' },
-  'Transport':     { color: '#2563eb', bg: '#eff6ff' },
-  'Activities':    { color: '#7c3aed', bg: '#f5f3ff' },
-  'Meals':         { color: '#d97706', bg: '#fffbeb' },
-  'Visa & Misc':   { color: '#6b7280', bg: '#f9fafb' },
+  'Accommodation': { color: '#641F32', bg: '#F1EADF' },
+  'Transport':     { color: '#641F32', bg: '#F1E8DC' },
+  'Activities':    { color: '#8B6242', bg: '#F0E7DD' },
+  'Meals':         { color: '#A8793E', bg: '#F6EBD5' },
+  'Visa & Misc':   { color: '#725D52', bg: '#F5EEE3' },
 }
 
 const selectStyle = {
   display: 'block', width: '100%', marginTop: '6px', padding: '9px 10px',
-  border: '1px solid #d1d5db', borderRadius: '8px', backgroundColor: '#fff',
-  color: '#111827', fontSize: '13px', boxSizing: 'border-box',
+  border: '1px solid #D8C7B2', borderRadius: '8px', backgroundColor: '#FFFCF7',
+  color: '#35231F', fontSize: '13px', boxSizing: 'border-box',
 }
 
 function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
@@ -371,24 +371,24 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
 
   return (
     <div style={{
-      backgroundColor: '#fff', border: '1px solid #f3f4f6',
+      backgroundColor: '#FFFCF7', border: '1px solid #EDE3D5',
       borderRadius: '14px', overflow: 'hidden',
     }}>
 
       {/* Header */}
       <div style={{
-        padding: '18px 24px', borderBottom: '1px solid #f3f4f6',
+        padding: '18px 24px', borderBottom: '1px solid #EDE3D5',
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <FileText size={17} color="#2563eb" />
-          <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#111827' }}>
+          <FileText size={17} color="#641F32" />
+          <h2 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#35231F' }}>
             Quotation Generator
           </h2>
           {quote && (
             <span style={{
               fontSize: '11px', padding: '2px 10px', borderRadius: '999px',
-              backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: '500',
+              backgroundColor: '#F1E8DC', color: '#641F32', fontWeight: '500',
             }}>
               {quote.destination}
             </span>
@@ -403,8 +403,8 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
                 padding: '9px 14px', borderRadius: '10px', border: 'none',
-                backgroundColor: downloadingPdf ? '#9ca3af' : '#1d4ed8',
-                color: '#fff', fontSize: '13px', fontWeight: '600',
+                backgroundColor: downloadingPdf ? '#A18D7D' : '#4B2630',
+                color: '#FFFCF7', fontSize: '13px', fontWeight: '600',
                 cursor: downloadingPdf ? 'not-allowed' : 'pointer',
                 opacity: downloadingPdf ? 0.8 : 1,
               }}
@@ -420,15 +420,15 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
               style={{
                 display: 'flex', alignItems: 'center', gap: '6px',
                 padding: '8px 16px', borderRadius: '10px', border: 'none',
-                backgroundColor: sending ? '#9ca3af' : '#2563eb',
-                color: '#fff', fontSize: '13px', fontWeight: '600',
+                backgroundColor: sending ? '#A18D7D' : '#641F32',
+                color: '#FFFCF7', fontSize: '13px', fontWeight: '600',
                 cursor: sending ? 'not-allowed' : 'pointer',
               }}
-              onMouseEnter={e => { if (!sending) e.currentTarget.style.backgroundColor = '#1d4ed8' }}
-              onMouseLeave={e => { if (!sending) e.currentTarget.style.backgroundColor = '#2563eb' }}
+              onMouseEnter={e => { if (!sending) e.currentTarget.style.backgroundColor = '#4B2630' }}
+              onMouseLeave={e => { if (!sending) e.currentTarget.style.backgroundColor = '#641F32' }}
             >
               {sending
-                ? <><div style={{ width: '13px', height: '13px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} /> Sending...</>
+                ? <><div style={{ width: '13px', height: '13px', borderRadius: '50%', border: '2px solid rgba(255,252,247,0.35)', borderTopColor: '#FFFCF7', animation: 'spin 0.6s linear infinite' }} /> Sending...</>
                 : <>📤 Send to Customer</>
               }
             </button>
@@ -438,10 +438,10 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
             <div style={{
               display: 'flex', alignItems: 'center', gap: '6px',
               padding: '8px 14px', borderRadius: '10px',
-              backgroundColor: '#f0fdfa', border: '1px solid #99f6e4',
+              backgroundColor: '#F1EADF', border: '1px solid #D8C6A7',
             }}>
-              <CheckCircle size={14} color="#0f766e" />
-              <span style={{ fontSize: '13px', color: '#0f766e', fontWeight: '500' }}>Quote sent!</span>
+              <CheckCircle size={14} color="#641F32" />
+              <span style={{ fontSize: '13px', color: '#641F32', fontWeight: '500' }}>Quote sent!</span>
             </div>
           )}
 
@@ -450,15 +450,15 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
             style={{
               display: 'flex', alignItems: 'center', gap: '7px',
               padding: '9px 18px', borderRadius: '10px', border: 'none',
-              backgroundColor: loading ? '#9ca3af' : '#115e59',
-              color: '#fff', fontSize: '13px', fontWeight: '600',
+              backgroundColor: loading ? '#A18D7D' : '#641F32',
+              color: '#FFFCF7', fontSize: '13px', fontWeight: '600',
               cursor: loading ? 'not-allowed' : 'pointer',
             }}
-            onMouseEnter={e => { if (!loading) e.currentTarget.style.backgroundColor = '#0f766e' }}
-            onMouseLeave={e => { if (!loading) e.currentTarget.style.backgroundColor = '#115e59' }}
+            onMouseEnter={e => { if (!loading) e.currentTarget.style.backgroundColor = '#641F32' }}
+            onMouseLeave={e => { if (!loading) e.currentTarget.style.backgroundColor = '#641F32' }}
           >
             {loading
-              ? <><div style={{ width: '13px', height: '13px', borderRadius: '50%', border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', animation: 'spin 0.6s linear infinite' }} /> Generating...</>
+              ? <><div style={{ width: '13px', height: '13px', borderRadius: '50%', border: '2px solid rgba(255,252,247,0.35)', borderTopColor: '#FFFCF7', animation: 'spin 0.6s linear infinite' }} /> Generating...</>
               : <>{quote ? '🔄 Regenerate' : '✨ Generate Quotation'}</>
             }
           </button>
@@ -467,34 +467,34 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
 
       {/* Error */}
       {error && (
-        <div style={{ margin: '16px 24px 0', padding: '12px 16px', borderRadius: '10px', backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
-          <p style={{ margin: 0, fontSize: '13px', color: '#dc2626' }}>{error}</p>
+        <div style={{ margin: '16px 24px 0', padding: '12px 16px', borderRadius: '10px', backgroundColor: '#F3E5E5', border: '1px solid #D9B9B7' }}>
+          <p style={{ margin: 0, fontSize: '13px', color: '#8A3541' }}>{error}</p>
         </div>
       )}
           {/* Quotation preferences: these selections are sent to the pricing service. */}
-          <div style={{ padding: '16px', border: '1px solid #e5e7eb', borderRadius: '12px', backgroundColor: '#fafafa' }}>
-            <p style={{ margin: '0 0 5px', fontSize: '13px', fontWeight: '600', color: '#111827' }}>Quotation Preferences</p>
-            <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#6b7280' }}>Choose the dataset rates used to calculate this quotation.</p>
+          <div style={{ padding: '16px', border: '1px solid #E6D9C8', borderRadius: '12px', backgroundColor: '#F7F0E6' }}>
+            <p style={{ margin: '0 0 5px', fontSize: '13px', fontWeight: '600', color: '#35231F' }}>Quotation Preferences</p>
+            <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#725D52' }}>Choose the dataset rates used to calculate this quotation.</p>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
-              <label style={{ fontSize: '12px', color: '#4b5563' }}>Accommodation
+              <label style={{ fontSize: '12px', color: '#5B463D' }}>Accommodation
                 <select value={accommodationType} onChange={e => setAccommodationType(e.target.value)} style={selectStyle}>
                   <option value="budget">Budget</option><option value="standard">Standard</option><option value="premium">Premium</option><option value="luxury">Luxury</option>
                 </select>
               </label>
-              <label style={{ fontSize: '12px', color: '#4b5563' }}>Daily transport
+              <label style={{ fontSize: '12px', color: '#5B463D' }}>Daily transport
                 <select value={transportType} onChange={e => setTransportType(e.target.value)} style={selectStyle}>
                   <option value="public_transport">Public transport</option><option value="shared_transfer">Shared transfer</option><option value="private_sedan">Private sedan</option><option value="private_suv">Private SUV</option><option value="tempo_traveller">Tempo traveller</option>
                 </select>
               </label>
-              <label style={{ fontSize: '12px', color: '#4b5563' }}>Airport transfer
+              <label style={{ fontSize: '12px', color: '#5B463D' }}>Airport transfer
                 <select value={airportTransferType} onChange={e => setAirportTransferType(e.target.value)} style={selectStyle}>
                   <option value="airport_transfer_sedan">Sedan</option><option value="airport_transfer_suv">SUV</option>
                 </select>
               </label>
-              <label style={{ fontSize: '12px', color: '#4b5563' }}>Airport transfers
+              <label style={{ fontSize: '12px', color: '#5B463D' }}>Airport transfers
                 <input type="number" min="0" value={airportTransfers} onChange={e => setAirportTransfers(Math.max(0, Number(e.target.value)))} style={selectStyle} />
               </label>
-              <label style={{ fontSize: '12px', color: '#4b5563' }}>Number of vehicles
+              <label style={{ fontSize: '12px', color: '#5B463D' }}>Number of vehicles
                 <input type="number" min="1" value={vehicleCount} onChange={e => setVehicleCount(Math.max(1, Number(e.target.value)))} style={selectStyle} />
               </label>
             </div>
@@ -506,10 +506,10 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
         <div style={{ padding: '48px', textAlign: 'center' }}>
           <div style={{
             width: '36px', height: '36px', borderRadius: '50%',
-            border: '3px solid #e5e7eb', borderTopColor: '#2563eb',
+            border: '3px solid #E6D9C8', borderTopColor: '#641F32',
             animation: 'spin 0.7s linear infinite', margin: '0 auto 12px',
           }} />
-          <p style={{ margin: 0, fontSize: '14px', color: '#9ca3af' }}>Generating itemised quotation...</p>
+          <p style={{ margin: 0, fontSize: '14px', color: '#A18D7D' }}>Generating itemised quotation...</p>
         </div>
       )}
 
@@ -518,15 +518,15 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
         <div style={{ padding: '48px', textAlign: 'center' }}>
           <div style={{
             width: '52px', height: '52px', borderRadius: '14px',
-            backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center',
+            backgroundColor: '#F1E8DC', display: 'flex', alignItems: 'center',
             justifyContent: 'center', margin: '0 auto 14px',
           }}>
-            <FileText size={24} color="#2563eb" />
+            <FileText size={24} color="#641F32" />
           </div>
-          <p style={{ margin: 0, fontSize: '15px', fontWeight: '500', color: '#374151' }}>
+          <p style={{ margin: 0, fontSize: '15px', fontWeight: '500', color: '#4A342D' }}>
             No quotation generated yet
           </p>
-          <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#9ca3af' }}>
+          <p style={{ margin: '6px 0 0', fontSize: '13px', color: '#A18D7D' }}>
             Click "Generate Quotation" to create an itemised quote from the approved itinerary.
           </p>
         </div>
@@ -543,16 +543,16 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
                 <div key={a.field} style={{
                   display: 'flex', alignItems: 'flex-start', gap: '10px',
                   padding: '12px 14px', borderRadius: '10px',
-                  backgroundColor: '#fffbeb', border: '1px solid #fde68a',
+                  backgroundColor: '#F6EBD5', border: '1px solid #D8BD8B',
                 }}>
                   <span style={{ fontSize: '16px', flexShrink: 0, lineHeight: 1.4 }}>⚠️</span>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#92400e', lineHeight: '1.5', flex: 1 }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#76512F', lineHeight: '1.5', flex: 1 }}>
                     <strong>{a.field}:</strong> {a.message}
                   </p>
                   <button onClick={() => setDismissed(p => [...p, a.field])} style={{
                     background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', flexShrink: 0,
                   }}>
-                    <X size={14} color="#9ca3af" />
+                    <X size={14} color="#A18D7D" />
                   </button>
                 </div>
               ))}
@@ -566,16 +566,16 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
                 <div key={a.field} style={{
                   display: 'flex', alignItems: 'flex-start', gap: '10px',
                   padding: '10px 14px', borderRadius: '10px',
-                  backgroundColor: '#f0fdfa', border: '1px solid #99f6e4',
+                  backgroundColor: '#F1EADF', border: '1px solid #D8C6A7',
                 }}>
                   <span style={{ fontSize: '14px', flexShrink: 0, lineHeight: 1.5 }}>✅</span>
-                  <p style={{ margin: 0, fontSize: '13px', color: '#0f766e', lineHeight: '1.5', flex: 1 }}>
+                  <p style={{ margin: 0, fontSize: '13px', color: '#641F32', lineHeight: '1.5', flex: 1 }}>
                     <strong>{a.field}:</strong> {a.message}
                   </p>
                   <button onClick={() => setDismissed(p => [...p, a.field])} style={{
                     background: 'none', border: 'none', cursor: 'pointer', padding: '2px', display: 'flex', marginLeft: 'auto', flexShrink: 0,
                   }}>
-                    <X size={13} color="#9ca3af" />
+                    <X size={13} color="#A18D7D" />
                   </button>
                 </div>
               ))}
@@ -585,8 +585,8 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
           {/* Trip meta */}
           <div style={{
             display: 'flex', gap: '24px', padding: '14px 16px',
-            backgroundColor: '#f9fafb', borderRadius: '10px',
-            border: '1px solid #f3f4f6', flexWrap: 'wrap',
+            backgroundColor: '#F5EEE3', borderRadius: '10px',
+            border: '1px solid #EDE3D5', flexWrap: 'wrap',
           }}>
             {[
               { label: 'Destination', value: quote.destination },
@@ -595,26 +595,26 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
               { label: 'Itinerary', value: quote.itineraryId },
             ].map(({ label, value }) => (
               <div key={label}>
-                <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>{label}</p>
-                <p style={{ margin: '2px 0 0', fontSize: '13px', fontWeight: '600', color: '#111827' }}>{value}</p>
+                <p style={{ margin: 0, fontSize: '11px', color: '#A18D7D', fontWeight: '500' }}>{label}</p>
+                <p style={{ margin: '2px 0 0', fontSize: '13px', fontWeight: '600', color: '#35231F' }}>{value}</p>
               </div>
             ))}
           </div>
 
           {/* Itemised table */}
           <div>
-            <p style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>
+            <p style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: '600', color: '#4A342D' }}>
               Itemised Breakdown
             </p>
-            <div style={{ border: '1px solid #f3f4f6', borderRadius: '12px', overflow: 'hidden' }}>
+            <div style={{ border: '1px solid #EDE3D5', borderRadius: '12px', overflow: 'hidden' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ backgroundColor: '#fafafa', borderBottom: '1px solid #f3f4f6' }}>
+                  <tr style={{ backgroundColor: '#F7F0E6', borderBottom: '1px solid #EDE3D5' }}>
                     {['Category', 'Description', 'Unit Cost', 'Units', 'Total'].map(h => (
                       <th key={h} style={{
                         padding: '10px 14px',
                         textAlign: h === 'Category' || h === 'Description' ? 'left' : 'right',
-                        fontSize: '11px', fontWeight: '600', color: '#6b7280',
+                        fontSize: '11px', fontWeight: '600', color: '#725D52',
                         textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap',
                       }}>{h}</th>
                     ))}
@@ -625,8 +625,8 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
                     const meta = categoryMeta[item.category] || categoryMeta['Visa & Misc']
                     return (
                       <tr key={idx}
-                        style={{ borderBottom: idx < quote.items.length - 1 ? '1px solid #f9fafb' : 'none' }}
-                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fafafa'}
+                        style={{ borderBottom: idx < quote.items.length - 1 ? '1px solid #F5EEE3' : 'none' }}
+                        onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F7F0E6'}
                         onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
                         <td style={{ padding: '12px 14px' }}>
@@ -637,16 +637,16 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
                             {item.category}
                           </span>
                         </td>
-                        <td style={{ padding: '12px 14px', fontSize: '13px', color: '#374151' }}>
+                        <td style={{ padding: '12px 14px', fontSize: '13px', color: '#4A342D' }}>
                           {item.description}
                         </td>
-                        <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: '13px', color: '#374151', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: '13px', color: '#4A342D', whiteSpace: 'nowrap' }}>
                           {fmt(item.unitCost)}
                         </td>
-                        <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: '13px', color: '#374151' }}>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: '13px', color: '#4A342D' }}>
                           {Number(item.units).toLocaleString('en-IN')}
                         </td>
-                        <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: '13px', fontWeight: '600', color: '#111827', whiteSpace: 'nowrap' }}>
+                        <td style={{ padding: '12px 14px', textAlign: 'right', fontSize: '13px', fontWeight: '600', color: '#35231F', whiteSpace: 'nowrap' }}>
                           {fmt(item.total)}
                         </td>
                       </tr>
@@ -661,13 +661,13 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
 
             {/* Margin slider */}
-            <div style={{ padding: '18px', borderRadius: '12px', border: '1px solid #f3f4f6', backgroundColor: '#fafafa' }}>
-              <p style={{ margin: '0 0 14px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Margin Adjustment</p>
+            <div style={{ padding: '18px', borderRadius: '12px', border: '1px solid #EDE3D5', backgroundColor: '#F7F0E6' }}>
+              <p style={{ margin: '0 0 14px', fontSize: '13px', fontWeight: '600', color: '#4A342D' }}>Margin Adjustment</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
                 <input
                   type="range" min="0" max="50" step="1" value={margin}
                   onChange={e => handleMarginChange(e.target.value)}
-                  style={{ flex: 1, accentColor: '#2563eb' }}
+                  style={{ flex: 1, accentColor: '#641F32' }}
                 />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <input
@@ -675,36 +675,36 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
                     onChange={e => handleMarginChange(e.target.value)}
                     style={{
                       width: '52px', padding: '5px 8px', borderRadius: '8px',
-                      border: '1px solid #e5e7eb', fontSize: '14px',
-                      fontWeight: '600', color: '#111827', textAlign: 'center', outline: 'none',
+                      border: '1px solid #E6D9C8', fontSize: '14px',
+                      fontWeight: '600', color: '#35231F', textAlign: 'center', outline: 'none',
                     }}
-                    onFocus={e => e.target.style.borderColor = '#2563eb'}
-                    onBlur={e => e.target.style.borderColor = '#e5e7eb'}
+                    onFocus={e => e.target.style.borderColor = '#641F32'}
+                    onBlur={e => e.target.style.borderColor = '#E6D9C8'}
                   />
-                  <span style={{ fontSize: '14px', color: '#6b7280' }}>%</span>
+                  <span style={{ fontSize: '14px', color: '#725D52' }}>%</span>
                 </div>
               </div>
-              <p style={{ margin: 0, fontSize: '12px', color: '#9ca3af' }}>Drag or type to adjust your agency margin (0–50%)</p>
+              <p style={{ margin: 0, fontSize: '12px', color: '#A18D7D' }}>Drag or type to adjust your agency margin (0–50%)</p>
             </div>
 
             {/* Price summary */}
-            <div style={{ padding: '18px', borderRadius: '12px', border: '1px solid #f3f4f6', backgroundColor: '#fff' }}>
-              <p style={{ margin: '0 0 14px', fontSize: '13px', fontWeight: '600', color: '#374151' }}>Price Summary</p>
+            <div style={{ padding: '18px', borderRadius: '12px', border: '1px solid #EDE3D5', backgroundColor: '#FFFCF7' }}>
+              <p style={{ margin: '0 0 14px', fontSize: '13px', fontWeight: '600', color: '#4A342D' }}>Price Summary</p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Subtotal</span>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#374151' }}>{fmt(quote.subtotal)}</span>
+                  <span style={{ fontSize: '13px', color: '#725D52' }}>Subtotal</span>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#4A342D' }}>{fmt(quote.subtotal)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Margin ({margin}%)</span>
-                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#d97706' }}>+ {fmt(quote.marginAmount)}</span>
+                  <span style={{ fontSize: '13px', color: '#725D52' }}>Margin ({margin}%)</span>
+                  <span style={{ fontSize: '13px', fontWeight: '500', color: '#A8793E' }}>+ {fmt(quote.marginAmount)}</span>
                 </div>
-                <div style={{ borderTop: '1px solid #f3f4f6', paddingTop: '10px', marginTop: '2px' }}>
+                <div style={{ borderTop: '1px solid #EDE3D5', paddingTop: '10px', marginTop: '2px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>Final Price</span>
-                    <span style={{ fontSize: '22px', fontWeight: '700', color: '#0f766e' }}>{fmt(quote.finalPrice)}</span>
+                    <span style={{ fontSize: '15px', fontWeight: '700', color: '#35231F' }}>Final Price</span>
+                    <span style={{ fontSize: '22px', fontWeight: '700', color: '#641F32' }}>{fmt(quote.finalPrice)}</span>
                   </div>
-                  <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#9ca3af', textAlign: 'right' }}>
+                  <p style={{ margin: '4px 0 0', fontSize: '11px', color: '#A18D7D', textAlign: 'right' }}>
                     Per group · {quote.groupSize} pax · {quote.duration} days
                   </p>
                 </div>
@@ -780,7 +780,7 @@ function LeadDetail() {
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh' }}>
       <div style={{
         width: '36px', height: '36px', borderRadius: '50%',
-        border: '3px solid #e5e7eb', borderTopColor: '#0f766e',
+        border: '3px solid #E6D9C8', borderTopColor: '#641F32',
         animation: 'spin 0.7s linear infinite',
       }} />
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
@@ -789,7 +789,7 @@ function LeadDetail() {
 
   if (!lead) return (
     <div style={{ textAlign: 'center', padding: '60px' }}>
-      <p style={{ color: '#6b7280' }}>Lead not found.</p>
+      <p style={{ color: '#725D52' }}>Lead not found.</p>
     </div>
   )
 
@@ -808,9 +808,9 @@ function LeadDetail() {
             gap: '10px',
             padding: '13px 16px',
             borderRadius: '10px',
-            border: '1px solid #99f6e4',
-            backgroundColor: '#f0fdfa',
-            color: '#0f766e',
+            border: '1px solid #D8C6A7',
+            backgroundColor: '#F1EADF',
+            color: '#641F32',
             fontSize: '14px',
             fontWeight: '500',
           }}
@@ -825,16 +825,16 @@ function LeadDetail() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <button onClick={() => navigate('/leads')} style={{
             width: '34px', height: '34px', borderRadius: '10px',
-            border: '1px solid #e5e7eb', backgroundColor: '#fff',
+            border: '1px solid #E6D9C8', backgroundColor: '#FFFCF7',
             display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
           }}>
-            <ArrowLeft size={16} color="#6b7280" />
+            <ArrowLeft size={16} color="#725D52" />
           </button>
           <div>
-            <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#111827' }}>
+            <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#35231F' }}>
               {lead.name}
             </h1>
-            <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#9ca3af' }}>
+            <p style={{ margin: '3px 0 0', fontSize: '13px', color: '#A18D7D' }}>
               Lead #{lead.id} · Last contact {lead.lastContact}
             </p>
           </div>
@@ -860,11 +860,11 @@ function LeadDetail() {
             style={{
               display: 'inline-flex', alignItems: 'center', gap: '6px',
               padding: '8px 16px', borderRadius: '10px', border: 'none',
-              backgroundColor: '#115e59', color: '#fff',
+              backgroundColor: '#641F32', color: '#FFFCF7',
               fontSize: '13px', fontWeight: '600', cursor: 'pointer',
             }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#0f766e'}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#115e59'}
+            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#641F32'}
+            onMouseLeave={e => e.currentTarget.style.backgroundColor = '#641F32'}
           >
             <Map size={14} /> Build Itinerary
           </button>
@@ -889,21 +889,21 @@ function LeadDetail() {
               <div key={label} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                 <div style={{
                   width: '28px', height: '28px', borderRadius: '8px',
-                  backgroundColor: '#f0fdfa', flexShrink: 0,
+                  backgroundColor: '#F1EADF', flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <Icon size={13} color="#0f766e" />
+                  <Icon size={13} color="#641F32" />
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>{label}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#111827', fontWeight: '500' }}>{value}</p>
+                  <p style={{ margin: 0, fontSize: '11px', color: '#A18D7D', fontWeight: '500' }}>{label}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: '13px', color: '#35231F', fontWeight: '500' }}>{value}</p>
                 </div>
               </div>
             ))}
             {lead.inquiryMessage && (
-              <div style={{ marginTop: '4px', padding: '12px', borderRadius: '10px', backgroundColor: '#f9fafb', border: '1px solid #f3f4f6' }}>
-                <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#9ca3af', fontWeight: '500' }}>Inquiry Message</p>
-                <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>{lead.inquiryMessage}</p>
+              <div style={{ marginTop: '4px', padding: '12px', borderRadius: '10px', backgroundColor: '#F5EEE3', border: '1px solid #EDE3D5' }}>
+                <p style={{ margin: '0 0 4px', fontSize: '11px', color: '#A18D7D', fontWeight: '500' }}>Inquiry Message</p>
+                <p style={{ margin: 0, fontSize: '13px', color: '#4A342D', lineHeight: '1.5' }}>{lead.inquiryMessage}</p>
               </div>
             )}
           </div>
@@ -912,13 +912,13 @@ function LeadDetail() {
         {/* Score + Approval */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <Card>
-            <SectionTitle icon={Sparkles} title="AI Score Explanation" color="#7c3aed" />
+            <SectionTitle icon={Sparkles} title="AI Score Explanation" color="#8B6242" />
             <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: score.bg, marginBottom: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                 <span style={{ fontSize: '22px', fontWeight: '700', color: score.color }}>{lead.score}</span>
                 <span style={{ fontSize: '13px', color: score.color, fontWeight: '500' }}>Priority</span>
               </div>
-              <p style={{ margin: 0, fontSize: '13px', color: '#374151', lineHeight: '1.5' }}>{lead.scoreExplanation}</p>
+              <p style={{ margin: 0, fontSize: '13px', color: '#4A342D', lineHeight: '1.5' }}>{lead.scoreExplanation}</p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               {[
@@ -928,10 +928,10 @@ function LeadDetail() {
               ].map(({ label, value }) => (
                 <div key={label}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                    <span style={{ fontSize: '12px', color: '#6b7280' }}>{label}</span>
-                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#111827' }}>{value}%</span>
+                    <span style={{ fontSize: '12px', color: '#725D52' }}>{label}</span>
+                    <span style={{ fontSize: '12px', fontWeight: '600', color: '#35231F' }}>{value}%</span>
                   </div>
-                  <div style={{ height: '5px', backgroundColor: '#f3f4f6', borderRadius: '999px' }}>
+                  <div style={{ height: '5px', backgroundColor: '#EDE3D5', borderRadius: '999px' }}>
                     <div style={{ height: '100%', borderRadius: '999px', backgroundColor: score.dot, width: `${value}%`, transition: 'width 0.5s ease' }} />
                   </div>
                 </div>
@@ -939,30 +939,30 @@ function LeadDetail() {
             </div>
           </Card>
 
-          <Card style={{ backgroundColor: approved ? '#f0fdfa' : '#fff' }}>
-            <SectionTitle icon={ThumbsUp} title="Itinerary Approval" color="#0f766e" />
+          <Card style={{ backgroundColor: approved ? '#F1EADF' : '#FFFCF7' }}>
+            <SectionTitle icon={ThumbsUp} title="Itinerary Approval" color="#641F32" />
             {approved ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CheckCircle size={18} color="#0f766e" />
-                <p style={{ margin: 0, fontSize: '14px', color: '#0f766e', fontWeight: '500' }}>
+                <CheckCircle size={18} color="#641F32" />
+                <p style={{ margin: 0, fontSize: '14px', color: '#641F32', fontWeight: '500' }}>
                   Itinerary approved successfully!
                 </p>
               </div>
             ) : (
               <>
-                <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#6b7280' }}>
+                <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#725D52' }}>
                   Review and approve the linked itinerary to move this lead to Confirmed.
                 </p>
                 <button
                   onClick={() => setApproved(true)}
                   style={{
                     width: '100%', padding: '11px', borderRadius: '10px', border: 'none',
-                    backgroundColor: '#115e59', color: '#fff',
+                    backgroundColor: '#641F32', color: '#FFFCF7',
                     fontSize: '14px', fontWeight: '600', cursor: 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px',
                   }}
-                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#0f766e'}
-                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#115e59'}
+                  onMouseEnter={e => e.currentTarget.style.backgroundColor = '#641F32'}
+                  onMouseLeave={e => e.currentTarget.style.backgroundColor = '#641F32'}
                 >
                   <ThumbsUp size={15} /> Approve Itinerary
                 </button>
@@ -976,15 +976,15 @@ function LeadDetail() {
         <Card>
           <SectionTitle icon={Map} title="Linked Itinerary" />
           {lead.itinerary ? (
-            <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: '#f9fafb', border: '1px solid #f3f4f6' }}>
+            <div style={{ padding: '14px', borderRadius: '10px', backgroundColor: '#F5EEE3', border: '1px solid #EDE3D5' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#111827' }}>{lead.itinerary.title}</p>
-                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#9ca3af' }}>
+                  <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#35231F' }}>{lead.itinerary.title}</p>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#A18D7D' }}>
                     {lead.itinerary.days} days · Created {lead.itinerary.createdAt}
                   </p>
                 </div>
-                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', backgroundColor: '#fffbeb', color: '#d97706', fontWeight: '500' }}>
+                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', backgroundColor: '#F6EBD5', color: '#A8793E', fontWeight: '500' }}>
                   {lead.itinerary.status}
                 </span>
               </div>
@@ -992,22 +992,22 @@ function LeadDetail() {
                 onClick={() => navigate(`/itinerary?itineraryId=${lead.itinerary.id}`)}
                 style={{
                   marginTop: '12px', width: '100%', padding: '8px', borderRadius: '8px',
-                  border: '1px solid #e5e7eb', backgroundColor: '#fff', fontSize: '13px',
-                  color: '#374151', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                  border: '1px solid #E6D9C8', backgroundColor: '#FFFCF7', fontSize: '13px',
+                  color: '#4A342D', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                 }}
               >
                 View Itinerary <ChevronRight size={13} />
               </button>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '24px', color: '#9ca3af' }}>
+            <div style={{ textAlign: 'center', padding: '24px', color: '#A18D7D' }}>
               <Map size={28} style={{ margin: '0 auto 8px', display: 'block', opacity: 0.4 }} />
               <p style={{ margin: 0, fontSize: '13px' }}>No itinerary yet</p>
               <button
                 onClick={() => navigate(`/itinerary?leadId=${lead.id}`)}
                 style={{
                   marginTop: '12px', padding: '8px 16px', borderRadius: '8px', border: 'none',
-                  backgroundColor: '#115e59', color: '#fff', fontSize: '13px', fontWeight: '600',
+                  backgroundColor: '#641F32', color: '#FFFCF7', fontSize: '13px', fontWeight: '600',
                   cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px',
                 }}
               >
@@ -1018,28 +1018,28 @@ function LeadDetail() {
         </Card>
 
         <Card>
-          <SectionTitle icon={FileText} title="Linked Quotation" color="#2563eb" />
+          <SectionTitle icon={FileText} title="Linked Quotation" color="#641F32" />
           {lead.quotation ? (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#111827' }}>{lead.quotation.amount}</p>
-                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#9ca3af' }}>Valid until {lead.quotation.validUntil}</p>
+                  <p style={{ margin: 0, fontSize: '22px', fontWeight: '700', color: '#35231F' }}>{lead.quotation.amount}</p>
+                  <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#A18D7D' }}>Valid until {lead.quotation.validUntil}</p>
                 </div>
-                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', backgroundColor: '#eff6ff', color: '#2563eb', fontWeight: '500' }}>
+                <span style={{ fontSize: '11px', padding: '3px 10px', borderRadius: '999px', backgroundColor: '#F1E8DC', color: '#641F32', fontWeight: '500' }}>
                   {lead.quotation.status}
                 </span>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                 {lead.quotation.items.map((item, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#374151' }}>
-                    <CheckCircle size={13} color="#0f766e" /> {item}
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#4A342D' }}>
+                    <CheckCircle size={13} color="#641F32" /> {item}
                   </div>
                 ))}
               </div>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', padding: '24px', color: '#9ca3af' }}>
+            <div style={{ textAlign: 'center', padding: '24px', color: '#A18D7D' }}>
               <FileText size={28} style={{ margin: '0 auto 8px', display: 'block', opacity: 0.4 }} />
               <p style={{ margin: 0, fontSize: '13px' }}>No quotation generated yet</p>
             </div>
