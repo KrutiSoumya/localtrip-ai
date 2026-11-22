@@ -188,7 +188,8 @@ function normalizeActivity(activity, destinationData) {
     return {
         name,
         location,
-        cost
+        cost,
+        description: matchedActivity.description || ""
     };
 }
 
@@ -392,6 +393,7 @@ function normalizeItinerary(
 
                 if (matched) {
                     return {
+                        ...activity,
                         name: matched.name,
                         location: activity.location,
                         cost: Number(matched.cost) || 0
@@ -476,7 +478,8 @@ function createFallbackItinerary(query, mode, destinationData) {
 
         uniqueActivities.push({
             name: activity.name.trim(),
-            cost
+            cost,
+            description: activity.description || ""
         });
     }
 
@@ -498,7 +501,8 @@ function createFallbackItinerary(query, mode, destinationData) {
                 // Use the destination as the broad location rather than
                 // inventing a specific attraction association.
                 location: destinationData.name,
-                cost: activityCost
+                cost: activityCost,
+                description: activity.description
             }],
             accommodation:
                 mode === "budget"

@@ -398,9 +398,6 @@ function Leads() {
                   <th className="lt-th" style={thStyle('status')}  onClick={() => handleSort('status')}>
                     Status <SortIcon field="status" />
                   </th>
-                  <th className="lt-th" style={thStyle('lastContact')} onClick={() => handleSort('lastContact')}>
-                    Last Contact <SortIcon field="lastContact" />
-                  </th>
                   <th className="lt-th" style={thStyle(null)}>Actions</th>
                 </tr>
               </thead>
@@ -452,11 +449,6 @@ function Leads() {
                     {/* Status badge */}
                     <td style={{ padding: '9px 14px' }}>
                       <StatusBadge status={lead.status} />
-                    </td>
-
-                    {/* Last contact */}
-                    <td style={{ padding: '9px 14px', fontSize: '13px', color: '#8a6a55' }}>
-                      {lead.lastContact}
                     </td>
 
                     {/* Actions */}

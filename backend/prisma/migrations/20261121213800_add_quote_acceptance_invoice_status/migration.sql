@@ -1,0 +1,8 @@
+ALTER TABLE "Quotation"
+ADD COLUMN "status" TEXT NOT NULL DEFAULT 'Draft',
+ADD COLUMN "sentAt" TIMESTAMP(3),
+ADD COLUMN "acceptedAt" TIMESTAMP(3);
+
+ALTER TABLE "Booking"
+ADD COLUMN "invoiceStatus" TEXT NOT NULL DEFAULT 'NotDue',
+ADD COLUMN "invoiceSentAt" TIMESTAMP(3);

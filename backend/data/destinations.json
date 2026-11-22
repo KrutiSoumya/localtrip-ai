@@ -17,43 +17,53 @@
     "activities": [
       {
         "name": "Temple darshan",
-        "cost": 0
+        "cost": 0,
+        "description": "Join pilgrims for darshan at one of Andhra's revered temples, such as Tirupati or Srisailam, and experience living devotional tradition."
       },
       {
         "name": "Beach visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Spend a relaxed few hours on the Bay of Bengal coast around Visakhapatnam, with sea breeze, sand and local snack stalls."
       },
       {
         "name": "Local food trail",
-        "cost": 300
+        "cost": 300,
+        "description": "Sample fiery Andhra specialities such as pesarattu, gongura dishes, biryani and sweets at well-loved local eateries."
       },
       {
         "name": "Araku coffee plantation tour",
-        "cost": 500
+        "cost": 500,
+        "description": "Walk through Araku Valley's shaded coffee estates, learn how the beans are grown and processed, and taste fresh local coffee."
       },
       {
         "name": "Borra Caves entry",
-        "cost": 100
+        "cost": 100,
+        "description": "Enter the ancient limestone caves near Araku, where lit stalactite and stalagmite formations stretch deep underground."
       },
       {
         "name": "Boat ride at a lake",
-        "cost": 400
+        "cost": 400,
+        "description": "Take a calm boat ride on a scenic lake or reservoir, ideal for a gentle break between sightseeing stops."
       },
       {
         "name": "Guided heritage walk",
-        "cost": 800
+        "cost": 800,
+        "description": "Explore historic temples, forts and old quarters with a local guide who explains the architecture and the stories behind it."
       },
       {
         "name": "Scuba diving at Visakhapatnam",
-        "cost": 4500
+        "cost": 4500,
+        "description": "Try an introductory scuba dive off the Vizag coast with certified instructors, equipment and a briefing for beginners."
       },
       {
         "name": "Private guided day tour",
-        "cost": 6000
+        "cost": 6000,
+        "description": "A full day with a private guide and your own itinerary, covering the region's highlights at your own pace."
       },
       {
         "name": "Luxury yacht or charter experience",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A private yacht charter along the coast, with premium onboard service and a flexible route for special occasions."
       }
     ],
     "travel_time_between": 3,
@@ -233,43 +243,53 @@
     "activities": [
       {
         "name": "Monastery visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a Buddhist monastery such as Tawang or Bomdila, with prayer halls, murals, chanting and Himalayan views."
       },
       {
         "name": "Village walk",
-        "cost": 200
+        "cost": 200,
+        "description": "Stroll through a tribal village to see traditional houses, farming life and everyday culture up close."
       },
       {
         "name": "Local food experience",
-        "cost": 400
+        "cost": 400,
+        "description": "Taste regional dishes such as thukpa, momos, bamboo-shoot preparations and local tea in a homely setting."
       },
       {
         "name": "Guided nature hike",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A guided walk through forest or valley trails, with a local guide who points out wildlife, plants and viewpoints."
       },
       {
         "name": "Birdwatching excursion",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A guided outing in one of India's richest birding regions, with chances to spot rare Himalayan and forest species."
       },
       {
         "name": "Ziro cultural experience",
-        "cost": 2000
+        "cost": 2000,
+        "description": "Spend time with the Apatani community in Ziro Valley, learning about their customs, rice fields and traditional crafts."
       },
       {
         "name": "Camping with basic equipment",
-        "cost": 2500
+        "cost": 2500,
+        "description": "An overnight camp in the mountains with tents and basic gear, under clear skies and away from the crowds."
       },
       {
         "name": "Multi-day guided valley trek",
-        "cost": 8000
+        "cost": 8000,
+        "description": "A multi-day trek through remote valleys with guide, porters and camp support, for experienced and fit travellers."
       },
       {
         "name": "Private 4x4 mountain excursion",
-        "cost": 12000
+        "cost": 12000,
+        "description": "A private 4x4 trip over high passes and rough mountain roads, with a driver who knows the terrain."
       },
       {
         "name": "Premium expedition with guide and transport",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A fully supported high-end expedition with expert guides, private transport and logistics handled throughout."
       }
     ],
     "travel_time_between": 5,
@@ -449,43 +469,53 @@
     "activities": [
       {
         "name": "Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit sacred sites such as Kamakhya Temple, known for its distinctive architecture and Assamese spiritual traditions."
       },
       {
         "name": "Tea garden walk",
-        "cost": 200
+        "cost": 200,
+        "description": "Walk between rows of tea bushes in a working estate and learn how Assam tea is plucked and processed."
       },
       {
         "name": "Brahmaputra river ferry",
-        "cost": 100
+        "cost": 100,
+        "description": "Cross the mighty Brahmaputra by ferry, a classic way to see river life and reach places like Majuli."
       },
       {
         "name": "Traditional Assamese meal",
-        "cost": 500
+        "cost": 500,
+        "description": "Enjoy a thali with rice, fish tenga, khar, greens and pitha, cooked in the traditional Assamese style."
       },
       {
         "name": "Majuli cultural village visit",
-        "cost": 700
+        "cost": 700,
+        "description": "Visit villages and satras on Majuli, the world's largest river island, to see mask-making, pottery and Vaishnavite culture."
       },
       {
         "name": "Birdwatching tour",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A guided outing through wetlands and forest edges, with good chances of seeing migratory and resident birds."
       },
       {
         "name": "Kaziranga jeep safari",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A jeep drive through Kaziranga's grasslands in search of one-horned rhinos, elephants, deer and birdlife."
       },
       {
         "name": "Kaziranga elephant safari",
-        "cost": 3000
+        "cost": 3000,
+        "description": "A short early-morning ride on elephant-back for a closer view of rhinos in tall grass, subject to park availability."
       },
       {
         "name": "Private wildlife photography tour",
-        "cost": 9000
+        "cost": 9000,
+        "description": "A private tour with a naturalist guide and vehicle, timed for the best light and animal activity."
       },
       {
         "name": "Premium private river cruise",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A private cruise on the Brahmaputra with comfortable onboard amenities, meals and scenic stops."
       }
     ],
     "travel_time_between": 3,
@@ -665,43 +695,53 @@
     "activities": [
       {
         "name": "Temple or monastery visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit sacred Buddhist and Hindu sites such as Mahabodhi Temple, where visitors meditate and walk among pilgrims."
       },
       {
         "name": "Heritage site entry",
-        "cost": 50
+        "cost": 50,
+        "description": "Entry to a protected archaeological or heritage site, such as Nalanda, Vikramshila or Barabar."
       },
       {
         "name": "Local street-food walk",
-        "cost": 250
+        "cost": 250,
+        "description": "Try Bihari favourites such as litti chokha, sattu drinks, chaat and sweets from busy local stalls."
       },
       {
         "name": "Bodh Gaya guided tour",
-        "cost": 600
+        "cost": 600,
+        "description": "A guided tour of Bodh Gaya's temples, monasteries and the Bodhi Tree, explaining their history and meaning."
       },
       {
         "name": "Rajgir ropeway ride",
-        "cost": 120
+        "cost": 120,
+        "description": "A short ropeway ride up to the Vishwa Shanti Stupa, with views over the Rajgir hills."
       },
       {
         "name": "Cycling heritage tour",
-        "cost": 500
+        "cost": 500,
+        "description": "A relaxed bike ride between heritage sites and villages, a good way to see the countryside at a gentle pace."
       },
       {
         "name": "Private archaeology guide",
-        "cost": 1800
+        "cost": 1800,
+        "description": "A knowledgeable private guide who brings ancient sites such as Nalanda to life through history and context."
       },
       {
         "name": "Valmiki Tiger Reserve guided safari",
-        "cost": 3000
+        "cost": 3000,
+        "description": "A guided jungle safari in Valmiki's forests and riverine grasslands, with chances to spot wildlife and birds."
       },
       {
         "name": "Multi-site private heritage tour",
-        "cost": 7000
+        "cost": 7000,
+        "description": "A private tour linking several Buddhist and ancient sites, with a vehicle and guide for a deeper look."
       },
       {
         "name": "Luxury private cultural tour",
-        "cost": 18000
+        "cost": 18000,
+        "description": "A premium private tour of Bihar's heritage with upscale transport, expert guides and comfortable stops."
       }
     ],
     "travel_time_between": 3,
@@ -881,43 +921,53 @@
     "activities": [
       {
         "name": "Waterfall visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a waterfall such as Chitrakote or Tirathgarh, best in and just after the monsoon."
       },
       {
         "name": "Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit ancient temples such as Bhoramdeo, known for intricate stone carvings and quiet surroundings."
       },
       {
         "name": "Tribal craft market visit",
-        "cost": 200
+        "cost": 200,
+        "description": "Browse Bastar's tribal crafts, including dhokra metalwork, wood carvings and bell metal pieces, often made by the artisans themselves."
       },
       {
         "name": "Local cuisine experience",
-        "cost": 350
+        "cost": 350,
+        "description": "Taste Chhattisgarhi dishes such as chila, farra, thethri-khurma and simple rice-based meals."
       },
       {
         "name": "Guided cave exploration",
-        "cost": 500
+        "cost": 500,
+        "description": "A guided walk through limestone caves such as those in Kanger Valley, with lighting and safety briefing."
       },
       {
         "name": "Nature trail with guide",
-        "cost": 1000
+        "cost": 1000,
+        "description": "A guided forest walk with plenty of birdlife, plants and quiet scenery."
       },
       {
         "name": "Wildlife safari",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A jeep safari in a national park or sanctuary, in search of leopards, deer, bison and birds."
       },
       {
         "name": "Bastar cultural experience",
-        "cost": 3000
+        "cost": 3000,
+        "description": "Time with Bastar's tribal communities to see dance, music, markets and village life, ideally with a local guide."
       },
       {
         "name": "Private multi-day forest excursion",
-        "cost": 12000
+        "cost": 12000,
+        "description": "A private multi-day trip through forests and tribal areas, with guide, vehicle and stays arranged."
       },
       {
         "name": "Premium private eco-tour package",
-        "cost": 25000
+        "cost": 25000,
+        "description": "A high-end eco-tour with comfortable lodges, private guides and curated nature and culture experiences."
       }
     ],
     "travel_time_between": 3,
@@ -1099,43 +1149,53 @@
     "activities": [
       {
         "name": "Monument or garden visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Wander through free-to-enter landmarks and green spaces such as India Gate or Lodhi Garden."
       },
       {
         "name": "Heritage monument entry",
-        "cost": 50
+        "cost": 50,
+        "description": "Entry to a ticketed monument such as Humayun's Tomb, Red Fort or Qutub Minar."
       },
       {
         "name": "Old Delhi street-food walk",
-        "cost": 600
+        "cost": 600,
+        "description": "Eat your way through Old Delhi's lanes, with parathas, kebabs, chaat and jalebi."
       },
       {
         "name": "Chandni Chowk rickshaw ride",
-        "cost": 300
+        "cost": 300,
+        "description": "A rickshaw ride through the crowded lanes of Chandni Chowk, passing markets, spice stalls and old havelis."
       },
       {
         "name": "Guided Old Delhi heritage walk",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A guided walk through Shahjahanabad, covering Mughal-era monuments, havelis and the stories of the old city."
       },
       {
         "name": "Delhi food-tasting tour",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A guided tasting tour of the city's best-loved eateries, covering both street food and classic restaurants."
       },
       {
         "name": "National Museum visit",
-        "cost": 500
+        "cost": 500,
+        "description": "Explore India's art and archaeology, from Harappan finds to miniature paintings and sculpture."
       },
       {
         "name": "Private city sightseeing tour",
-        "cost": 3500
+        "cost": 3500,
+        "description": "A private half-day or full-day tour of Delhi's main sights, with a car and driver."
       },
       {
         "name": "Full-day private heritage and culture tour",
-        "cost": 6500
+        "cost": 6500,
+        "description": "A full day with a private guide and vehicle covering Delhi's monuments, markets and cultural highlights."
       },
       {
         "name": "Premium private guided city experience",
-        "cost": 12000
+        "cost": 12000,
+        "description": "A premium private day with an expert guide, comfortable transport and tailored stops."
       }
     ],
     "travel_time_between": 2,
@@ -1315,43 +1375,53 @@
     "activities": [
       {
         "name": "Beach visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Relax on one of Goa's beaches, from lively shacks at Baga to quieter stretches in the south."
       },
       {
         "name": "Fort or church visit",
-        "cost": 50
+        "cost": 50,
+        "description": "Visit a Portuguese-era fort or church, such as Fort Aguada or the Basilica of Bom Jesus."
       },
       {
         "name": "Night market visit",
-        "cost": 200
+        "cost": 200,
+        "description": "Browse stalls selling clothing, jewellery, souvenirs and street food after sunset."
       },
       {
         "name": "Goan cooking class",
-        "cost": 1200
+        "cost": 1200,
+        "description": "Learn to cook Goan dishes such as fish curry and xacuti, then eat what you make."
       },
       {
         "name": "Dolphin-watching cruise",
-        "cost": 1000
+        "cost": 1000,
+        "description": "A short boat trip on the Arabian Sea, with a good chance of seeing dolphins."
       },
       {
         "name": "Kayaking",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A paddling session along calm backwaters or sheltered coastline, suitable for beginners."
       },
       {
         "name": "Parasailing",
-        "cost": 1800
+        "cost": 1800,
+        "description": "Soar above the sea behind a speedboat on a short, supervised ride."
       },
       {
         "name": "Scuba diving experience",
-        "cost": 3500
+        "cost": 3500,
+        "description": "An introductory dive with certified instructors, equipment and a briefing, no experience needed."
       },
       {
         "name": "Private sunset yacht cruise",
-        "cost": 12000
+        "cost": 12000,
+        "description": "A private evening cruise along the coast, with golden-hour views and onboard refreshments."
       },
       {
         "name": "Luxury yacht charter",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A premium private charter with crew, a flexible route and upscale onboard service."
       }
     ],
     "travel_time_between": 2,
@@ -1531,43 +1601,53 @@
     "activities": [
       {
         "name": "Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit one of Gujarat's major temples such as Somnath or Dwarkadhish, known for coastal setting and pilgrim crowds."
       },
       {
         "name": "Sabarmati Ashram visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Walk through Mahatma Gandhi's former residence on the Sabarmati river, now a museum and quiet place of reflection."
       },
       {
         "name": "Stepwell or heritage entry",
-        "cost": 50
+        "cost": 50,
+        "description": "Entry to a historic site such as Rani ki Vav, a richly carved stepwell, or another protected monument."
       },
       {
         "name": "Gujarati thali experience",
-        "cost": 400
+        "cost": 400,
+        "description": "A traditional thali with a range of dals, vegetables, farsan and sweets, served in generous portions."
       },
       {
         "name": "Statue of Unity viewing gallery",
-        "cost": 500
+        "cost": 500,
+        "description": "Ride up to the viewing gallery of the world's tallest statue for views across the Narmada valley."
       },
       {
         "name": "Rann of Kutch cultural evening",
-        "cost": 800
+        "cost": 800,
+        "description": "An evening of folk music, dance, crafts and local food at the edge of the white salt desert."
       },
       {
         "name": "Gir jeep safari",
-        "cost": 3000
+        "cost": 3000,
+        "description": "A jeep safari in Gir National Park, the last natural home of the Asiatic lion."
       },
       {
         "name": "White Rann guided photography tour",
-        "cost": 4500
+        "cost": 4500,
+        "description": "A guided visit to the salt flats at the best light, with tips for capturing the vast landscape."
       },
       {
         "name": "Private heritage circuit with guide",
-        "cost": 10000
+        "cost": 10000,
+        "description": "A private tour linking Gujarat's stepwells, temples and old cities, with a guide and vehicle."
       },
       {
         "name": "Premium Rann glamping experience",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A stay in a luxury tented camp at the Rann, with comfortable beds, meals and cultural programmes."
       }
     ],
     "travel_time_between": 4,
@@ -1747,43 +1827,53 @@
     "activities": [
       {
         "name": "Garden or lake visit",
-        "cost": 0
+        "cost": 0,
+        "description": "A relaxed visit to places like Pinjore Gardens or Badkhal Lake, suited to families and short breaks."
       },
       {
         "name": "Birdwatching",
-        "cost": 300
+        "cost": 300,
+        "description": "A morning at Sultanpur National Park, where migratory and resident waterbirds gather, especially in winter."
       },
       {
         "name": "Heritage walk",
-        "cost": 500
+        "cost": 500,
+        "description": "A guided walk through historic sites and old town areas, with local history and stories."
       },
       {
         "name": "Surajkund craft experience",
-        "cost": 600
+        "cost": 600,
+        "description": "Browse handicrafts and folk performances at Surajkund, known for its crafts fair and lakeside setting."
       },
       {
         "name": "Damdama Lake boating",
-        "cost": 700
+        "cost": 700,
+        "description": "A boat ride on Damdama Lake, set among the Aravalli hills, and a pleasant outing from Delhi NCR."
       },
       {
         "name": "Adventure park activities",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A day of ziplines, rope courses and other outdoor activities at an adventure park."
       },
       {
         "name": "Guided cycling trail",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A guided ride along scenic trails with bikes and safety gear provided."
       },
       {
         "name": "Private Kurukshetra heritage tour",
-        "cost": 3500
+        "cost": 3500,
+        "description": "A private guided tour of Kurukshetra's sacred sites, tied to the Mahabharata and Brahma Sarovar."
       },
       {
         "name": "Luxury resort day experience",
-        "cost": 9000
+        "cost": 9000,
+        "description": "A day at a high-end resort with pool, spa and dining access."
       },
       {
         "name": "Premium private event or resort package",
-        "cost": 25000
+        "cost": 25000,
+        "description": "A premium resort package for private events or group celebrations, with customised services."
       }
     ],
     "travel_time_between": 2,
@@ -1963,43 +2053,53 @@
     "activities": [
       {
         "name": "Mall Road walk",
-        "cost": 0
+        "cost": 0,
+        "description": "A stroll along Shimla's Mall Road, with colonial buildings, shops and cafes."
       },
       {
         "name": "Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a hill temple or Tibetan monastery, often set amid deodar forests and mountain views."
       },
       {
         "name": "Toy train ride",
-        "cost": 500
+        "cost": 500,
+        "description": "A ride on the narrow-gauge Kalka-Shimla railway, with its tunnels, bridges and hill scenery."
       },
       {
         "name": "Guided nature hike",
-        "cost": 800
+        "cost": 800,
+        "description": "A guided walk through pine and deodar forests or alpine meadows, suited to most fitness levels."
       },
       {
         "name": "Paragliding",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A tandem paraglide with a trained pilot, with views over valleys and peaks."
       },
       {
         "name": "River rafting",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A guided rafting trip on a mountain river, with safety gear and an instructor included."
       },
       {
         "name": "Skiing or snow activities",
-        "cost": 2500
+        "cost": 2500,
+        "description": "Snow play, skiing or sledding at a hill resort, depending on the season and conditions."
       },
       {
         "name": "Camping package",
-        "cost": 4000
+        "cost": 4000,
+        "description": "An overnight stay in a mountain or riverside camp with meals and basic amenities."
       },
       {
         "name": "Private 4x4 Spiti excursion",
-        "cost": 15000
+        "cost": 15000,
+        "description": "A private 4x4 trip through Spiti's high-altitude villages and monasteries, with an experienced driver."
       },
       {
         "name": "Luxury mountain lodge experience",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A stay at a premium mountain lodge with fine dining, views and attentive service."
       }
     ],
     "travel_time_between": 4,
@@ -2179,43 +2279,53 @@
     "activities": [
       {
         "name": "Waterfall visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit waterfalls such as Hundru or Dassam, at their best after the monsoon."
       },
       {
         "name": "Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit sacred sites such as Baidyanath Temple in Deoghar, one of the revered Jyotirlinga shrines."
       },
       {
         "name": "Local food trail",
-        "cost": 300
+        "cost": 300,
+        "description": "Try Jharkhandi dishes such as dhuska, litti chokha, rugra and thekua at local eateries."
       },
       {
         "name": "Dam boating",
-        "cost": 400
+        "cost": 400,
+        "description": "A boat ride on a dam reservoir such as Maithon, with pleasant views and a relaxed pace."
       },
       {
         "name": "Guided heritage walk",
-        "cost": 700
+        "cost": 700,
+        "description": "A guided walk through temples and historical sites with local context."
       },
       {
         "name": "Nature trekking",
-        "cost": 1000
+        "cost": 1000,
+        "description": "A guided trek through forested hills and plateaus, with chances to see birds and wildlife."
       },
       {
         "name": "Betla jeep safari",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A jeep safari in Betla National Park, with chances to see elephants, deer and other wildlife."
       },
       {
         "name": "Camping experience",
-        "cost": 3000
+        "cost": 3000,
+        "description": "A night under canvas in a forest or hill setting, with meals and basic equipment provided."
       },
       {
         "name": "Private multi-site nature tour",
-        "cost": 8000
+        "cost": 8000,
+        "description": "A private tour combining waterfalls, forests and hill viewpoints, with vehicle and guide."
       },
       {
         "name": "Premium forest retreat package",
-        "cost": 22000
+        "cost": 22000,
+        "description": "A premium stay at a forest retreat, with guided activities, comfortable lodging and meals."
       }
     ],
     "travel_time_between": 3,
@@ -2401,67 +2511,83 @@
     "activities": [
       {
         "name": "Temple or palace visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a landmark such as Mysore Palace or a Hoysala temple, known for ornate architecture."
       },
       {
         "name": "Coffee estate walk",
-        "cost": 300
+        "cost": 300,
+        "description": "Walk through a working coffee estate and see how beans are grown and dried."
       },
       {
         "name": "Mysore heritage guided tour",
-        "cost": 1000
+        "cost": 1000,
+        "description": "A guided tour of Mysuru's palaces, markets and heritage buildings, with the history of the Wodeyar dynasty."
       },
       {
         "name": "Coracle ride",
-        "cost": 500
+        "cost": 500,
+        "description": "A ride in a round, traditional coracle boat on the Tungabhadra river near Hampi."
       },
       {
         "name": "Rock climbing in Hampi",
-        "cost": 1500
+        "cost": 1500,
+        "description": "Climb Hampi's boulders with a guide and equipment, set among ancient ruins."
       },
       {
         "name": "Scuba diving at Netrani",
-        "cost": 6000
+        "cost": 6000,
+        "description": "A guided dive at Netrani Island, known for coral and clear water, with instructors and equipment."
       },
       {
         "name": "Bandipur jeep safari",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A jeep safari in Bandipur's forests, in search of elephants, deer and, with luck, a tiger."
       },
       {
         "name": "Coorg plantation stay experience",
-        "cost": 5000
+        "cost": 5000,
+        "description": "A stay at a Coorg plantation, with walks, local meals and a look at estate life."
       },
       {
         "name": "Private heritage and food tour",
-        "cost": 9000
+        "cost": 9000,
+        "description": "A private tour combining Karnataka's heritage sites with regional food stops."
       },
       {
         "name": "Luxury private wildlife lodge package",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A premium stay at a wildlife lodge with private safaris, naturalist guides and fine dining."
       },
       {
         "name": "Hampi sunrise heritage walk",
-        "cost": 800
+        "cost": 800,
+        "description": "A walk through Hampi's ruins at dawn, with soft light, fewer crowds and a guide."
       },
       {
         "name": "Mysore Palace illumination visit",
-        "cost": 100
+        "cost": 100,
+        "description": "See Mysore Palace lit by thousands of bulbs, most notably on Sundays and festival evenings."
       },
       {
         "name": "Coorg coffee tasting session",
-        "cost": 700
+        "cost": 700,
+        "description": "A tasting session of Coorg coffee varieties, with explanations of roasting and brewing."
       },
       {
         "name": "Chikmagalur guided trek",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A guided trek through hills near Chikmagalur, with views of peaks and coffee estates."
       },
       {
         "name": "Gokarna beach kayaking",
-        "cost": 1200
+        "cost": 1200,
+        "description": "Paddle along Gokarna's coast and explore quieter beaches from the water."
       },
       {
         "name": "Udupi coastal food trail",
-        "cost": 900
+        "cost": 900,
+        "description": "A trail through Udupi's eateries, covering dosas, seafood and temple-town specialities."
       }
     ],
     "travel_time_between": 3,
@@ -2670,43 +2796,53 @@
     "activities": [
       {
         "name": "Beach visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Spend time on a Kerala beach such as Varkala or Marari, with cliffs, palms and a laid-back mood."
       },
       {
         "name": "Tea plantation visit",
-        "cost": 300
+        "cost": 300,
+        "description": "Walk among the tea slopes of Munnar and see how leaves are processed in a factory."
       },
       {
         "name": "Kathakali show",
-        "cost": 600
+        "cost": 600,
+        "description": "Watch a classical Kathakali performance, with elaborate makeup, costumes and expressive storytelling."
       },
       {
         "name": "Guided spice plantation tour",
-        "cost": 700
+        "cost": 700,
+        "description": "A guided walk through a spice garden near Thekkady to see pepper, cardamom, cloves and vanilla growing."
       },
       {
         "name": "Houseboat day cruise",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A daytime cruise on the backwaters in a traditional houseboat, with lunch on board."
       },
       {
         "name": "Wildlife boat safari",
-        "cost": 800
+        "cost": 800,
+        "description": "A boat ride on Periyar Lake, where elephants, deer and birds are often seen along the shore."
       },
       {
         "name": "Ayurvedic massage",
-        "cost": 2000
+        "cost": 2000,
+        "description": "A traditional Ayurvedic massage with herbal oils, given by trained therapists."
       },
       {
         "name": "Canoeing in backwaters",
-        "cost": 1200
+        "cost": 1200,
+        "description": "Paddle through narrow canals and village waterways, a quiet way to see backwater life."
       },
       {
         "name": "Private overnight houseboat",
-        "cost": 12000
+        "cost": 12000,
+        "description": "An overnight stay on a private houseboat, with meals, crew and a night on the water."
       },
       {
         "name": "Luxury wellness retreat package",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A premium retreat combining Ayurveda treatments, yoga, healthy meals and upscale lodging."
       }
     ],
     "travel_time_between": 4,
@@ -2886,43 +3022,53 @@
     "activities": [
       {
         "name": "Temple or monument visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit sites such as Khajuraho, Sanchi or Orchha, known for their ancient and medieval architecture."
       },
       {
         "name": "Museum entry",
-        "cost": 50
+        "cost": 50,
+        "description": "Entry to a local museum showcasing regional art, sculpture and history."
       },
       {
         "name": "Guided heritage walk",
-        "cost": 500
+        "cost": 500,
+        "description": "A guided walk through forts, palaces and old quarters, with local stories."
       },
       {
         "name": "Pachmarhi nature trail",
-        "cost": 800
+        "cost": 800,
+        "description": "A walk through Pachmarhi's forests, waterfalls and viewpoints in the Satpura hills."
       },
       {
         "name": "River or lake boating",
-        "cost": 500
+        "cost": 500,
+        "description": "A relaxed boat ride on a river or lake, such as the Narmada or Bhopal's Upper Lake."
       },
       {
         "name": "Kanha jeep safari",
-        "cost": 4500
+        "cost": 4500,
+        "description": "A jeep safari in Kanha National Park, with chances to see tigers, barasingha and other wildlife."
       },
       {
         "name": "Bandhavgarh jeep safari",
-        "cost": 5000
+        "cost": 5000,
+        "description": "A jeep safari in Bandhavgarh, known for one of India's densest tiger populations."
       },
       {
         "name": "Private wildlife photography guide",
-        "cost": 7000
+        "cost": 7000,
+        "description": "A private naturalist guide who finds wildlife and helps you get the shot."
       },
       {
         "name": "Multi-day private heritage circuit",
-        "cost": 15000
+        "cost": 15000,
+        "description": "A multi-day private tour covering Madhya Pradesh's temples, forts and ruins, with vehicle and guide."
       },
       {
         "name": "Luxury jungle lodge package",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A premium jungle lodge stay with private safaris, guides and fine dining."
       }
     ],
     "travel_time_between": 4,
@@ -3102,43 +3248,53 @@
     "activities": [
       {
         "name": "Beach or promenade visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Walk along a sea-facing stretch such as Marine Drive or Alibaug's beaches, especially pleasant at sunset."
       },
       {
         "name": "Fort visit",
-        "cost": 50
+        "cost": 50,
+        "description": "Visit a Maratha-era fort such as Raigad or Sinhagad, usually with a climb and wide views."
       },
       {
         "name": "Street-food walk",
-        "cost": 400
+        "cost": 400,
+        "description": "Try vada pav, pav bhaji, misal and bhel from popular local stalls."
       },
       {
         "name": "Guided cave tour",
-        "cost": 800
+        "cost": 800,
+        "description": "A guided tour of the rock-cut caves at Ajanta or Ellora, with explanations of their art and history."
       },
       {
         "name": "Ferry to Alibaug",
-        "cost": 200
+        "cost": 200,
+        "description": "A scenic ferry ride from Mumbai across the harbour to Alibaug, a popular coastal getaway."
       },
       {
         "name": "Tadoba jeep safari",
-        "cost": 5000
+        "cost": 5000,
+        "description": "A jeep safari in Tadoba, known for good tiger sightings, in a forest of teak and bamboo."
       },
       {
         "name": "Paragliding in hill station",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A tandem paraglide at a hill station such as Kamshet, with a trained pilot."
       },
       {
         "name": "Scuba diving on Konkan coast",
-        "cost": 4500
+        "cost": 4500,
+        "description": "A guided dive off the Konkan coast, at places like Malvan, with instructors and equipment included."
       },
       {
         "name": "Private Mumbai heritage tour",
-        "cost": 8000
+        "cost": 8000,
+        "description": "A private tour of Mumbai's colonial landmarks, markets and neighbourhoods, with a guide and car."
       },
       {
         "name": "Luxury private yacht charter",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A private charter from Mumbai with crew, a flexible route and upscale onboard service."
       }
     ],
     "travel_time_between": 3,
@@ -3318,43 +3474,53 @@
     "activities": [
       {
         "name": "Lake viewpoint visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Take in views over Loktak Lake and its floating phumdis, especially lovely at sunrise or sunset."
       },
       {
         "name": "Kangla Fort entry",
-        "cost": 100
+        "cost": 100,
+        "description": "Entry to the historic Kangla Fort in Imphal, once the seat of Manipur's rulers."
       },
       {
         "name": "Local market food walk",
-        "cost": 300
+        "cost": 300,
+        "description": "Walk through Imphal's markets, including the Ima Keithel run by women, and try local snacks."
       },
       {
         "name": "Andro village cultural visit",
-        "cost": 500
+        "cost": 500,
+        "description": "Visit Andro village to see traditional houses, pottery and cultural displays."
       },
       {
         "name": "Loktak boat ride",
-        "cost": 800
+        "cost": 800,
+        "description": "A boat ride across Loktak Lake, passing floating islands and fishing communities."
       },
       {
         "name": "Guided birdwatching",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A guided outing in wetland and forest areas, with good chances to spot local and migratory birds."
       },
       {
         "name": "Valley trekking guide",
-        "cost": 2000
+        "cost": 2000,
+        "description": "A guide for a day trek through Manipur's hills and valleys, including the Dzukou area."
       },
       {
         "name": "Traditional handloom workshop",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A hands-on session with Manipuri weavers, learning about patterns, looms and textiles."
       },
       {
         "name": "Private multi-day cultural tour",
-        "cost": 10000
+        "cost": 10000,
+        "description": "A private multi-day tour of Manipur's heritage, villages and landscapes, with guide and vehicle."
       },
       {
         "name": "Premium guided nature expedition",
-        "cost": 25000
+        "cost": 25000,
+        "description": "A premium expedition into Manipur's wild areas, with expert guides, private transport and comfortable stays."
       }
     ],
     "travel_time_between": 3,
@@ -3534,43 +3700,53 @@
     "activities": [
       {
         "name": "Waterfall viewpoint visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Stop at a viewpoint over waterfalls such as Nohkalikai, best in the rainy season."
       },
       {
         "name": "Village walk",
-        "cost": 200
+        "cost": 200,
+        "description": "Stroll through a Khasi village known for its cleanliness, gardens and bamboo structures."
       },
       {
         "name": "Cave entry",
-        "cost": 100
+        "cost": 100,
+        "description": "Entry to a limestone cave such as Mawsmai, with walkways and lighting."
       },
       {
         "name": "Boating on Dawki River",
-        "cost": 800
+        "cost": 800,
+        "description": "A boat ride on the clear waters of the Umngot River, where boats appear to float in the air."
       },
       {
         "name": "Guided root bridge trek",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A guided trek to living root bridges, including the long stair descent to the double-decker bridge."
       },
       {
         "name": "Caving with equipment and guide",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A guided adventure into wild caves with helmets, headlamps and safety gear."
       },
       {
         "name": "Camping package",
-        "cost": 3000
+        "cost": 3000,
+        "description": "An overnight camp in the hills with tents, meals and basic equipment."
       },
       {
         "name": "Multi-day trekking expedition",
-        "cost": 8000
+        "cost": 8000,
+        "description": "A multi-day trek through villages, forests and root bridges, with guides and camp support."
       },
       {
         "name": "Private guided canyon and village tour",
-        "cost": 10000
+        "cost": 10000,
+        "description": "A private tour of canyons, viewpoints and villages, with a guide and vehicle."
       },
       {
         "name": "Premium private adventure package",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A premium adventure package with private guides, curated experiences and comfortable lodging."
       }
     ],
     "travel_time_between": 3,
@@ -3750,43 +3926,53 @@
     "activities": [
       {
         "name": "Viewpoint visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Stop at a hilltop viewpoint to see rolling green hills and cloud-covered valleys."
       },
       {
         "name": "Local market visit",
-        "cost": 150
+        "cost": 150,
+        "description": "Browse Aizawl's markets for local produce, handwoven textiles and snacks."
       },
       {
         "name": "Mizo cuisine experience",
-        "cost": 400
+        "cost": 400,
+        "description": "Try Mizo dishes such as bai, smoked pork and rice-based meals, usually mild and lightly spiced."
       },
       {
         "name": "Guided village walk",
-        "cost": 700
+        "cost": 700,
+        "description": "A guided walk through a Mizo village, learning about community life, crafts and customs."
       },
       {
         "name": "Lake boating",
-        "cost": 500
+        "cost": 500,
+        "description": "A boat ride on a lake such as Tamdil, in a quiet forested setting."
       },
       {
         "name": "Nature hike with guide",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A guided hike through forests and ridges, with views of hills and plenty of greenery."
       },
       {
         "name": "Birdwatching excursion",
-        "cost": 1800
+        "cost": 1800,
+        "description": "A guided birdwatching outing, with many species found in Mizoram's forests."
       },
       {
         "name": "Camping and trekking package",
-        "cost": 4000
+        "cost": 4000,
+        "description": "A camping and trekking package with guide, tents and meals in the Mizo hills."
       },
       {
         "name": "Private multi-day mountain tour",
-        "cost": 12000
+        "cost": 12000,
+        "description": "A multi-day private tour across Mizoram's hills and villages, with vehicle and guide."
       },
       {
         "name": "Premium guided wilderness expedition",
-        "cost": 28000
+        "cost": 28000,
+        "description": "A high-end wilderness expedition with expert guides and private logistics."
       }
     ],
     "travel_time_between": 4,
@@ -3966,43 +4152,53 @@
     "activities": [
       {
         "name": "War cemetery visit",
-        "cost": 0
+        "cost": 0,
+        "description": "A quiet visit to the Kohima War Cemetery, a memorial to soldiers of the 1944 battle."
       },
       {
         "name": "Village heritage walk",
-        "cost": 300
+        "cost": 300,
+        "description": "Walk through a Naga village such as Khonoma, learning about its history, terraced fields and traditions."
       },
       {
         "name": "Naga cuisine tasting",
-        "cost": 500
+        "cost": 500,
+        "description": "Taste smoked meats, bamboo-shoot dishes, axone and rice-based meals, often with strong flavours."
       },
       {
         "name": "Traditional craft workshop",
-        "cost": 800
+        "cost": 800,
+        "description": "A hands-on session in Naga crafts such as weaving, beadwork or wood carving."
       },
       {
         "name": "Dzukou Valley trekking guide",
-        "cost": 2000
+        "cost": 2000,
+        "description": "A guide for the trek to Dzukou Valley, known for its rolling meadows and seasonal flowers."
       },
       {
         "name": "Camping equipment package",
-        "cost": 2500
+        "cost": 2500,
+        "description": "Tents, sleeping bags and basic gear for a night out in the hills."
       },
       {
         "name": "Hornbill Festival day experience",
-        "cost": 3000
+        "cost": 3000,
+        "description": "A day at the Hornbill Festival at Kisama, with tribal dances, music, food and crafts."
       },
       {
         "name": "Multi-day village homestay tour",
-        "cost": 7000
+        "cost": 7000,
+        "description": "A multi-day tour staying with local families in Naga villages, for a close look at daily life."
       },
       {
         "name": "Private cultural circuit with guide",
-        "cost": 15000
+        "cost": 15000,
+        "description": "A private tour linking Naga villages, markets and heritage sites, with guide and vehicle."
       },
       {
         "name": "Premium remote-area expedition",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A high-end expedition to remote areas, with experienced guides, transport and logistical support."
       }
     ],
     "travel_time_between": 4,
@@ -4182,43 +4378,53 @@
     "activities": [
       {
         "name": "Beach visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Relax on Puri or Chandrabhaga beach, with long stretches of sand and fishing boats."
       },
       {
         "name": "Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit sacred sites such as Jagannath Temple or Lingaraj Temple, remarkable for Kalinga architecture."
       },
       {
         "name": "Craft village visit",
-        "cost": 200
+        "cost": 200,
+        "description": "Visit a craft village such as Raghurajpur, home to Pattachitra painters and palm-leaf artists."
       },
       {
         "name": "Odissi dance performance",
-        "cost": 500
+        "cost": 500,
+        "description": "Watch Odissi, one of India's classical dance forms, performed by trained dancers."
       },
       {
         "name": "Chilika boat ride",
-        "cost": 1000
+        "cost": 1000,
+        "description": "A boat ride on Chilika Lake, known for migratory birds and sometimes dolphins."
       },
       {
         "name": "Guided heritage tour",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A guided tour of temples and ancient sites, with the history of Odisha's dynasties."
       },
       {
         "name": "Bhitarkanika boat safari",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A boat safari through mangrove creeks, with chances to see saltwater crocodiles and birds."
       },
       {
         "name": "Similipal guided nature excursion",
-        "cost": 3000
+        "cost": 3000,
+        "description": "A guided outing in Similipal's forests, with waterfalls, wildlife and quiet trails."
       },
       {
         "name": "Private birding tour",
-        "cost": 8000
+        "cost": 8000,
+        "description": "A private birding tour with an expert guide, usually around Chilika or Bhitarkanika."
       },
       {
         "name": "Premium private coastal and wildlife tour",
-        "cost": 25000
+        "cost": 25000,
+        "description": "A premium private tour of Odisha's coast and wildlife areas, with comfortable lodging and guides."
       }
     ],
     "travel_time_between": 3,
@@ -4398,43 +4604,53 @@
     "activities": [
       {
         "name": "Golden Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit Sri Harmandir Sahib in Amritsar, the spiritual centre of Sikhism, set around a sacred pool."
       },
       {
         "name": "Langar experience",
-        "cost": 0
+        "cost": 0,
+        "description": "Share a free vegetarian community meal in the Golden Temple's langar hall, open to everyone."
       },
       {
         "name": "Local food trail",
-        "cost": 500
+        "cost": 500,
+        "description": "Taste Amritsari kulcha, lassi, chole and tandoori dishes at classic local spots."
       },
       {
         "name": "Wagah Border guided visit",
-        "cost": 500
+        "cost": 500,
+        "description": "A guided visit to the Wagah border ceremony, with parade, flag lowering and crowd energy."
       },
       {
         "name": "Punjabi folk dance workshop",
-        "cost": 800
+        "cost": 800,
+        "description": "Learn basic Bhangra or Giddha steps from local performers."
       },
       {
         "name": "Village tractor or farm experience",
-        "cost": 1200
+        "cost": 1200,
+        "description": "Spend time on a Punjabi farm, with a tractor ride, fresh food and village life."
       },
       {
         "name": "Heritage walking tour",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A guided walk through Amritsar's old city, covering gates, markets and historic sites."
       },
       {
         "name": "Private Amritsar food and history tour",
-        "cost": 4000
+        "cost": 4000,
+        "description": "A private tour combining Amritsar's history, such as Jallianwala Bagh, with food stops."
       },
       {
         "name": "Luxury countryside resort day",
-        "cost": 9000
+        "cost": 9000,
+        "description": "A day at a premium countryside resort, with pool, dining and spa access."
       },
       {
         "name": "Premium private cultural itinerary",
-        "cost": 22000
+        "cost": 22000,
+        "description": "A premium private itinerary with a guide, vehicle and curated cultural experiences."
       }
     ],
     "travel_time_between": 2,
@@ -4620,67 +4836,83 @@
     "activities": [
       {
         "name": "Fort or palace visit",
-        "cost": 100
+        "cost": 100,
+        "description": "Visit a fort or palace such as Amber, Mehrangarh or City Palace, with grand courtyards and museum displays."
       },
       {
         "name": "Local bazaar walk",
-        "cost": 0
+        "cost": 0,
+        "description": "Walk through a bazaar for textiles, jewellery, leather goods, spices and snacks."
       },
       {
         "name": "Rajasthani thali experience",
-        "cost": 500
+        "cost": 500,
+        "description": "A traditional thali with dal baati churma, gatte ki sabzi, kadhi and sweets."
       },
       {
         "name": "Block printing workshop",
-        "cost": 800
+        "cost": 800,
+        "description": "A hands-on session with artisans, learning to block print on fabric using wooden blocks."
       },
       {
         "name": "Camel ride",
-        "cost": 500
+        "cost": 500,
+        "description": "A camel ride across desert sands, often timed around sunset."
       },
       {
         "name": "Desert jeep safari",
-        "cost": 2000
+        "cost": 2000,
+        "description": "A jeep ride over dunes in the Thar Desert, often combined with a sunset stop."
       },
       {
         "name": "Cultural dinner and folk show",
-        "cost": 1800
+        "cost": 1800,
+        "description": "A dinner with folk music, dance and puppetry, often held at a heritage property or desert camp."
       },
       {
         "name": "Ranthambore jeep safari",
-        "cost": 5000
+        "cost": 5000,
+        "description": "A jeep safari in Ranthambore National Park, famous for tiger sightings around old fort ruins."
       },
       {
         "name": "Private heritage guide and transport",
-        "cost": 10000
+        "cost": 10000,
+        "description": "A private guide and vehicle for a day of forts, palaces and old city sights."
       },
       {
         "name": "Luxury desert camp package",
-        "cost": 30000
+        "cost": 30000,
+        "description": "An overnight stay at a premium desert camp, with comfortable tents, dinner and entertainment."
       },
       {
         "name": "Jaipur heritage walking tour",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A guided walk through Jaipur's Pink City, covering markets, havelis and landmarks."
       },
       {
         "name": "Udaipur Lake Pichola boat ride",
-        "cost": 500
+        "cost": 500,
+        "description": "A boat ride on Lake Pichola, with views of the City Palace and lakeside havelis."
       },
       {
         "name": "Jodhpur zipline experience",
-        "cost": 1800
+        "cost": 1800,
+        "description": "A zipline course around Mehrangarh Fort, with views over the Blue City."
       },
       {
         "name": "Jaisalmer overnight desert camp with dinner",
-        "cost": 4500
+        "cost": 4500,
+        "description": "An overnight desert camp near Sam dunes, including dinner, music and sleeping under the stars."
       },
       {
         "name": "Rajasthani cooking class",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A hands-on class on Rajasthani dishes and spice blends, followed by a shared meal."
       },
       {
         "name": "Hot-air balloon experience (seasonal)",
-        "cost": 12000
+        "cost": 12000,
+        "description": "A seasonal hot-air balloon flight over forts and countryside, usually at sunrise."
       }
     ],
     "travel_time_between": 5,
@@ -4889,43 +5121,53 @@
     "activities": [
       {
         "name": "Monastery visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a Buddhist monastery such as Rumtek or Pemayangtse, with prayer halls and mountain views."
       },
       {
         "name": "MG Marg walk",
-        "cost": 0
+        "cost": 0,
+        "description": "A walk along Gangtok's pedestrian-only MG Marg, lined with cafes, shops and benches."
       },
       {
         "name": "Local cuisine experience",
-        "cost": 400
+        "cost": 400,
+        "description": "Try momos, thukpa, sael roti and local teas in a Sikkimese or Tibetan eatery."
       },
       {
         "name": "Cable car ride",
-        "cost": 150
+        "cost": 150,
+        "description": "A short cable car ride in Gangtok, with views over the town and valley."
       },
       {
         "name": "Guided nature walk",
-        "cost": 1000
+        "cost": 1000,
+        "description": "A guided walk through forest or village trails, with local plants, birds and views."
       },
       {
         "name": "Yumthang Valley excursion",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A day trip to Yumthang Valley, known for rhododendrons, hot springs and snow-capped peaks."
       },
       {
         "name": "Yak ride at Tsomgo Lake",
-        "cost": 800
+        "cost": 800,
+        "description": "A short yak ride beside Tsomgo Lake at high altitude, a popular photo stop."
       },
       {
         "name": "Multi-day high-altitude guided tour",
-        "cost": 8000
+        "cost": 8000,
+        "description": "A multi-day guided trip to high-altitude areas, with permits, transport and acclimatisation built in."
       },
       {
         "name": "Private 4x4 Silk Route tour",
-        "cost": 12000
+        "cost": 12000,
+        "description": "A private 4x4 trip along the old Silk Route, with high passes, remote villages and sweeping views."
       },
       {
         "name": "Premium private mountain expedition",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A premium private expedition with expert guides, comfortable stays and arranged permits."
       }
     ],
     "travel_time_between": 4,
@@ -5105,43 +5347,53 @@
     "activities": [
       {
         "name": "Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a Dravidian temple such as Meenakshi Amman or Brihadeeswarar, with towering gopurams and carved halls."
       },
       {
         "name": "Beach visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Spend time on a Tamil Nadu beach such as Mahabalipuram or Kanyakumari, with sunrise or sunset views."
       },
       {
         "name": "Heritage site entry",
-        "cost": 50
+        "cost": 50,
+        "description": "Entry to a ticketed monument such as the Shore Temple at Mahabalipuram or a fort."
       },
       {
         "name": "Chettinad cooking class",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A hands-on class in Chettinad cooking, known for its bold spice blends."
       },
       {
         "name": "Nilgiri toy train ride",
-        "cost": 500
+        "cost": 500,
+        "description": "A ride on the Nilgiri Mountain Railway, a UNESCO-listed line through tunnels, tea slopes and forests."
       },
       {
         "name": "Bharatanatyam performance",
-        "cost": 800
+        "cost": 800,
+        "description": "Watch a Bharatanatyam recital, a classical dance form that originated in Tamil Nadu."
       },
       {
         "name": "Guided temple architecture tour",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A guided tour explaining temple design, sculpture and the dynasties that built them."
       },
       {
         "name": "Coracle or lake boat ride",
-        "cost": 400
+        "cost": 400,
+        "description": "A short coracle or boat ride on a river or lake, a relaxed break between sights."
       },
       {
         "name": "Private heritage circuit",
-        "cost": 9000
+        "cost": 9000,
+        "description": "A private tour of Tamil Nadu's major temples and heritage towns, with guide and vehicle."
       },
       {
         "name": "Luxury wellness and heritage package",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A premium package combining heritage visits with spa, yoga and Ayurveda stays."
       }
     ],
     "travel_time_between": 3,
@@ -5321,43 +5573,53 @@
     "activities": [
       {
         "name": "Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a temple such as Ramappa or the Thousand Pillar Temple, noted for Kakatiya-era craftsmanship."
       },
       {
         "name": "Old City food walk",
-        "cost": 500
+        "cost": 500,
+        "description": "Eat through Hyderabad's Old City, from biryani and haleem to Irani chai and kebabs."
       },
       {
         "name": "Fort entry",
-        "cost": 50
+        "cost": 50,
+        "description": "Entry to a historic fort such as Golconda or Warangal, with citadel walls and ruins."
       },
       {
         "name": "Hussain Sagar boat ride",
-        "cost": 100
+        "cost": 100,
+        "description": "A boat ride on Hussain Sagar Lake, with a view of the giant Buddha statue."
       },
       {
         "name": "Guided heritage walk",
-        "cost": 1000
+        "cost": 1000,
+        "description": "A guided walk through Hyderabad's historic quarters, including Charminar and the surrounding lanes."
       },
       {
         "name": "Ramoji Film City day ticket",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A day at Ramoji Film City, with studio tours, sets, shows and rides."
       },
       {
         "name": "Deccan cuisine workshop",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A hands-on class on Hyderabadi and Deccan dishes, followed by a meal."
       },
       {
         "name": "Private Hyderabad city tour",
-        "cost": 5000
+        "cost": 5000,
+        "description": "A private city tour with a car and guide, covering major monuments and markets."
       },
       {
         "name": "Premium film-city experience",
-        "cost": 10000
+        "cost": 10000,
+        "description": "A premium Ramoji Film City package, with extra access and upgraded services."
       },
       {
         "name": "Luxury private event or resort package",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A premium resort or event package, with upscale venue, dining and services."
       }
     ],
     "travel_time_between": 2,
@@ -5537,43 +5799,53 @@
     "activities": [
       {
         "name": "Palace or temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit sites such as Ujjayanta Palace or Tripura Sundari Temple, with royal and religious history."
       },
       {
         "name": "Local market walk",
-        "cost": 150
+        "cost": 150,
+        "description": "Stroll through a local market for handloom, bamboo crafts and fresh produce."
       },
       {
         "name": "Boat ride at Neermahal",
-        "cost": 300
+        "cost": 300,
+        "description": "A boat ride to Neermahal, a water palace set in the middle of Rudrasagar Lake."
       },
       {
         "name": "Traditional Tripuri meal",
-        "cost": 400
+        "cost": 400,
+        "description": "A meal with Tripuri dishes such as chakhwi and berma, often featuring fish and bamboo shoots."
       },
       {
         "name": "Guided Unakoti heritage tour",
-        "cost": 1000
+        "cost": 1000,
+        "description": "A guided visit to Unakoti, with its giant rock-cut sculptures in a forested hillside."
       },
       {
         "name": "Wildlife sanctuary visit",
-        "cost": 500
+        "cost": 500,
+        "description": "A visit to Sepahijala Wildlife Sanctuary, home to primates, birds and a small zoo."
       },
       {
         "name": "Jampui Hills guided trek",
-        "cost": 1800
+        "cost": 1800,
+        "description": "A guided trek in the Jampui Hills, known for orange orchards and cool weather."
       },
       {
         "name": "Dumboor Lake day excursion",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A boat-based day trip at Dumboor Lake, with its islets and birdlife."
       },
       {
         "name": "Private archaeology and culture tour",
-        "cost": 8000
+        "cost": 8000,
+        "description": "A private tour of Tripura's ancient sites and tribal culture, with guide and vehicle."
       },
       {
         "name": "Premium multi-day private tour",
-        "cost": 22000
+        "cost": 22000,
+        "description": "A multi-day premium private tour of Tripura, with guides, transport and comfortable stays."
       }
     ],
     "travel_time_between": 3,
@@ -5753,43 +6025,53 @@
     "activities": [
       {
         "name": "Temple or ghat visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a sacred site such as Kashi Vishwanath, or walk along Varanasi's ghats."
       },
       {
         "name": "Monument entry",
-        "cost": 50
+        "cost": 50,
+        "description": "Entry to a ticketed monument such as the Taj Mahal, Agra Fort or Fatehpur Sikri."
       },
       {
         "name": "Varanasi sunrise boat ride",
-        "cost": 500
+        "cost": 500,
+        "description": "A boat ride on the Ganga at dawn, passing the ghats as the city wakes up."
       },
       {
         "name": "Lucknow food walk",
-        "cost": 700
+        "cost": 700,
+        "description": "A walk through Lucknow's food lanes for kebabs, biryani, kulcha and sweets."
       },
       {
         "name": "Guided Taj Mahal tour",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A guided tour of the Taj Mahal, covering its history, marble inlay work and Mughal design."
       },
       {
         "name": "Classical music evening",
-        "cost": 1200
+        "cost": 1200,
+        "description": "An evening of classical music or dance in a heritage setting, such as in Varanasi."
       },
       {
         "name": "Heritage photography walk",
-        "cost": 1800
+        "cost": 1800,
+        "description": "A guided photo walk through historic quarters, with tips on light and composition."
       },
       {
         "name": "Dudhwa wildlife safari",
-        "cost": 3500
+        "cost": 3500,
+        "description": "A jeep safari in Dudhwa National Park, with its grasslands, swamp deer and chances to see rhinos and tigers."
       },
       {
         "name": "Private Agra-Varanasi cultural circuit",
-        "cost": 12000
+        "cost": 12000,
+        "description": "A private tour linking Agra and Varanasi, with guide, vehicle and curated stops."
       },
       {
         "name": "Luxury private heritage experience",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A premium private tour of Uttar Pradesh's heritage, with upscale stays and expert guides."
       }
     ],
     "travel_time_between": 4,
@@ -5969,43 +6251,53 @@
     "activities": [
       {
         "name": "Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a Himalayan or riverside temple, such as in Haridwar, Rishikesh or the Char Dham circuit."
       },
       {
         "name": "Ganga aarti viewing",
-        "cost": 0
+        "cost": 0,
+        "description": "Watch the evening Ganga aarti at Haridwar or Rishikesh, with lamps, chanting and bells by the river."
       },
       {
         "name": "Cable car ride",
-        "cost": 300
+        "cost": 300,
+        "description": "A cable car ride in a hill town such as Auli or Mussoorie, with mountain views."
       },
       {
         "name": "Guided forest walk",
-        "cost": 1000
+        "cost": 1000,
+        "description": "A guided forest walk with a naturalist, with birds, plants and quiet trails."
       },
       {
         "name": "River rafting",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A guided rafting trip on the Ganga near Rishikesh, with rapids of varied difficulty."
       },
       {
         "name": "Bungee jumping",
-        "cost": 3500
+        "cost": 3500,
+        "description": "A supervised bungee jump from a fixed platform near Rishikesh, for thrill-seekers."
       },
       {
         "name": "Skiing in Auli",
-        "cost": 2500
+        "cost": 2500,
+        "description": "Learn or practise skiing on Auli's slopes, with snow-capped Himalayan views, in season."
       },
       {
         "name": "Jim Corbett jeep safari",
-        "cost": 5000
+        "cost": 5000,
+        "description": "A jeep safari in Jim Corbett National Park, home to tigers, elephants and varied birdlife."
       },
       {
         "name": "Guided multi-day Himalayan trek",
-        "cost": 12000
+        "cost": 12000,
+        "description": "A multi-day trek with guides and camp support, such as to Valley of Flowers or Kedarnath routes."
       },
       {
         "name": "Premium private mountain retreat",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A premium retreat in the mountains, with private guides, comfortable lodging and tailored activities."
       }
     ],
     "travel_time_between": 4,
@@ -6185,43 +6477,53 @@
     "activities": [
       {
         "name": "Temple or museum visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a temple such as Dakshineswar or a museum such as the Victoria Memorial."
       },
       {
         "name": "Kolkata tram ride",
-        "cost": 20
+        "cost": 20,
+        "description": "A ride on Kolkata's heritage tram network, a slow and nostalgic way to see the city."
       },
       {
         "name": "Bengali food walk",
-        "cost": 500
+        "cost": 500,
+        "description": "Eat through Kolkata, with kathi rolls, fish dishes, mishti doi and street snacks."
       },
       {
         "name": "Darjeeling toy train ride",
-        "cost": 600
+        "cost": 600,
+        "description": "A ride on the Darjeeling Himalayan Railway, a UNESCO-listed narrow-gauge line."
       },
       {
         "name": "Sundarbans boat safari",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A boat safari through the Sundarbans mangroves, hoping to see crocodiles, deer and birds, and perhaps a tiger."
       },
       {
         "name": "Tea estate tour",
-        "cost": 500
+        "cost": 500,
+        "description": "A walk through a Darjeeling tea estate, with a look at processing and a tea tasting."
       },
       {
         "name": "Guided heritage walk",
-        "cost": 1200
+        "cost": 1200,
+        "description": "A guided walk through Kolkata's colonial and old city areas, with stories of the city's past."
       },
       {
         "name": "Dooars wildlife safari",
-        "cost": 3000
+        "cost": 3000,
+        "description": "A jeep or elephant-corridor safari in the Dooars, with rhinos, elephants and birds."
       },
       {
         "name": "Private Kolkata culture and food tour",
-        "cost": 7000
+        "cost": 7000,
+        "description": "A private tour of Kolkata's cultural spots and food stops, with guide and car."
       },
       {
         "name": "Premium private Sundarbans cruise",
-        "cost": 30000
+        "cost": 30000,
+        "description": "A premium private cruise through the Sundarbans, with comfortable cabins, meals and guided excursions."
       }
     ],
     "travel_time_between": 4,
@@ -6401,35 +6703,43 @@
     "activities": [
       {
         "name": "Marina Beach visit",
-        "cost": 0
+        "cost": 0,
+        "description": "A walk along Marina Beach, one of the longest urban beaches in the world, with snack stalls and sea air."
       },
       {
         "name": "Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a temple such as Kapaleeshwarar in Mylapore, with colourful gopuram and daily rituals."
       },
       {
         "name": "Government Museum entry",
-        "cost": 50
+        "cost": 50,
+        "description": "Entry to the Government Museum, with a bronze gallery, archaeology and natural history displays."
       },
       {
         "name": "Mylapore food walk",
-        "cost": 500
+        "cost": 500,
+        "description": "A walk through Mylapore's old lanes, tasting filter coffee, idli, dosa and local sweets."
       },
       {
         "name": "DakshinaChitra visit",
-        "cost": 150
+        "cost": 150,
+        "description": "Visit a living museum of South Indian art, crafts and traditional houses."
       },
       {
         "name": "Mahabalipuram guided day trip",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A guided day trip to Mahabalipuram to see the Shore Temple and rock-cut monuments."
       },
       {
         "name": "Chennai heritage tour",
-        "cost": 1800
+        "cost": 1800,
+        "description": "A guided tour of the city's colonial landmarks, temples and historic neighbourhoods."
       },
       {
         "name": "Private coastal day tour",
-        "cost": 6000
+        "cost": 6000,
+        "description": "A private day along the coast with a car and driver, with stops at beaches and heritage sites."
       }
     ],
     "travel_time_between": 2,
@@ -6613,35 +6923,43 @@
     "activities": [
       {
         "name": "Charminar and Laad Bazaar walk",
-        "cost": 0
+        "cost": 0,
+        "description": "A walk around Charminar and the nearby Laad Bazaar, known for bangles, pearls and street food."
       },
       {
         "name": "Birla Science Museum entry",
-        "cost": 100
+        "cost": 100,
+        "description": "Entry to the Birla Science Museum and Planetarium, with exhibits and sky shows."
       },
       {
         "name": "Salar Jung Museum entry",
-        "cost": 50
+        "cost": 50,
+        "description": "Entry to one of India's largest museums, with a vast private art collection from around the world."
       },
       {
         "name": "Golconda Fort sound-and-light show",
-        "cost": 140
+        "cost": 140,
+        "description": "An evening show at Golconda Fort that tells its history with lights and narration."
       },
       {
         "name": "Hyderabadi food trail",
-        "cost": 700
+        "cost": 700,
+        "description": "A trail of Hyderabad's best-known dishes, from biryani and haleem to Irani chai."
       },
       {
         "name": "Ramoji Film City day pass",
-        "cost": 1500
+        "cost": 1500,
+        "description": "A day pass to Ramoji Film City, with studio tours, shows, gardens and rides."
       },
       {
         "name": "Private old-city heritage tour",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A private tour of the Old City with a guide, covering Charminar, Chowmahalla Palace and markets."
       },
       {
         "name": "Luxury dining experience",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A fine-dining meal at a premium restaurant serving refined Hyderabadi or modern Indian cuisine."
       }
     ],
     "travel_time_between": 2,
@@ -6825,35 +7143,43 @@
     "activities": [
       {
         "name": "Hadimba Temple visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit the wooden Hadimba Devi Temple, set in a cedar forest with a distinctive pagoda-style roof."
       },
       {
         "name": "Old Manali cafe walk",
-        "cost": 200
+        "cost": 200,
+        "description": "A stroll through Old Manali's lanes, with riverside cafes, small shops and mountain views."
       },
       {
         "name": "Jogini Falls hike",
-        "cost": 0
+        "cost": 0,
+        "description": "A short hike from Vashisht village to Jogini Falls, with forest paths and a waterfall at the end."
       },
       {
         "name": "Solang Valley activities",
-        "cost": 1500
+        "cost": 1500,
+        "description": "Try activities such as zorbing, ropeway rides and snow play in Solang Valley, depending on season."
       },
       {
         "name": "River rafting (seasonal)",
-        "cost": 1000
+        "cost": 1000,
+        "description": "A guided rafting trip on the Beas, available in the warmer months."
       },
       {
         "name": "Skiing / snow activities (seasonal)",
-        "cost": 2500
+        "cost": 2500,
+        "description": "Snow play or beginner skiing in the winter, with equipment and instructors."
       },
       {
         "name": "Atal Tunnel and Sissu day trip",
-        "cost": 2500
+        "cost": 2500,
+        "description": "A day trip through the Atal Tunnel to Sissu in the Lahaul valley, with high mountain scenery."
       },
       {
         "name": "Private 4x4 mountain excursion",
-        "cost": 9000
+        "cost": 9000,
+        "description": "A private 4x4 trip into higher terrain, with an experienced driver, subject to road and weather conditions."
       }
     ],
     "travel_time_between": 2,
@@ -7040,35 +7366,43 @@
     "activities": [
       {
         "name": "Leh old-town walk",
-        "cost": 0
+        "cost": 0,
+        "description": "A walk through Leh's old town, with its narrow lanes, markets, mosque and palace views."
       },
       {
         "name": "Monastery visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Visit a Ladakhi monastery such as Thiksey, Hemis or Alchi, with murals, prayer halls and mountain views."
       },
       {
         "name": "Shanti Stupa visit",
-        "cost": 0
+        "cost": 0,
+        "description": "Climb to the white-domed Shanti Stupa above Leh for sunrise or sunset views over the valley."
       },
       {
         "name": "Nubra Valley guided excursion",
-        "cost": 5000
+        "cost": 5000,
+        "description": "A guided trip over Khardung La into Nubra Valley, with sand dunes, monasteries and double-humped camels."
       },
       {
         "name": "Pangong Tso day excursion",
-        "cost": 6000
+        "cost": 6000,
+        "description": "A long day trip to Pangong Lake, famous for its colour-changing blue water."
       },
       {
         "name": "Multi-day private 4x4 circuit",
-        "cost": 18000
+        "cost": 18000,
+        "description": "A multi-day private 4x4 circuit through Ladakh's passes, lakes and valleys, with driver and logistics arranged."
       },
       {
         "name": "Camping by the lake",
-        "cost": 3500
+        "cost": 3500,
+        "description": "A night in a tent beside a high-altitude lake, with stars and silence."
       },
       {
         "name": "Guided high-altitude trek",
-        "cost": 8000
+        "cost": 8000,
+        "description": "A guided trek through high Ladakhi trails, with acclimatisation days and camp support."
       }
     ],
     "travel_time_between": 2,

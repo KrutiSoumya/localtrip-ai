@@ -379,6 +379,8 @@ const css = `
 .adn-act { display: flex; align-items: flex-start; gap: 8px; padding: 4px 8px; border-radius: 8px; background: rgba(201,167,101,0.2); border: 1.5px solid transparent; animation: adn-slide 0.3s ease both; }
 .adn-act.editing { background: #fff; border-color: var(--gold); }
 .adn-act-ico { width: 18px; height: 18px; border-radius: 50%; background: var(--paper); display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.adn-act-copy { flex: 1; min-width: 0; }
+.adn-act-copy small { display: block; margin-top: 3px; color: #74675b; font-size: 11.5px; line-height: 1.45; }
 .adn-act p { margin: 0; flex: 1; font-size: 12.5px; font-weight: 500; line-height: 1.45; color: var(--ink); }
 .adn-act-tools { display: flex; gap: 2px; flex-shrink: 0; }
 .adn-inline-input { flex: 1; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--taupe); background: #fff; font-family: inherit; font-size: 12.5px; font-weight: 600; color: var(--ink); outline: none; }
@@ -527,7 +529,9 @@ function EditableDayCard({
   const [editingIdx, setEditingIdx] = useState(null)
   const [titleVal, setTitleVal] = useState(dayData.title)
   const [activityVals, setActivityVals] = useState([
-    ...dayData.activities,
+    ...dayData.activities.map(activity =>
+      typeof activity === 'string' ? activity : activity.name || 'Activity'
+    ),
   ])
   const [newActivity, setNewActivity] = useState('')
   const [addingNew, setAddingNew] = useState(false)
@@ -656,7 +660,12 @@ function EditableDayCard({
                   </button>
                 </div>
               ) : (
-                <p>{activity}</p>
+                <div className="adn-act-copy">
+                  <p>{activity}</p>
+                  {dayData.activities[actIdx]?.description && (
+                    <small>{dayData.activities[actIdx].description}</small>
+                  )}
+                </div>
               )}
 
               {editingIdx !== actIdx && (
@@ -781,7 +790,10 @@ function VariationCard({
   ) => {
     const copy = [...localDays]
 
-    copy[dayIdx].activities[actIdx] = val
+    const current = copy[dayIdx].activities[actIdx]
+    copy[dayIdx].activities[actIdx] = typeof current === 'string'
+      ? val
+      : { ...current, name: val }
 
     setLocalDays(copy)
     onDaysChange(copy)
@@ -949,7 +961,12 @@ function VariationCard({
                             {timeIcons[ai % 3]}
                           </div>
 
-                          <p>{act}</p>
+                          <div className="adn-act-copy">
+                            <p>{typeof act === 'string' ? act : `${act.name}${act.location ? ` — ${act.location}` : ''}`}</p>
+                            {typeof act !== 'string' && act.description && (
+                              <small>{act.description}</small>
+                            )}
+                          </div>
                         </div>
                       )
                     )}
@@ -1271,15 +1288,10 @@ function Itinerary() {
           ...day,
           day: Number(day.day ?? day.day_number ?? dayIndex + 1),
           title: day.title || day.activities?.[0]?.name || `Day ${dayIndex + 1}`,
-          // VariationCard edits activity strings; retain structured backend data
-          // separately so the save flow can be extended without losing it.
           activities: Array.isArray(day.activities)
-            ? day.activities.map(activity => {
-                if (typeof activity === 'string') return activity;
-                const name = activity?.name || 'Activity';
-                const location = activity?.location;
-                return location ? `${name} — ${location}` : name;
-              })
+            ? day.activities.map(activity =>
+                typeof activity === 'string' ? { name: activity } : activity
+              )
             : [],
         }));
 
