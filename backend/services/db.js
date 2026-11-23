@@ -17,6 +17,13 @@ console.log(
     .fields.map((field) => field.name)
 );
 
+console.log(
+  "RUNTIME BOOKING FIELDS:",
+  Prisma.dmmf.datamodel.models
+    .find((model) => model.name === "Booking")
+    .fields.map((field) => field.name)
+);
+
 const prisma = new PrismaClient({ adapter });
 
 module.exports = prisma;
