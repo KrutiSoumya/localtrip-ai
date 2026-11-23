@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test-travel-dates.js"
   },
   "keywords": [],
   "author": "",
@@ -26,9 +26,12 @@
     "helmet": "^8.1.0",
     "jsdom": "^29.1.0",
     "jsonwebtoken": "^9.0.3",
+    "node-cron": "^4.6.0",
+    "nodemailer": "^10.6.1",
     "pg": "^8.23.0",
     "prisma": "^7.7.0",
-    "puppeteer": "^24.42.0"
+    "puppeteer": "^24.42.0",
+    "qrcode": "^1.5.4"
   },
   "prisma": {
     "seed": "node prisma/seed.js"

@@ -13,6 +13,9 @@ import Bookings from './pages/Bookings'
 import Itinerary from './pages/Itinerary'
 import Analytics from './pages/Analytics'
 import Settings from './pages/Settings'
+import InvoiceReview from './pages/InvoiceReview'
+import PublicInvoice from './pages/PublicInvoice'
+import Guide from './pages/Guide'
 
 function App() {
   return (
@@ -23,11 +26,15 @@ function App() {
           {/* Public Routes - no login needed */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/invoice/:token" element={<PublicInvoice />} />
           
 
           {/* Protected Routes - redirects to /login if no token */}
           <Route path="/dashboard" element={
             <ProtectedRoute><Layout><Dashboard /></Layout></ProtectedRoute>
+          } />
+          <Route path="/guide" element={
+            <ProtectedRoute><Layout><Guide /></Layout></ProtectedRoute>
           } />
           <Route path="/leads" element={
             <ProtectedRoute><Layout><Leads /></Layout></ProtectedRoute>
@@ -38,6 +45,7 @@ function App() {
           <Route path="/leads/:id" element={
             <ProtectedRoute><Layout><LeadDetail /></Layout></ProtectedRoute>
           } />
+          <Route path="/invoices/:bookingId/review" element={<ProtectedRoute><Layout><InvoiceReview /></Layout></ProtectedRoute>} />
           <Route path="/bookings" element={
             <ProtectedRoute><Layout><Bookings /></Layout></ProtectedRoute>
           } />

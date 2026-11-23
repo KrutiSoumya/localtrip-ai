@@ -8,6 +8,7 @@ import {
   Settings,
   LogOut,
   X,
+  CircleHelp,
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 
@@ -17,6 +18,7 @@ const navItems = [
   { label: 'Bookings',          icon: Calendar,        path: '/bookings'  },
   { label: 'Itinerary Builder', icon: Map,             path: '/itinerary' },
   { label: 'Analytics',         icon: BarChart2,       path: '/analytics' },
+  { label: 'Guide',             icon: CircleHelp,      path: '/guide'     },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────

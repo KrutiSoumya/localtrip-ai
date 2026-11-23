@@ -5,7 +5,7 @@ import {
   ResponsiveContainer
 } from 'recharts'
 import {
-  TrendingUp, Users, DollarSign, BarChart2,
+  TrendingUp, Users, DollarSign, CreditCard, BarChart2,
   MapPin, RefreshCw, Award
 } from 'lucide-react'
 import { getAnalytics } from '../services/api'
@@ -478,6 +478,12 @@ function Analytics() {
       value: summary.totalRevenue ?? '₹0',
       icon: DollarSign,
       color: '#7c3aed',
+    },
+    {
+      label: 'Awaiting Payment',
+      value: summary.awaitingPayment ?? '?0',
+      icon: CreditCard,
+      color: '#dc2626',
     },
     {
       label: 'Total Leads',

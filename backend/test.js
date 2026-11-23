@@ -1,3 +1,6 @@
-const { testAI } = require('./services/aiService');
+const { generateTrip } = require('./services/aiService');
 
-testAI();
+generateTrip('Return valid JSON with a single field named "status" set to "ok".')
+  .then(result => {
+    console.log(result);
+  });

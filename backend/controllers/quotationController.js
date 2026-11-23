@@ -337,6 +337,13 @@ const createQuotation = async (req, res) => {
             },
         });
 
+        // Link newly generated customer quotations to the active booking, so
+        // post-trip invoices use this locked price instead of the internal stub.
+        await prisma.booking.updateMany({
+            where: { itineraryId: resolvedItineraryId, lead: { userId }, status: { not: "Cancelled" } },
+            data: { quotationId: quotation.id },
+        });
+
         // ------------------------------------------
         // 13. RETURN COMPLETE QUOTATION RESPONSE
         // ------------------------------------------
@@ -469,6 +476,21 @@ const getQuotationByLeadId = async (req, res) => {
     }
 };
 
+
+const markQuotationSent = async (req, res) => {
+    try {
+        const quotation = await prisma.quotation.findFirst({
+            where: { id: Number(req.params.id), itinerary: { lead: { userId: req.user.id } } },
+        });
+        if (!quotation) return res.status(404).json({ message: "Quotation not found" });
+        const sent = await prisma.quotation.update({ where: { id: quotation.id }, data: { status: "Sent", sentAt: new Date() } });
+        return res.json({ quotation: sent, message: "Quotation marked as sent. No payment is due until after the trip." });
+    } catch (error) {
+        console.error("Mark quotation sent error:", error);
+        return res.status(500).json({ message: "Could not mark quotation as sent" });
+    }
+};
+
 // --------------------------------------------------
 // EXPORT CONTROLLERS
 // --------------------------------------------------
@@ -476,4 +498,5 @@ const getQuotationByLeadId = async (req, res) => {
 module.exports = {
     createQuotation,
     getQuotationByLeadId,
+    markQuotationSent,
 };

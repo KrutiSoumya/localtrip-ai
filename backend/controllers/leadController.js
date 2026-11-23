@@ -371,7 +371,7 @@ const createLead = async (req, res) => {
         status: status || "New",
 
         score: score.score,
-        score_label: score.label || "Cold",
+        score_label: score.status || "Cold",
 
         last_contact: parsedLastContact,
 

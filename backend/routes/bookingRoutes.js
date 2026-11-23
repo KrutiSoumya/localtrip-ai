@@ -11,7 +11,7 @@ const {
   createBooking,
   getAllBookings,
   getUpcomingBookings,
-  updatePaymentStatus,
+  updateBookingStatus,
 } = require("../controllers/bookingController");
 
 // Get all bookings
@@ -37,24 +37,13 @@ router.post(
 // Get upcoming bookings
 router.get("/upcoming", authMiddleware, getUpcomingBookings);
 
-// Update booking payment status
+// Update booking lifecycle status (payment status is invoice-managed).
 router.patch(
-  "/:id/payment",
+  "/:id/status",
   authMiddleware,
-  [
-    param("id")
-      .isInt({ min: 1 })
-      .withMessage("Booking ID must be a valid positive integer"),
-
-    body("paymentStatus")
-      .trim()
-      .isIn(["Pending", "Paid", "Partial", "Failed"])
-      .withMessage(
-        "Payment status must be Pending, Paid, Partial, or Failed"
-      ),
-  ],
+  [param("id").isInt({ min: 1 }), body("status").trim().isIn(["Confirmed", "Cancelled"])],
   validateRequest,
-  updatePaymentStatus
+  updateBookingStatus
 );
 
 module.exports = router;

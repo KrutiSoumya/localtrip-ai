@@ -9,6 +9,7 @@ const validateRequest = require("../middleware/validation");
 const {
   createQuotation,
   getQuotationByLeadId,
+  markQuotationSent,
 } = require("../controllers/quotationController");
 
 
@@ -63,6 +64,9 @@ router.post(
   validateRequest,
   createQuotation
 );
+
+
+router.post("/:id/send", [param("id").isInt({ min: 1 })], validateRequest, markQuotationSent);
 
 
 // Get quotations for a lead

@@ -1,0 +1,13 @@
+const express = require("express");
+const { body, param } = require("express-validator");
+const auth = require("../middleware/authMiddleware");
+const validate = require("../middleware/validation");
+const c = require("../controllers/invoiceController");
+const router = express.Router();
+router.get("/public/:token", c.getPublicInvoice);
+router.get("/due-today", auth, c.getDueToday);
+router.post("/generate", auth, [body("booking_id").isInt({ min: 1 })], validate, c.generateInvoice);
+router.put("/:id/adjustments", auth, [param("id").isInt({ min: 1 }), body("adjustments").isArray()], validate, c.updateAdjustments);
+router.post("/:id/send", auth, [param("id").isInt({ min: 1 })], validate, c.sendInvoice);
+router.patch("/:id/mark-paid", auth, [param("id").isInt({ min: 1 }), body("method").trim().notEmpty(), body("reference").trim().notEmpty().isLength({ max: 255 })], validate, c.markInvoicePaid);
+module.exports = router;

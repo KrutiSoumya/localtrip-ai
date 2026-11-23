@@ -14,7 +14,8 @@ import {
 
 import {
   getAllBookings,
-  updateBookingPayment
+  markInvoicePaid,
+  updateBookingStatus
 } from '../services/api'
 
 // ── Helpers (unchanged) ───────────────────────────────────────────────────────
@@ -103,7 +104,7 @@ function Toast({ message, type, onClose }) {
 
 function StatusBadge({ status }) {
   const cls =
-    status === 'Confirmed' ? 'calm' : status === 'Completed' ? 'quiet' : 'warm'
+    status === 'Confirmed' ? 'calm' : status === 'Completed' ? 'quiet' : status === 'Cancelled' ? 'err' : 'warm'
   return (
     <span className={`bk-badge ${cls}`}>
       <span className="bk-dot" />
@@ -126,65 +127,14 @@ function PaymentBadge({ status }) {
 
 // ── Payment Dropdown (logic unchanged) ────────────────────────────────────────
 
-function PaymentDropdown({ bookingId, current, onUpdate }) {
-  const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
-
-  const handleSelect = async (value) => {
-    if (value === current) {
-      setOpen(false)
-      return
-    }
-    setLoading(true)
-    setOpen(false)
-    await onUpdate(bookingId, value)
-    setLoading(false)
-  }
-
-  return (
-    <div style={{ position: 'relative' }}>
-      <button
-        className="bk-change"
-        onClick={() => setOpen((p) => !p)}
-        disabled={loading}
-      >
-        {loading ? (
-          <span className="bk-spin sm" />
-        ) : (
-          <>
-            <ChevronDown size={11} />
-            Change
-          </>
-        )}
-      </button>
-
-      {open && (
-        <>
-          <div
-            style={{ position: 'fixed', inset: 0, zIndex: 10 }}
-            onClick={() => setOpen(false)}
-          />
-          <div className="bk-menu">
-            {['Paid', 'Pending'].map((opt) => (
-              <button
-                key={opt}
-                className={current === opt ? 'active' : ''}
-                onClick={() => handleSelect(opt)}
-              >
-                {current === opt && <CheckCircle size={12} />}
-                {opt}
-              </button>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
-  )
+function PaymentDropdown({ invoice, onUpdate }) {
+  const [open,setOpen]=useState(false); const [method,setMethod]=useState('UPI'); const [reference,setReference]=useState(''); const [loading,setLoading]=useState(false);
+  if (!invoice || !['Sent','Overdue'].includes(invoice.status)) return <span>?</span>
+  const submit=async e=>{e.preventDefault();setLoading(true);try{await onUpdate(invoice.id,{method,reference});setOpen(false)}finally{setLoading(false)}}
+  return <div><button className="bk-change" onClick={()=>setOpen(v=>!v)}>Mark as Paid</button>{open&&<form onSubmit={submit} style={{position:'absolute',zIndex:20,background:'#fffdf9',padding:12,border:'1px solid #ddd',boxShadow:'0 4px 16px #0002',display:'grid',gap:8}}><select value={method} onChange={e=>setMethod(e.target.value)}><option>UPI</option><option>Cash</option><option>Bank transfer</option><option>Card</option><option>Other</option></select><input required placeholder="Payment reference" value={reference} onChange={e=>setReference(e.target.value)}/><button disabled={loading}>{loading?'Saving?':'Confirm payment'}</button></form>}</div>
 }
 
-// ── Booking Row ───────────────────────────────────────────────────────────────
-
-function BookingRow({ booking, onPaymentUpdate, index }) {
+function BookingRow({ booking, onPaymentUpdate, onCancel, index }) {
   const days = daysUntil(booking.travelDate)
   const isPast = days !== null && days < 0
   const isSoon = days !== null && days >= 0 && days <= 7
@@ -212,7 +162,7 @@ function BookingRow({ booking, onPaymentUpdate, index }) {
     booking.total_price ??
     0
 
-  const paymentStatus = booking.paymentStatus || 'Pending'
+  const paymentStatus = booking.paymentStatus || 'Not Due'
   const status = booking.status || 'Pending'
 
   return (
@@ -266,11 +216,7 @@ function BookingRow({ booking, onPaymentUpdate, index }) {
       </td>
 
       <td>
-        <PaymentDropdown
-          bookingId={booking.id}
-          current={paymentStatus}
-          onUpdate={onPaymentUpdate}
-        />
+        <div style={{display:"grid",gap:6}}><PaymentDropdown invoice={booking.invoice} onUpdate={onPaymentUpdate} />{booking.status === "Confirmed" && <button className="bk-change" onClick={() => onCancel(booking)}>Cancel booking</button>}</div>
       </td>
     </tr>
   )
@@ -342,31 +288,22 @@ function Bookings() {
 
   // ── Payment Update (unchanged) ──────────────────────────────────────────────
 
-  const handlePaymentUpdate = async (bookingId, newStatus) => {
-    const previousBookings = bookings
-
-    setBookings((current) =>
-      current.map((booking) =>
-        booking.id === bookingId
-          ? { ...booking, paymentStatus: newStatus }
-          : booking
-      )
-    )
-
+  const handlePaymentUpdate = async (invoiceId, payment) => {
     try {
-      await updateBookingPayment(bookingId, newStatus)
-      showToast(`Payment status updated to ${newStatus}`)
+      await markInvoicePaid(invoiceId, payment)
+      setBookings(current => current.map(b => b.invoice?.id === invoiceId ? { ...b, paymentStatus: 'Paid', status: 'Completed', invoice: { ...b.invoice, status: 'Paid' } } : b))
+      showToast('Invoice marked paid')
     } catch (error) {
-      console.error(
-        'Payment update failed:',
-        error.response?.data || error.message
-      )
-      setBookings(previousBookings)
-      showToast('Failed to update payment status', 'error')
+      showToast(error.response?.data?.message || 'Failed to mark invoice paid', 'error')
+      throw error
     }
   }
 
-  // ── Filter + Search (unchanged) ─────────────────────────────────────────────
+  const handleCancel = async booking => {
+    if (!window.confirm(`Cancel the trip for ${booking.lead?.customer_name || 'this customer'}?`)) return
+    try { await updateBookingStatus(booking.id, 'Cancelled'); setBookings(current => current.map(b => b.id === booking.id ? { ...b, status: 'Cancelled' } : b)); showToast('Booking cancelled') }
+    catch (error) { showToast(error.response?.data?.message || 'Could not cancel booking', 'error') }
+  }
 
   const filtered = bookings.filter((booking) => {
     const customer =
@@ -402,28 +339,24 @@ function Bookings() {
 
   // ── Summary Stats (unchanged) ───────────────────────────────────────────────
 
-  const costOf = (booking) =>
-    Number(
-      booking.totalCost ??
-        booking.quotation?.total_price ??
-        booking.total_price ??
-        0
-    )
-
-  const totalRevenue = bookings.reduce((sum, b) => sum + costOf(b), 0)
+  const quotedValue = bookings.reduce((sum, b) => sum + Number(b.quotation?.total_price || b.total_price || 0), 0)
 
   const paidRevenue = bookings
-    .filter((b) => b.paymentStatus === 'Paid')
-    .reduce((sum, b) => sum + costOf(b), 0)
+    .filter((b) => b.invoice?.status === 'Paid')
+    .reduce((sum, b) => sum + Number(b.invoice.final_amount || 0), 0)
+
+  const outstandingRevenue = bookings
+    .filter((b) => ['Sent', 'Overdue'].includes(b.invoice?.status))
+    .reduce((sum, b) => sum + Number(b.invoice.final_amount || 0), 0)
 
   const pendingCount = bookings.filter(
-    (b) => b.paymentStatus === 'Pending'
+    (b) => ['Invoice Sent', 'Overdue'].includes(b.paymentStatus)
   ).length
 
   const confirmedCount = bookings.filter((b) => b.status === 'Confirmed').length
 
-  const STATUS_TABS = ['All', 'Confirmed', 'Completed']
-  const PAYMENT_TABS = ['All', 'Paid', 'Pending']
+  const STATUS_TABS = ['All', 'Confirmed', 'Completed', 'Cancelled']
+  const PAYMENT_TABS = ['All', 'Not Due', 'Invoice Sent', 'Paid', 'Overdue']
 
   // UI-only: reset the existing filter/search state
   const hasActiveFilters =
@@ -484,9 +417,9 @@ function Bookings() {
 
         <div className="bk-stats">
           <Stat label="Total bookings" value={bookings.length} sub={`${confirmedCount} confirmed`} />
-          <Stat label="Total revenue" value={totalRevenue} money sub="all bookings" />
+          <Stat label="Quoted value" value={quotedValue} money sub="confirmed and upcoming trips" />
           <Stat label="Collected" value={paidRevenue} money sub="payments received" />
-          <Stat label="Pending payments" value={pendingCount} sub={`${formatCurrency(totalRevenue - paidRevenue)} outstanding`} />
+          <Stat label="Awaiting payment" value={pendingCount} sub="Sent or overdue invoices" />
         </div>
       </section>
 
@@ -546,7 +479,7 @@ function Bookings() {
             <table className="bk-table">
               <thead>
                 <tr>
-                  {['Ref #', 'Customer', 'Destination', 'Travel Date', 'Total Cost', 'Payment', 'Status', 'Actions'].map(
+                  {['Ref #', 'Customer', 'Destination', 'Travel Date', 'Total Cost', 'Payment', 'Status', 'Invoice'].map(
                     (col) => (
                       <th key={col}>{col}</th>
                     )
@@ -560,6 +493,7 @@ function Bookings() {
                     index={i}
                     booking={booking}
                     onPaymentUpdate={handlePaymentUpdate}
+                    onCancel={handleCancel}
                   />
                 ))}
               </tbody>
@@ -577,7 +511,7 @@ function Bookings() {
                 Collected <strong className="g">{formatCurrency(paidRevenue)}</strong>
               </p>
               <p>
-                Outstanding <strong className="r">{formatCurrency(totalRevenue - paidRevenue)}</strong>
+                Outstanding <strong className="r">{formatCurrency(outstandingRevenue)}</strong>
               </p>
             </div>
           </div>

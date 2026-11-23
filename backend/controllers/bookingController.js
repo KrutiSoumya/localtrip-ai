@@ -92,8 +92,9 @@ const createBooking = async (req, res) => {
           itineraryId: parsedItineraryId,
           quotationId: quotation.id,
           status: "Confirmed",
-          paymentStatus: "Pending",
+          paymentStatus: "Not Due",
           travelDate: lead.travel_date,
+          returnDate: lead.travel_date ? new Date(new Date(lead.travel_date).getTime() + Math.max(itinerary.days.length, 0) * 86400000) : null,
         },
         include: {
           lead: true,
@@ -149,6 +150,7 @@ const getAllBookings = async (req, res) => {
         lead: true,
         itinerary: true,
         quotation: true,
+        invoice: true,
       },
     });
 
@@ -192,6 +194,7 @@ const getUpcomingBookings = async (req, res) => {
         lead: true,
         itinerary: true,
         quotation: true,
+        invoice: true,
       },
     });
 
@@ -208,55 +211,22 @@ const getUpcomingBookings = async (req, res) => {
 };
 
 
-// ===== UPDATE PAYMENT =====
-const updatePaymentStatus = async (req, res) => {
+// ===== UPDATE BOOKING STATUS =====
+const updateBookingStatus = async (req, res) => {
   try {
-    const { id } = req.params;
-    const { paymentStatus } = req.body;
-
-    const bookingId = parseInt(id, 10);
-    const userId = req.user.id;
-
-    const existingBooking = await prisma.booking.findFirst({
-      where: {
-        id: bookingId,
-        lead: {
-          userId,
-        },
-      },
-    });
-
-    if (!existingBooking) {
-      return res.status(404).json({
-        message: "Booking not found",
-      });
-    }
-
-    const booking = await prisma.booking.update({
-      where: {
-        id: bookingId,
-      },
-      data: {
-        paymentStatus,
-      },
-    });
-
-    return res.json(booking);
-
+    const booking = await prisma.booking.findFirst({ where: { id: Number(req.params.id), lead: { userId: req.user.id } } });
+    if (!booking) return res.status(404).json({ message: "Booking not found" });
+    const updated = await prisma.booking.update({ where: { id: booking.id }, data: { status: req.body.status } });
+    return res.json(updated);
   } catch (error) {
-    console.error("Payment status update error:", error);
-
-    return res.status(500).json({
-      message: "Error updating payment status",
-      error: error.message,
-    });
+    console.error("Booking update error:", error);
+    return res.status(500).json({ message: "Error updating booking" });
   }
 };
-
 
 module.exports = {
   createBooking,
   getAllBookings,
   getUpcomingBookings,
-  updatePaymentStatus,
+  updateBookingStatus,
 };

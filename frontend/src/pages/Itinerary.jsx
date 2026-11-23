@@ -11,7 +11,7 @@ import api, { getLeadById } from '../services/api'
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const buildFallbackVariation = (parsed) => ({
+const _buildFallbackVariation = (parsed) => ({
   id: 'A',
   title: `${parsed?.destination || 'Trip'} Itinerary`,
   score: 0,
@@ -1084,7 +1084,6 @@ function Itinerary() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const leadId   = params.get('leadId')
-  const itineraryId = params.get('itineraryId')
   const [lead, setLead] = useState(null)
   const [leads, setLeads] = useState([])
   const [selectedLeadId, setSelectedLeadId] = useState(leadId || '')
@@ -1382,7 +1381,7 @@ function Itinerary() {
       const pdfResponse = await api.post(
         '/pdf/itinerary',
         { itinerary_id: itineraryId },
-        { responseType: 'blob' }
+        { responseType: 'arraybuffer' }
       )
 
       const blob = new Blob([pdfResponse.data], { type: 'application/pdf' })
@@ -1517,7 +1516,9 @@ function Itinerary() {
   const handleReject = async () => {
     try {
       await api.post('/ai/feedback', { action: 'reject', versionId: selectedId })
-    } catch {}
+    } catch {
+      showToast('Could not submit itinerary feedback.', 'error')
+    }
     showToast('Itinerary rejected. You can regenerate with changes.', 'reject')
     setSelectedId(null)
   }

@@ -1,3 +1,5 @@
+const prisma = require("../services/db");
+const { getAgentUpiId, setAgentUpiId, setAgentProfileSettings } = require("../services/agentPaymentConfig");
 
 const fs = require("fs");
 const path = require("path");
@@ -35,41 +37,14 @@ function getActiveDestinations() {
 // Save agent configuration
 const saveAgentConfig = async (req, res) => {
   try {
-    const { name, contact, currency_preference } = req.body;
-
     const userId = req.user.id || req.user.userId;
-
-    if (!userId) {
-      return res.status(401).json({
-        error: "User ID not found"
-      });
-    }
-
-    const preferences = {
-      name,
-      contact,
-      currency_preference
-    };
-
-    const config = await prisma.agentConfig.upsert({
-      where: { userId },
-      update: { preferences },
-      create: {
-        userId,
-        preferences
-      }
-    });
-
-    res.json({
-      message: "Agent configuration saved successfully",
-      config
-    });
-
+    if (!userId) return res.status(401).json({ error: "User ID not found" });
+    const settings = { name: req.body.name, contact: req.body.contact, currency_preference: req.body.currency_preference };
+    await setAgentProfileSettings(userId, settings);
+    return res.json({ message: "Agent configuration saved successfully", config: settings });
   } catch (error) {
     console.error("Save agent config error:", error);
-    res.status(500).json({
-      error: "Failed to save agent configuration"
-    });
+    return res.status(500).json({ error: "Failed to save agent configuration" });
   }
 };
 
@@ -208,7 +183,22 @@ const deleteDestination = async (req, res) => {
   }
 };
 
+
+const getAgentPaymentConfig = async (req, res) => {
+  try { return res.json({ upi_id: await getAgentUpiId(req.user.id) || "" }); }
+  catch (error) { console.error("Get agent payment config error:", error); return res.status(500).json({ message: "Could not load payment settings" }); }
+};
+const saveAgentPaymentConfig = async (req, res) => {
+  try {
+    const upiId = String(req.body.upi_id || "").trim();
+    await setAgentUpiId(req.user.id, upiId);
+    return res.json({ message: "Payment settings saved", upi_id: upiId });
+  } catch (error) { console.error("Save agent payment config error:", error); return res.status(500).json({ message: "Could not save payment settings" }); }
+};
+
 module.exports = {
+  getAgentPaymentConfig,
+  saveAgentPaymentConfig,
   saveAgentConfig,
   getDestinations,
   addDestination,

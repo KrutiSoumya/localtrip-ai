@@ -4,7 +4,7 @@ import { getAnalyticsSummary } from '../services/api'
 function useAnalyticsSummary() {
   const [data, setData]       = useState(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError]     = useState(null)
+  const [error]               = useState(null)
 
   useEffect(() => {
     let cancelled = false
@@ -14,7 +14,7 @@ function useAnalyticsSummary() {
         setLoading(true)
         const res = await getAnalyticsSummary()
         if (!cancelled) setData(res.data)
-      } catch (err) {
+      } catch {
         if (!cancelled) {
           // Backend not connected yet — fall back to mock data
           setData({

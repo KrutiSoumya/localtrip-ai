@@ -137,6 +137,7 @@ async function main() {
       itineraryId: itinerary1.id,
       quotationId: quotation1.id,
       status: "Confirmed",
+      paymentStatus: "Not Due",
     },
   });
 
@@ -145,7 +146,8 @@ async function main() {
       leadId: leads[1].id,
       itineraryId: itinerary2.id,
       quotationId: quotation2.id,
-      status: "Pending",
+      status: "Confirmed",
+      paymentStatus: "Not Due",
     },
   });
 

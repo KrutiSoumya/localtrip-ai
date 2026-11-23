@@ -30,6 +30,8 @@ const bookingRoutes = require("./routes/bookingRoutes");
 const pdfRoutes = require("./routes/pdfRoutes");
 const quotationRoutes = require("./routes/quotationRoutes");
 const itineraryRoutes = require("./routes/itineraryRoutes");
+const invoiceRoutes = require("./routes/invoiceRoutes");
+const { startOverdueInvoiceJob } = require("./services/overdueInvoiceJob");
 
 // API routes
 app.use("/api/config", configRoutes);
@@ -42,6 +44,7 @@ app.use("/api/bookings", bookingRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use("/api/quotations", quotationRoutes);
 app.use("/api/itinerary", itineraryRoutes);
+app.use("/api/invoices", invoiceRoutes);
 
 // Test route
 app.get("/", (req, res) => {
@@ -52,5 +55,6 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
+  startOverdueInvoiceJob();
   console.log(`Server running on port ${PORT}`);
 });

@@ -124,11 +124,13 @@ export const getBookings = () =>
 export const createBooking = (bookingData) =>
   api.post('/bookings', bookingData)
 
-// Update booking payment status
-export const updateBookingPayment = (id, paymentStatus) =>
-  api.patch(`/bookings/${id}/payment`, {
-    paymentStatus,
-  })
+export const getInvoicesDueToday = () => api.get('/invoices/due-today')
+export const generateInvoice = (bookingId) => api.post('/invoices/generate', { booking_id: bookingId })
+export const updateInvoiceAdjustments = (id, adjustments) => api.put(`/invoices/${id}/adjustments`, { adjustments })
+export const sendInvoice = (id) => api.post(`/invoices/${id}/send`)
+export const markInvoicePaid = (id, payment) => api.patch(`/invoices/${id}/mark-paid`, payment)
+export const getPublicInvoice = (token) => api.get(`/invoices/public/${token}`)
+export const updateBookingStatus = (id, status) => api.patch(`/bookings/${id}/status`, { status })
 
 // ─── Analytics ───────────────────────────────────────────────────────────────
 

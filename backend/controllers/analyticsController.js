@@ -45,6 +45,7 @@ const getAnalytics = async (req, res) => {
       include: {
         lead: true,
         quotation: true,
+        invoice: true,
       },
       orderBy: {
         bookedAt: "asc",
@@ -52,7 +53,7 @@ const getAnalytics = async (req, res) => {
     });
 
     const confirmedBookings = bookings.filter(
-      (booking) => booking.status === "Confirmed"
+      (booking) => ["Confirmed", "Completed"].includes(booking.status)
     );
 
     const confirmedLeadIds = new Set(
@@ -62,21 +63,18 @@ const getAnalytics = async (req, res) => {
     const totalLeads = leads.length;
     const convertedLeads = confirmedLeadIds.size;
 
-    const totalRevenue = confirmedBookings.reduce(
-      (sum, booking) =>
-        sum + Number(booking.quotation?.total_price || 0),
-      0
-    );
+    const totalRevenue = bookings.reduce((sum, booking) =>
+      sum + (booking.invoice?.status === "Paid" ? Number(booking.invoice.final_amount || 0) : 0), 0);
 
     const conversionRate =
       totalLeads === 0
         ? 0
         : (convertedLeads / totalLeads) * 100;
 
-    const averageDealSize =
-      confirmedBookings.length === 0
-        ? 0
-        : totalRevenue / confirmedBookings.length;
+    const paidCount = bookings.filter(booking => booking.invoice?.status === "Paid").length;
+    const averageDealSize = paidCount === 0 ? 0 : totalRevenue / paidCount;
+    const awaitingPayment = bookings.filter(booking => ["Sent", "Overdue"].includes(booking.invoice?.status)).reduce((sum, booking) => sum + Number(booking.invoice.final_amount || 0), 0);
+    const expectedRevenue = confirmedBookings.filter(booking => booking.paymentStatus !== "Paid").reduce((sum, booking) => sum + Number(booking.quotation?.total_price || 0), 0);
 
     // Monthly leads for the last 6 months
     const sixMonthsAgo = new Date(
@@ -139,11 +137,8 @@ const getAnalytics = async (req, res) => {
         }
       );
 
-      const weekRevenue = weekBookings.reduce(
-        (sum, booking) =>
-          sum + Number(booking.quotation?.total_price || 0),
-        0
-      );
+      const weekRevenue = weekBookings.reduce((sum, booking) =>
+        sum + (booking.invoice?.status === "Paid" ? Number(booking.invoice.final_amount || 0) : 0), 0);
 
       bookingsOverTime.push({
         week: `Wk ${8 - i}`,
@@ -201,6 +196,8 @@ const getAnalytics = async (req, res) => {
     // Summary
     const summary = {
       totalRevenue: formatLakhs(totalRevenue),
+      awaitingPayment: formatLakhs(awaitingPayment),
+      expectedRevenue: formatLakhs(expectedRevenue),
       totalLeads,
       conversionRate: `${conversionRate.toFixed(1)}%`,
       avgDealSize: formatCurrency(averageDealSize),
@@ -238,13 +235,18 @@ const getSummary = async (req, res) => {
 
     const confirmedBookings = await prisma.booking.count({
       where: {
-        status: "Confirmed",
+        status: { in: ["Confirmed", "Completed"] },
         lead: { userId },
       },
     });
 
     const conversionRate =
       totalLeads === 0 ? 0 : confirmedBookings / totalLeads;
+
+    const userBookings = await prisma.booking.findMany({ where: { lead: { userId } }, include: { quotation: true, invoice: true } });
+    const paidRevenue = userBookings.reduce((sum, b) => sum + (b.invoice?.status === "Paid" ? Number(b.invoice.final_amount || 0) : 0), 0);
+    const awaitingPayment = userBookings.filter(b => ["Sent", "Overdue"].includes(b.invoice?.status)).reduce((sum, b) => sum + Number(b.invoice.final_amount || 0), 0);
+    const expectedRevenue = userBookings.filter(b => b.status === "Confirmed" && b.paymentStatus !== "Paid").reduce((sum, b) => sum + Number(b.quotation?.total_price || 0), 0);
 
     const budgetStats = await prisma.lead.aggregate({
       where: { userId },
@@ -259,6 +261,9 @@ const getSummary = async (req, res) => {
         (conversionRate * 100).toFixed(2)
       ),
       average_budget: budgetStats._avg.budget || 0,
+      total_revenue: paidRevenue,
+      awaiting_payment: awaitingPayment,
+      expected_revenue: expectedRevenue,
     });
   } catch (error) {
     console.error("Summary error:", error);
@@ -341,43 +346,14 @@ const getLeadsByMonth = async (req, res) => {
 // ===== REVENUE & PAYMENTS =====
 const getRevenueStats = async (req, res) => {
   try {
-    const confirmedBookings = await prisma.booking.findMany({
-      where: {
-        status: "Confirmed",
-        lead: { userId: req.user.id },
-      },
-      include: {
-        quotation: true,
-        lead: true,
-      },
-    });
-
-    const unpaidBookings = confirmedBookings.filter(
-      (booking) => booking.paymentStatus !== "Paid"
-    );
-
-    const totalRevenue = confirmedBookings.reduce(
-      (sum, booking) =>
-        sum + Number(booking.quotation?.total_price || 0),
-      0
-    );
-
-    const pendingPayments = unpaidBookings.reduce(
-      (sum, booking) =>
-        sum + Number(booking.quotation?.total_price || 0),
-      0
-    );
-
-    return res.json({
-      total_revenue: totalRevenue,
-      pending_payments: pendingPayments,
-      unpaid_bookings: unpaidBookings,
-    });
+    const bookings = await prisma.booking.findMany({ where: { lead: { userId: req.user.id } }, include: { quotation: true, invoice: true, lead: true } });
+    const totalRevenue = bookings.reduce((sum, b) => sum + (b.invoice?.status === "Paid" ? Number(b.invoice.final_amount || 0) : 0), 0);
+    const awaitingPayment = bookings.filter(b => ["Sent", "Overdue"].includes(b.invoice?.status)).reduce((sum, b) => sum + Number(b.invoice.final_amount || 0), 0);
+    const expectedRevenue = bookings.filter(b => b.status === "Confirmed" && b.paymentStatus !== "Paid").reduce((sum, b) => sum + Number(b.quotation?.total_price || 0), 0);
+    return res.json({ total_revenue: totalRevenue, awaiting_payment: awaitingPayment, expected_revenue: expectedRevenue, unpaid_bookings: bookings.filter(b => b.status === "Confirmed" && b.paymentStatus !== "Paid") });
   } catch (error) {
     console.error("Revenue error:", error);
-    return res.status(500).json({
-      message: "Error fetching revenue stats",
-    });
+    return res.status(500).json({ message: "Error fetching revenue stats" });
   }
 };
 

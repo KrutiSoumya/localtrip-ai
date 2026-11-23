@@ -5,7 +5,7 @@ import {
   Bell, Star, FileText, ClipboardCheck, ChevronRight,
 } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { getLeads, getBookings } from '../services/api'
+import { getLeads, getAllBookings, getInvoicesDueToday } from '../services/api'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // THEME  (UI only — maroon / ivory / champagne gold, Amravati-inspired)
@@ -292,8 +292,10 @@ function KpiCard({ title, value, subtitle, icon: Icon, loading, featured }) {
 
 function Dashboard() {
   const navigate = useNavigate()
+  const [showGuideHint, setShowGuideHint] = useState(() => localStorage.getItem('localtrip-guide-hint-dismissed') !== 'true')
   const [leads, setLeads] = useState([])
   const [bookings, setBookings] = useState([])
+  const [dueInvoices, setDueInvoices] = useState([])
   const [dismissedIds, setDismissedIds] = useState([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState('')
@@ -305,7 +307,7 @@ function Dashboard() {
       setLoading(true)
       setLoadError('')
 
-      const [leadsResult, bookingsResult] = await Promise.allSettled([getLeads(), getBookings()])
+      const [leadsResult, bookingsResult, dueResult] = await Promise.allSettled([getLeads(), getAllBookings(), getInvoicesDueToday()])
       if (!active) return
 
       if (leadsResult.status === 'fulfilled') {
@@ -320,6 +322,8 @@ function Dashboard() {
       } else {
         console.error('Dashboard bookings request failed:', bookingsResult.reason)
       }
+      if (dueResult.status === 'fulfilled') setDueInvoices(toArray(dueResult.value?.data))
+      else console.error('Due invoice request failed:', dueResult.reason)
 
       setLoading(false)
     }
@@ -343,13 +347,11 @@ function Dashboard() {
     })
   })
 
-  const confirmedLeads = leads.filter((lead) => getPipelineStage(lead) === 'Confirmed')
-  const confirmedBookings = bookings.filter((booking) => {
-    const status = String(booking?.status || booking?.payment_status || '').toLowerCase()
-    return status.includes('confirm') || status.includes('book')
-  })
-  const revenue = bookings.reduce((total, booking) => total + getBookingAmount(booking), 0)
-  const conversionRate = leads.length ? Math.round((confirmedLeads.length / leads.length) * 100) : 0
+  const confirmedBookings = bookings.filter((booking) => ['Confirmed', 'Completed'].includes(booking?.status))
+  const convertedLeadIds = new Set(confirmedBookings.map((booking) => booking?.leadId))
+  const revenue = bookings.reduce((total, booking) => total + (booking.invoice?.status === 'Paid' ? Number(booking.invoice.final_amount || 0) : 0), 0)
+  const awaiting = bookings.filter(booking => ['Sent','Overdue'].includes(booking.invoice?.status)).reduce((total, booking) => total + Number(booking.invoice.final_amount || 0), 0)
+  const conversionRate = leads.length ? Math.round((convertedLeadIds.size / leads.length) * 100) : 0
 
   const kpiCards = [
     {
@@ -361,25 +363,26 @@ function Dashboard() {
     },
     {
       title: 'Confirmed Bookings',
-      value: loading ? '—' : confirmedBookings.length || confirmedLeads.length,
-      subtitle: 'Based on available booking and lead records',
+      value: loading ? '—' : confirmedBookings.length,
+      subtitle: 'Confirmed and completed bookings; cancelled bookings excluded',
       icon: Calendar,
     },
     {
       title: 'Conversion Rate',
       value: loading ? '—' : `${conversionRate}%`,
-      subtitle: 'Confirmed leads ÷ total leads',
+      subtitle: 'Leads with a confirmed booking ÷ total leads',
       icon: TrendingUp,
     },
     {
-      title: 'Total Revenue',
+      title: 'Collected',
       value: loading ? '—' : formatCurrency(revenue) || '₹0',
-      subtitle: 'Sum of available booking amounts',
+      subtitle: 'Paid invoices only',
       icon: IndianRupee,
     },
   ]
 
   const priorityLeads = leads.slice().sort((a, b) => getLeadScore(b) - getLeadScore(a)).slice(0, 5)
+  kpiCards.push({ title: 'Awaiting Payment', value: loading ? '—' : formatCurrency(awaiting) || '₹0', subtitle: 'Invoices sent or overdue', icon: CreditCard })
 
   const aiPanel = {
     topLeads: priorityLeads.map((lead) => ({
@@ -394,9 +397,10 @@ function Dashboard() {
     aiAcceptanceRate: 80,
   }
 
-  const alerts = buildAlertsFromPriorityLeads(leads)
+  const alerts = [...buildAlertsFromPriorityLeads(leads), ...dueInvoices.map(b => ({ id:`invoice-${b.id}`,type:'overdue',message:`Invoice due: ${getBookingCustomer(b)} ? ${getBookingDestination(b)}`,bookingId:b.id }))]
   const visibleAlerts = alerts.filter((alert) => !dismissedIds.includes(alert.id))
   const timeline = buildTimelineFromBookings(bookings)
+  dueInvoices.forEach(b => { const date = new Date(b.returnDate); const today = getDateForOffset(0); const dayIndex = Math.floor((new Date(date.getFullYear(),date.getMonth(),date.getDate()) - new Date(today.getFullYear(),today.getMonth(),today.getDate())) / 86400000); if(dayIndex < 0) timeline[0].payments.push({name:getBookingCustomer(b),amount:formatCurrency(getBookingAmount(b)),invoiceDue:true}); else if(dayIndex < 7) timeline[dayIndex].payments.push({name:getBookingCustomer(b),amount:formatCurrency(getBookingAmount(b)),invoiceDue:true}) })
 
   const dismissAlert = (id) => setDismissedIds((previous) => [...previous, id])
 
@@ -486,6 +490,17 @@ function Dashboard() {
       </div>
 
       {/* ALERTS */}
+      {showGuideHint && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', padding: '14px 18px', border: `1px solid ${T.border}`, borderRadius: '12px', background: T.offwhite }}>
+          <p style={{ margin: 0, color: T.maroon, fontSize: '14px' }}>New here? Watch the 3-minute guide</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button type="button" onClick={() => navigate('/guide')} style={{ border: 0, borderRadius: '999px', padding: '9px 15px', background: T.maroon, color: T.offwhite, cursor: 'pointer' }}>Watch guide</button>
+            <button type="button" aria-label="Dismiss guide hint" onClick={() => { localStorage.setItem('localtrip-guide-hint-dismissed', 'true'); setShowGuideHint(false) }} style={{ border: 0, background: 'transparent', color: T.muted, cursor: 'pointer', fontSize: '20px', lineHeight: 1 }}>×</button>
+          </div>
+        </div>
+      )}
+
+      {/* ALERTS */}
       {visibleAlerts.length > 0 && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {visibleAlerts.map((alert) => {
@@ -508,7 +523,7 @@ function Dashboard() {
                 ) : (
                   <CalendarClock size={15} color={T.maroon} style={{ flexShrink: 0 }} />
                 )}
-                <p style={{ margin: 0, fontSize: '13px', flex: 1, color: T.espresso }}>{alert.message}</p>
+                <p style={{ margin: 0, fontSize: '13px', flex: 1, color: T.espresso }}>{alert.message}</p>{alert.bookingId && <button onClick={() => navigate(`/invoices/${alert.bookingId}/review`)}>Review</button>}
                 <button
                   aria-label="Dismiss alert"
                   onClick={() => dismissAlert(alert.id)}
@@ -740,6 +755,12 @@ function Dashboard() {
             </div>
           </div>
 
+          {/* Invoices Due Today */}
+          <div style={{...card, borderColor:'#c94b48'}}>
+            <h2 style={{...cardTitle,color:'#a12622'}}>Invoices Due Today</h2>
+            {dueInvoices.length === 0 ? <p style={{color:T.muted}}>No confirmed trips are due for invoicing today.</p> : dueInvoices.map(b => <div key={b.id} style={{display:'flex',alignItems:'center',gap:12,padding:'12px 0',borderBottom:`1px solid ${T.border}`,flexWrap:'wrap'}}><div style={{flex:1,minWidth:180}}><strong>{getBookingCustomer(b)}</strong><div>{getBookingDestination(b)} ? Return {new Date(b.returnDate).toLocaleDateString('en-IN')}</div></div><strong>{formatCurrency(getBookingAmount(b)) || '?'}</strong><button onClick={()=>navigate(`/invoices/${b.id}/review`)} style={{padding:'9px 14px',border:0,borderRadius:6,background:T.maroon,color:'white',cursor:'pointer'}}>Review &amp; Send Invoice</button></div>)}
+          </div>
+
           {/* 7-DAY TIMELINE */}
           <div style={card}>
             <div
@@ -851,13 +872,13 @@ function Dashboard() {
                           style={{
                             padding: '7px 8px',
                             borderRadius: '6px',
-                            backgroundColor: T.blush,
-                            border: '1px solid #d9aaa3',
+                            backgroundColor: payment.invoiceDue ? '#fde1df' : T.blush,
+                            border: payment.invoiceDue ? '1px solid #c94b48' : '1px solid #d9aaa3',
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
                             <CreditCard size={9} color={T.brick} />
-                            <span style={{ fontSize: '9px', fontWeight: 600, color: T.brick }}>Payment</span>
+                            <span style={{ fontSize: '9px', fontWeight: 600, color: payment.invoiceDue ? '#a12622' : T.brick }}>{payment.invoiceDue ? 'Invoice due' : 'Payment'}</span>
                           </div>
                           <p className="ml-cap" style={{ margin: 0, fontSize: '10px', color: '#5a1c24', fontWeight: 500, lineHeight: 1.3 }}>
                             {payment.name}

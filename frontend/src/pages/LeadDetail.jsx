@@ -5,51 +5,8 @@ import {
   Calendar, Users, CheckCircle, FileText,
   Map, ThumbsUp, Sparkles, ChevronRight, X, Download
 } from 'lucide-react'
-import { getLeadById, getItinerariesByLead } from '../services/api'
+import { getLeadById, getItinerariesByLead, getQuotationByLead, getAllBookings } from '../services/api'
 import api from '../services/api'
-
-// ── Mock fallback ─────────────────────────────────────────────────────────────
-
-const mockLead = {
-  id: 1,
-  name: 'Priya Sharma',
-  phone: '+91 98765 43210',
-  email: 'priya.sharma@email.com',
-  destination: 'Bali, Indonesia',
-  budget: '₹85,000',
-  travelDate: '2024-12-20',
-  groupSize: 2,
-  score: 'Hot',
-  status: 'Quoted',
-  lastContact: '2 hours ago',
-  inquiryMessage: 'Looking for a romantic honeymoon package in Bali. Prefer beachside resort, candlelight dinner, and spa. Flexible on dates but prefer late December.',
-  scoreExplanation: 'High budget, quick responses, and clear intent make this a high-priority lead. Customer has been actively engaging and is ready to book.',
-  statusHistory: [
-    { status: 'New',       date: 'Dec 1, 2024',  note: 'Lead created via WhatsApp inquiry'         },
-    { status: 'Contacted', date: 'Dec 2, 2024',  note: 'Initial call made, discussed requirements' },
-    { status: 'Quoted',    date: 'Dec 4, 2024',  note: 'Sent Bali honeymoon package quotation'     },
-  ],
-  itinerary: {
-    id: 'ITN-001',
-    title: 'Bali Honeymoon — 6 Nights 7 Days',
-    status: 'Pending Approval',
-    days: 7,
-    createdAt: 'Dec 4, 2024',
-  },
-  quotation: {
-    id: 'QT-2024-001',
-    amount: '₹82,500',
-    status: 'Sent',
-    validUntil: 'Dec 15, 2024',
-    items: ['6N Beachside Resort', 'Airport Transfers', 'Candlelight Dinner', 'Spa Session', 'Sightseeing Tours'],
-  },
-  followUps: [
-    { date: 'Dec 6, 2024',  type: 'Call',  status: 'Done',    note: 'Confirmed interest, asked for minor changes' },
-    { date: 'Dec 8, 2024',  type: 'Email', status: 'Done',    note: 'Sent revised itinerary with spa upgrade'     },
-    { date: 'Dec 10, 2024', type: 'Call',  status: 'Pending', note: 'Final confirmation call'                     },
-    { date: 'Dec 12, 2024', type: 'Email', status: 'Pending', note: 'Send booking confirmation'                   },
-  ],
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -86,29 +43,6 @@ const SectionTitle = ({ icon: Icon, title, color = '#641F32' }) => (
 
 // ── Quotation Generator ───────────────────────────────────────────────────────
 
-const mockQuotation = {
-  itineraryId: 'ITN-001',
-  destination: 'Bali, Indonesia',
-  duration: 7,
-  groupSize: 2,
-  currency: '₹',
-  items: [
-    { category: 'Accommodation', description: '6N Beachside Resort (Seminyak)',    unitCost: 12000, units: 6, total: 72000 },
-    { category: 'Transport',     description: 'Airport transfers + private car',    unitCost: 8000,  units: 1, total: 8000  },
-    { category: 'Activities',    description: 'Spa, Nusa Penida tour, Kecak show', unitCost: 6500,  units: 1, total: 6500  },
-    { category: 'Meals',         description: 'Daily breakfast + 3 special dinners',unitCost: 2200, units: 7, total: 15400 },
-    { category: 'Visa & Misc',   description: 'Travel insurance + misc expenses',  unitCost: 3500,  units: 1, total: 3500  },
-  ],
-  subtotal:     105400,
-  marginPct:    15,
-  marginAmount: 15810,
-  finalPrice:   121210,
-  anomalies: [
-    { type: 'warning', field: 'Transport',     message: 'Transport cost (₹8,000) is 2× higher than average for this destination. Please review before sending.' },
-    { type: 'info',    field: 'Accommodation', message: 'Accommodation rate is within the expected range for Seminyak in December.' },
-  ],
-}
-
 const categoryMeta = {
   'Accommodation': { color: '#641F32', bg: '#F1EADF' },
   'Transport':     { color: '#641F32', bg: '#F1E8DC' },
@@ -123,7 +57,7 @@ const selectStyle = {
   color: '#35231F', fontSize: '13px', boxSizing: 'border-box',
 }
 
-function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
+function QuotationGenerator({ leadId, itineraryId, groupSize = 1, invoiceReviewUrl }) {
   const [quote, setQuote]         = useState(null)
   const [loading, setLoading]     = useState(false)
   const [error, setError]         = useState(null)
@@ -319,9 +253,9 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
   const handleSend = async () => {
     try {
       setSending(true)
-      await api.post('/quotation/send', { leadId, quote })
+      await api.post(`/quotations/${quote.id}/send`)
       setSent(true)
-    } catch { setSent(true) }
+    } catch (err) { setError(err.response?.data?.message || 'Could not send quotation.'); }
     finally { setSending(false) }
   }
 
@@ -434,6 +368,8 @@ function QuotationGenerator({ leadId, itineraryId, groupSize = 1 }) {
             </button>
           )}
 
+          {sent && <p style={{color:'#725D52',fontSize:13}}>No payment needed until after the trip.</p>}
+          {invoiceReviewUrl && <a href={invoiceReviewUrl}>Review invoice</a>}
           {sent && (
             <div style={{
               display: 'flex', alignItems: 'center', gap: '6px',
@@ -724,15 +660,46 @@ function LeadDetail() {
   const location = useLocation()
   const [lead, setLead] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [approved, setApproved] = useState(false)
+  const [invoiceReviewUrl, setInvoiceReviewUrl] = useState('')
 
   useEffect(() => {
+    getAllBookings().then(r => { const b=(Array.isArray(r.data)?r.data:[]).find(x=>String(x.leadId)===String(id)&&x.invoice); if(b)setInvoiceReviewUrl(`/invoices/${b.id}/review`) }).catch(()=>{})
     let cancelled = false
 
     const fetch = async () => {
       try {
+        setError(null)
         const res = await getLeadById(id)
-        let leadData = res.data
+        const rawLead = res.data
+
+        const numericScore = Number(rawLead.score || 0)
+        const scoreLabel = ['Hot', 'Warm', 'Cold'].includes(rawLead.score_label)
+          ? rawLead.score_label
+          : (numericScore >= 70 ? 'Hot' : numericScore >= 40 ? 'Warm' : 'Cold')
+
+        let leadData = {
+          ...rawLead,
+          name: rawLead.name || rawLead.customer_name || rawLead.customerName || 'Unknown customer',
+          phone: rawLead.phone || 'Not provided',
+          email: rawLead.email || 'Not provided',
+          destination: rawLead.destination || 'Not specified',
+          budget: rawLead.budget != null
+            ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(Number(rawLead.budget))
+            : 'Not specified',
+          travelDate: rawLead.travelDate || rawLead.travel_date
+            ? new Date(rawLead.travelDate || rawLead.travel_date).toLocaleDateString()
+            : 'Not specified',
+          groupSize: Number(rawLead.groupSize ?? rawLead.group_size ?? 1),
+          group_size: Number(rawLead.group_size ?? rawLead.groupSize ?? 1),
+          inquiryMessage: rawLead.inquiryMessage || rawLead.inquiry_text || '',
+          lastContact: rawLead.lastContact || rawLead.last_contact
+            ? new Date(rawLead.lastContact || rawLead.last_contact).toLocaleString()
+            : 'Not recorded',
+          score: scoreLabel,
+          scoreExplanation: `Lead scored ${numericScore}/100. ${scoreLabel} priority is based on budget, travel date urgency, and customer interactions.`,
+        }
 
         // Fetch itineraries separately so the newest saved itinerary is shown
         // even if the lead endpoint does not include the relation.
@@ -760,9 +727,43 @@ function LeadDetail() {
           console.error('Could not load linked itineraries:', itineraryError)
         }
 
+        try {
+          const quotationRes = await getQuotationByLead(id)
+          const quotations = Array.isArray(quotationRes.data)
+            ? quotationRes.data
+            : (quotationRes.data?.quotations || [])
+          const latest = quotations[0]
+          if (latest) {
+            const items = latest.breakdown?.items
+              ? Object.entries(latest.breakdown.items).map(([category, value]) => `${category}: ${value}`)
+              : []
+            leadData = {
+              ...leadData,
+              quotation: {
+                id: latest.id,
+                amount: new Intl.NumberFormat('en-IN', {
+                  style: 'currency',
+                  currency: latest.currency || 'INR',
+                  maximumFractionDigits: 0,
+                }).format(Number(latest.total_price || 0)),
+                status: latest.status || 'Generated',
+                validUntil: latest.validUntil
+                  ? new Date(latest.validUntil).toLocaleDateString()
+                  : 'Not specified',
+                items,
+              },
+            }
+          }
+        } catch (quotationError) {
+          console.error('Could not load linked quotations:', quotationError)
+        }
+
         if (!cancelled) setLead(leadData)
       } catch (error) {
-        if (!cancelled) setLead(mockLead)
+        if (!cancelled) {
+          setLead(null)
+          setError(error.response?.data?.message || 'Could not load lead details.')
+        }
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -789,7 +790,7 @@ function LeadDetail() {
 
   if (!lead) return (
     <div style={{ textAlign: 'center', padding: '60px' }}>
-      <p style={{ color: '#725D52' }}>Lead not found.</p>
+      <p style={{ color: '#725D52' }}>{error || 'Lead not found.'}</p>
     </div>
   )
 
@@ -1048,7 +1049,7 @@ function LeadDetail() {
       </div>
 
       {/* ── Row 4: Quotation Generator ────────────────────────────────────── */}
-      <QuotationGenerator leadId={lead.id} itineraryId={lead.itinerary?.id} groupSize={lead.group_size ?? lead.groupSize ?? 1} />
+      <QuotationGenerator leadId={lead.id} itineraryId={lead.itinerary?.id} groupSize={lead.group_size ?? lead.groupSize ?? 1} invoiceReviewUrl={invoiceReviewUrl} />
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>

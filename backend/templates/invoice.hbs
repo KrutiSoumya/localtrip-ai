@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Invoice {{invoice_number}}</title>
+</head>
+<body style="font-family: Arial, sans-serif; margin: 40px; color: #222;">
+  <div style="border-bottom: 3px solid #2563eb; padding-bottom: 15px; margin-bottom: 25px;">
+    <h1 style="margin: 0; color: #2563eb;">{{agency_name}}</h1>
+    <p style="margin: 4px 0; color: #666;">Travel Invoice</p><p>{{agent_name}} | {{agent_phone}}</p>
+  </div>
+
+  <p><strong>Invoice:</strong> {{invoice_number}}</p>
+  <p><strong>Customer:</strong> {{customer_name}}</p>
+  <p><strong>Issued:</strong> {{issued_date}}</p>
+  <p><strong>Trip dates:</strong> {{trip_dates}}</p>
+  <p><strong>Quoted amount:</strong> {{quoted_amount}}</p>
+  <p><strong>Due:</strong> {{due_date}}</p>
+
+  <table style="width: 100%; border-collapse: collapse; margin: 25px 0;">
+    <thead>
+      <tr style="background: #2563eb; color: white;">
+        <th style="padding: 10px; border: 1px solid #ddd; text-align: left;">Item</th>
+        <th style="padding: 10px; border: 1px solid #ddd; text-align: right;">Amount</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each line_items}}
+      <tr>
+        <td style="padding: 10px; border: 1px solid #ddd; text-transform: capitalize;">{{description}}</td>
+        <td style="padding: 10px; border: 1px solid #ddd; text-align: right;">INR {{amount}}</td>
+      </tr>
+      {{/each}}
+      {{#each adjustments}}<tr><td style="padding: 10px; border: 1px solid #ddd;">Adjustment: {{description}} ({{reason}})</td><td style="padding: 10px; border: 1px solid #ddd; text-align: right;">INR {{amount}}</td></tr>{{/each}}
+      <tr style="background: #ecfdf5;">
+        <td style="padding: 12px; border: 1px solid #ddd;"><strong>Total due</strong></td>
+        <td style="padding: 12px; border: 1px solid #ddd; text-align: right;"><strong>{{final_amount}}</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div style="text-align: center; margin-top: 28px;">
+    <p><strong>Pay via UPI</strong></p>
+    <img src="{{payment_qr_code}}" alt="UPI payment QR code" style="width: 180px; height: 180px;" />
+    <p style="font-size: 12px; word-break: break-all; color: #555;">{{upi_link}}</p>
+    <p style="text-align:center"><a href="{{public_url}}">View invoice online</a></p>
+</div>
+</body>
+</html>

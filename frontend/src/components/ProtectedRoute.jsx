@@ -1,8 +1,7 @@
-import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 
 function ProtectedRoute({ children }) {
-  const { isLoggedIn, loading } = useAuth()
+  const { loading } = useAuth()
 
   // While checking auth state, show nothing (or a spinner)
   if (loading) {

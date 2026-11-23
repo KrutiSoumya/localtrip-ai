@@ -279,8 +279,10 @@ const getDestinationRegion = destination => destination.region || destination.st
 const asArray = value => Array.isArray(value) ? value : []
 
 function Settings() {
-  const [profile, setProfile] = useState({ name: '', email: '', phone: '', agencyName: '' })
-  const [profileLoading, setProfileLoading] = useState(true)
+  const [profile] = useState(getLoggedInProfile)
+  const [profileLoading] = useState(false)
+  const [upiId, setUpiId] = useState('')
+  const [upiSaving, setUpiSaving] = useState(false)
   const [destinations, setDestinations] = useState([])
   const [destLoading, setDestLoading] = useState(true)
   const [destError, setDestError] = useState('')
@@ -326,9 +328,9 @@ function Settings() {
   }, [])
 
   useEffect(() => {
-    setProfile(getLoggedInProfile())
-    setProfileLoading(false)
-    loadDestinations()
+    const timer = window.setTimeout(() => loadDestinations(), 0)
+    api.get('/config/agent/payment').then(r => setUpiId(r.data?.upi_id || '')).catch(() => {})
+    return () => window.clearTimeout(timer)
   }, [loadDestinations])
 
   const filteredDestinations = useMemo(() => {
@@ -478,6 +480,15 @@ function Settings() {
           </div>
         </div>
       )}
+
+      <section className="st-panel">
+        <div className="st-sec"><h2><span className="st-bullet" />Invoice payment details</h2><p>Customers will see this UPI ID on invoices and payment QR codes.</p></div>
+        <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'end'}}>
+          <Field label="UPI ID"><input className="st-input" value={upiId} onChange={e=>setUpiId(e.target.value)} placeholder="name@bank" /></Field>
+          <button className="st-btn gold" disabled={upiSaving} onClick={async()=>{setUpiSaving(true);try{await api.put('/config/agent/payment',{upi_id:upiId});showToast('Invoice payment details saved')}catch(e){showToast(e.response?.data?.message||'Could not save UPI ID','error')}finally{setUpiSaving(false)}}}><Save size={14}/>{upiSaving?'Saving?':'Save UPI ID'}</button>
+          <span className="st-hint">If blank, the UPI_ID environment setting is used.</span>
+        </div>
+      </section>
 
       {/* Dataset manager */}
       <div className="st-sec" style={{ marginTop: 6 }}>

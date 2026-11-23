@@ -18,23 +18,6 @@ const publishLocalLeads = (items) => {
   }
 }
 
-// ── Mock fallback data ────────────────────────────────────────────────────────
-
-const mockLeads = [
-  { id: 1,  name: 'Priya Sharma',    destination: 'Bali, Indonesia',      budget: '₹85,000',  score: 'Hot',  status: 'Quoted',      lastContact: '2 hrs ago',   phone: '+91 98765 43210', email: 'priya@email.com'  },
-  { id: 2,  name: 'Rahul Mehta',     destination: 'Manali, Himachal',     budget: '₹45,000',  score: 'Warm', status: 'Contacted',   lastContact: '1 day ago',   phone: '+91 91234 56789', email: 'rahul@email.com'  },
-  { id: 3,  name: 'Sunita Rao',      destination: 'Dubai, UAE',           budget: '₹1,20,000',score: 'Hot',  status: 'Negotiating', lastContact: '3 hrs ago',   phone: '+91 99887 76655', email: 'sunita@email.com' },
-  { id: 4,  name: 'Arjun Verma',     destination: 'Kerala Backwaters',    budget: '₹60,000',  score: 'Warm', status: 'New',         lastContact: '3 days ago',  phone: '+91 87654 32109', email: 'arjun@email.com'  },
-  { id: 5,  name: 'Kapoor Family',   destination: 'Goa, India',           budget: '₹1,50,000',score: 'Hot',  status: 'Confirmed',   lastContact: '5 hrs ago',   phone: '+91 70000 11223', email: 'kapoor@email.com' },
-  { id: 6,  name: 'Neha Joshi',      destination: 'Paris, France',        budget: '₹2,00,000',score: 'Warm', status: 'Quoted',      lastContact: '2 days ago',  phone: '+91 81234 00987', email: 'neha@email.com'   },
-  { id: 7,  name: 'Vikram Singh',    destination: 'Rajasthan Circuit',    budget: '₹55,000',  score: 'Cold', status: 'New',         lastContact: '1 week ago',  phone: '+91 94321 12345', email: 'vikram@email.com' },
-  { id: 8,  name: 'Ananya Iyer',     destination: 'Maldives',             budget: '₹3,00,000',score: 'Hot',  status: 'Negotiating', lastContact: 'Just now',    phone: '+91 96543 21987', email: 'ananya@email.com' },
-  { id: 9,  name: 'Deepak Nair',     destination: 'Singapore + Malaysia', budget: '₹95,000',  score: 'Cold', status: 'Contacted',   lastContact: '5 days ago',  phone: '+91 78901 23456', email: 'deepak@email.com' },
-  { id: 10, name: 'Meera Pillai',    destination: 'Shimla, Himachal',     budget: '₹35,000',  score: 'Warm', status: 'New',         lastContact: '4 days ago',  phone: '+91 77665 54433', email: 'meera@email.com'  },
-  { id: 11, name: 'Ravi Tiwari',     destination: 'Thailand — Bangkok',   budget: '₹75,000',  score: 'Hot',  status: 'Quoted',      lastContact: '1 day ago',   phone: '+91 90011 22334', email: 'ravi@email.com'   },
-  { id: 12, name: 'Pooja Agarwal',   destination: 'Leh Ladakh',          budget: '₹70,000',  score: 'Cold', status: 'Closed',      lastContact: '2 weeks ago', phone: '+91 82345 67890', email: 'pooja@email.com'  },
-]
-
 // ── Theme ─────────────────────────────────────────────────────────────────────
 
 const T = {
@@ -62,6 +45,14 @@ const statusMeta = {
   Confirmed:    { bg: '#0f4a3a', color: '#fdf6c3' },
   Closed:       { bg: '#7a0c12', color: '#fdf6c3' },
 }
+
+const SortIcon = ({ field, sortField, sortDir }) => (
+  <span style={{ marginLeft: '4px', opacity: sortField === field ? 1 : 0.4, verticalAlign: 'middle' }}>
+    {sortField === field && sortDir === 'desc'
+      ? <ChevronDown size={13} />
+      : <ChevronUp size={13} />}
+  </span>
+)
 
 const ScoreBadge = ({ score }) => {
   const meta = scoreMeta[score] || scoreMeta.Cold
@@ -155,8 +146,9 @@ function Leads() {
       const fetchedLeads = Array.isArray(res.data) ? res.data : []
       setLeads(fetchedLeads)
       publishLocalLeads(fetchedLeads)
-    } catch {
-      setLeads(mockLeads)
+    } catch (error) {
+      setLeads([])
+      setError(error.response?.data?.message || 'Could not load leads.')
     } finally {
       setLoading(false)
     }
@@ -229,14 +221,6 @@ function Leads() {
         ? String(valA).localeCompare(String(valB))
         : String(valB).localeCompare(String(valA))
     })
-
-  const SortIcon = ({ field }) => (
-    <span style={{ marginLeft: '4px', opacity: sortField === field ? 1 : 0.4, verticalAlign: 'middle' }}>
-      {sortField === field && sortDir === 'desc'
-        ? <ChevronDown size={13} />
-        : <ChevronUp size={13} />}
-    </span>
-  )
 
   const thStyle = (field) => ({
     cursor: field ? 'pointer' : 'default',
@@ -384,19 +368,19 @@ function Leads() {
               <thead>
                 <tr className="lt-thead-row">
                   <th className="lt-th" style={thStyle('name')}    onClick={() => handleSort('name')}>
-                    Customer Name <SortIcon field="name" />
+                    Customer Name <SortIcon field="name" sortField={sortField} sortDir={sortDir} />
                   </th>
                   <th className="lt-th" style={thStyle('destination')} onClick={() => handleSort('destination')}>
-                    Destination <SortIcon field="destination" />
+                    Destination <SortIcon field="destination" sortField={sortField} sortDir={sortDir} />
                   </th>
                   <th className="lt-th" style={thStyle('budget')}  onClick={() => handleSort('budget')}>
-                    Budget <SortIcon field="budget" />
+                    Budget <SortIcon field="budget" sortField={sortField} sortDir={sortDir} />
                   </th>
                   <th className="lt-th" style={thStyle('score')}   onClick={() => handleSort('score')}>
-                    Score <SortIcon field="score" />
+                    Score <SortIcon field="score" sortField={sortField} sortDir={sortDir} />
                   </th>
                   <th className="lt-th" style={thStyle('status')}  onClick={() => handleSort('status')}>
-                    Status <SortIcon field="status" />
+                    Status <SortIcon field="status" sortField={sortField} sortDir={sortDir} />
                   </th>
                   <th className="lt-th" style={thStyle(null)}>Actions</th>
                 </tr>
